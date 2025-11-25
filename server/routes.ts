@@ -36,11 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Note: Seeding is done in background after server starts (in app.ts)
   // This allows the health check endpoint to be available immediately
-
-  // Root health check - fast response for deployment health checks
-  app.get("/", (_req, res) => {
-    res.status(200).json({ status: "ok" });
-  });
+  // The "/" root is served by the static middleware (Vite in dev, Express static in prod)
 
   // Health check - no auth required
   app.get("/api/health", async (req, res) => {
