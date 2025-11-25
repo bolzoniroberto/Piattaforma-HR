@@ -9,7 +9,6 @@ import {
   insertCalculationTypeSchema,
   insertBusinessFunctionSchema,
   insertObjectivesDictionarySchema,
-  insertObjectiveClusterSchema,
   insertObjectiveSchema,
   insertObjectiveAssignmentSchema,
   insertDocumentSchema,
@@ -362,64 +361,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Objective Cluster routes
-  app.get("/api/clusters", isAuthenticated, async (req, res) => {
-    try {
-      const clusters = await storage.getObjectiveClusters();
-      res.json(clusters);
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
-  app.get("/api/clusters/:id", isAuthenticated, async (req, res) => {
-    try {
-      const cluster = await storage.getObjectiveCluster(req.params.id);
-      if (!cluster) {
-        return res.status(404).json({ message: "Cluster not found" });
-      }
-      res.json(cluster);
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
-  app.post("/api/clusters", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const data = insertObjectiveClusterSchema.parse(req.body);
-      const cluster = await storage.createObjectiveCluster(data);
-      res.status(201).json(cluster);
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
-  app.patch("/api/clusters/:id", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const data = insertObjectiveClusterSchema.partial().parse(req.body);
-      const cluster = await storage.updateObjectiveCluster(req.params.id, data);
-      res.json(cluster);
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
-  app.delete("/api/clusters/:id", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      await storage.deleteObjectiveCluster(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
   // Objective routes
   app.get("/api/objectives", isAuthenticated, async (req, res) => {
     try {
-      const { clusterId } = req.query;
-      const objectives = clusterId
-        ? await storage.getObjectivesByCluster(clusterId as string)
-        : await storage.getObjectives();
+      const objectives = await storage.getObjectives();
       res.json(objectives);
     } catch (error) {
       handleError(res, error);
@@ -635,8 +580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       const stats = await storage.getUserStats(userId);
-      const clusterStats = await storage.getClusterStats(userId);
-      res.json({ ...stats, clusterStats });
+      res.json(stats);
     } catch (error) {
       handleError(res, error);
     }
@@ -645,8 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats/:userId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const stats = await storage.getUserStats(req.params.userId);
-      const clusterStats = await storage.getClusterStats(req.params.userId);
-      res.json({ ...stats, clusterStats });
+      res.json(stats);
     } catch (error) {
       handleError(res, error);
     }

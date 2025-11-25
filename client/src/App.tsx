@@ -17,21 +17,32 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 
+// Initialize demo mode BEFORE React render (at module load time)
+if (typeof window !== "undefined") {
+  const params = new URLSearchParams(window.location.search);
+  const demoRole = params.get("demo") || "employee";
+  if (demoRole === "admin" || demoRole === "employee") {
+    sessionStorage.setItem("demo_mode", "true");
+    sessionStorage.setItem("demo_role", demoRole);
+  }
+}
+
 function RootPage() {
   const [, navigate] = useLocation();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    if (isLoading) return;
-    
-    // Redirect admins to admin dashboard
-    if (user?.role === "admin") {
+    if (!isLoading && user?.role === "admin") {
       navigate("/admin");
     }
   }, [user, isLoading, navigate]);
 
-  if (isLoading || (user?.role === "admin")) {
+  if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Caricamento...</p></div>;
+  }
+
+  if (user?.role === "admin") {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento...</p></div>;
   }
 
   return (

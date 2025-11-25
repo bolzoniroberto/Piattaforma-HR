@@ -5,7 +5,6 @@ import {
   calculationTypes,
   businessFunctions,
   objectivesDictionary,
-  objectiveClusters,
   objectives,
   objectiveAssignments,
   documents,
@@ -20,8 +19,6 @@ import {
   type InsertBusinessFunction,
   type ObjectivesDictionary,
   type InsertObjectivesDictionary,
-  type ObjectiveCluster,
-  type InsertObjectiveCluster,
   type Objective,
   type InsertObjective,
   type ObjectiveAssignment,
@@ -70,23 +67,15 @@ export interface IStorage {
   updateObjectivesDictionaryItem(id: string, item: Partial<InsertObjectivesDictionary>): Promise<ObjectivesDictionary>;
   deleteObjectivesDictionaryItem(id: string): Promise<void>;
   
-  // Objective Cluster operations
-  getObjectiveClusters(): Promise<ObjectiveCluster[]>;
-  getObjectiveCluster(id: string): Promise<ObjectiveCluster | undefined>;
-  createObjectiveCluster(cluster: InsertObjectiveCluster): Promise<ObjectiveCluster>;
-  updateObjectiveCluster(id: string, cluster: Partial<InsertObjectiveCluster>): Promise<ObjectiveCluster>;
-  deleteObjectiveCluster(id: string): Promise<void>;
-  
   // Objective operations
   getObjectives(): Promise<Objective[]>;
   getObjective(id: string): Promise<Objective | undefined>;
-  getObjectivesByCluster(clusterId: string): Promise<Objective[]>;
   createObjective(objective: InsertObjective): Promise<Objective>;
   updateObjective(id: string, objective: Partial<InsertObjective>): Promise<Objective>;
   deleteObjective(id: string): Promise<void>;
   
   // Objective Assignment operations
-  getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective; cluster: ObjectiveCluster })[]>;
+  getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string } })[]>;
   getObjectiveAssignment(id: string): Promise<ObjectiveAssignment | undefined>;
   createObjectiveAssignment(assignment: InsertObjectiveAssignment): Promise<ObjectiveAssignment>;
   updateObjectiveAssignment(id: string, assignment: Partial<InsertObjectiveAssignment>): Promise<ObjectiveAssignment>;
@@ -106,7 +95,6 @@ export interface IStorage {
   
   // Statistics
   getUserStats(userId: string): Promise<{ totalObjectives: number; completedObjectives: number }>;
-  getClusterStats(userId: string): Promise<Array<{ clusterId: string; clusterName: string; progress: number }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -295,34 +283,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(objectivesDictionary).where(eq(objectivesDictionary.id, id));
   }
 
-  // Objective Cluster operations
-  async getObjectiveClusters(): Promise<ObjectiveCluster[]> {
-    return await db.select().from(objectiveClusters).orderBy(objectiveClusters.name);
-  }
-
-  async getObjectiveCluster(id: string): Promise<ObjectiveCluster | undefined> {
-    const [cluster] = await db.select().from(objectiveClusters).where(eq(objectiveClusters.id, id));
-    return cluster;
-  }
-
-  async createObjectiveCluster(clusterData: InsertObjectiveCluster): Promise<ObjectiveCluster> {
-    const [cluster] = await db.insert(objectiveClusters).values(clusterData).returning();
-    return cluster;
-  }
-
-  async updateObjectiveCluster(id: string, clusterData: Partial<InsertObjectiveCluster>): Promise<ObjectiveCluster> {
-    const [cluster] = await db
-      .update(objectiveClusters)
-      .set({ ...clusterData, updatedAt: new Date() })
-      .where(eq(objectiveClusters.id, id))
-      .returning();
-    return cluster;
-  }
-
-  async deleteObjectiveCluster(id: string): Promise<void> {
-    await db.delete(objectiveClusters).where(eq(objectiveClusters.id, id));
-  }
-
   // Objective operations
   async getObjectives(): Promise<Objective[]> {
     return await db.select().from(objectives).orderBy(desc(objectives.createdAt));
@@ -333,9 +293,6 @@ export class DatabaseStorage implements IStorage {
     return objective;
   }
 
-  async getObjectivesByCluster(clusterId: string): Promise<Objective[]> {
-    return await db.select().from(objectives).where(eq(objectives.clusterId, clusterId));
-  }
 
   async createObjective(objectiveData: InsertObjective): Promise<Objective> {
     const [objective] = await db.insert(objectives).values(objectiveData).returning();
@@ -356,17 +313,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Objective Assignment operations
-  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string }; cluster: ObjectiveCluster })[]> {
+  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string } })[]> {
     const results = await db
       .select({
         assignment: objectiveAssignments,
         objective: objectives,
-        cluster: objectiveClusters,
         dictionary: objectivesDictionary,
       })
       .from(objectiveAssignments)
       .innerJoin(objectives, eq(objectiveAssignments.objectiveId, objectives.id))
-      .innerJoin(objectiveClusters, eq(objectives.clusterId, objectiveClusters.id))
       .leftJoin(objectivesDictionary, eq(objectives.dictionaryId, objectivesDictionary.id))
       .where(eq(objectiveAssignments.userId, userId))
       .orderBy(desc(objectiveAssignments.assignedAt));
@@ -378,7 +333,6 @@ export class DatabaseStorage implements IStorage {
         title: row.dictionary?.title || "Obiettivo",
         description: row.dictionary?.description || "",
       },
-      cluster: row.cluster,
     }));
   }
 
@@ -467,25 +421,6 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getClusterStats(userId: string): Promise<Array<{ clusterId: string; clusterName: string; progress: number }>> {
-    const results = await db
-      .select({
-        clusterId: objectiveClusters.id,
-        clusterName: objectiveClusters.name,
-        avgProgress: sql<number>`avg(${objectiveAssignments.progress})`,
-      })
-      .from(objectiveAssignments)
-      .innerJoin(objectives, eq(objectiveAssignments.objectiveId, objectives.id))
-      .innerJoin(objectiveClusters, eq(objectives.clusterId, objectiveClusters.id))
-      .where(eq(objectiveAssignments.userId, userId))
-      .groupBy(objectiveClusters.id, objectiveClusters.name);
-
-    return results.map((row) => ({
-      clusterId: row.clusterId,
-      clusterName: row.clusterName,
-      progress: Math.round(Number(row.avgProgress || 0)),
-    }));
-  }
 }
 
 export const storage = new DatabaseStorage();
