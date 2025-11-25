@@ -12,9 +12,22 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  
+  // Add demo mode headers if active
+  if (typeof window !== "undefined") {
+    const demoMode = sessionStorage.getItem("demo_mode") === "true";
+    const demoRole = sessionStorage.getItem("demo_role");
+    if (demoMode && demoRole) {
+      headers["X-Demo-Mode"] = "true";
+      headers["X-Demo-User-Id"] = demoRole === "admin" ? "demo-admin-001" : "demo-employee-001";
+      headers["X-Demo-Role"] = demoRole;
+    }
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
