@@ -45,6 +45,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error("⚠️  Could not check/seed database:", error);
   }
 
+  // Root health check - fast response for deployment health checks
+  app.get("/", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   // Health check - no auth required
   app.get("/api/health", async (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
