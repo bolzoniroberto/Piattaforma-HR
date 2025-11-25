@@ -101,20 +101,6 @@ export default async function runApp(
     console.error("Setup error:", error);
   });
 
-  // In development mode, seed the database if it's empty
-  // This allows testing with fresh data on each restart
-  if (process.env.NODE_ENV === 'development') {
-    setImmediate(async () => {
-      try {
-        const clusters = await storage.getIndicatorClusters();
-        if (clusters.length === 0) {
-          log("📊 Development mode: Database is empty, running seed...");
-          await seed();
-          log("✨ Seed completed in development mode");
-        }
-      } catch (error) {
-        console.error("⚠️ Seed error in development:", error);
-      }
-    });
-  }
+  // Seeding is now manual-only via POST /api/admin/seed to prevent duplicate data
+  // This ensures the database never gets accidentally re-seeded on hot reloads
 }

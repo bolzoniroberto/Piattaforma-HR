@@ -3,15 +3,13 @@ import { db } from "./db";
 import { indicatorClusters, calculationTypes, objectivesDictionary, objectiveClusters, objectives, documents, users } from "@shared/schema";
 
 async function seed() {
-  console.log("🌱 Seeding database...");
-
+  console.log("🌱 Seeding disabled - use direct SQL instead");
+  return;
+  
+  /* Seeding is disabled - database is populated via direct SQL
+     This prevents duplicate data from multiple seed execution attempts
+   */
   try {
-    // Check if database is already seeded
-    const existingClusters = await db.select().from(indicatorClusters).limit(1);
-    if (existingClusters.length > 0) {
-      console.log("⚠️  Database already seeded, skipping seed...");
-      return;
-    }
 
     // Create indicator clusters
     console.log("Creating indicator clusters...");
