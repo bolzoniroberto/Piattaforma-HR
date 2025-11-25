@@ -50,7 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Demo login - for testing (creates a session without OIDC)
+  // Demo login - for testing (sets session storage on client)
   app.get("/api/demo-login/:role", async (req, res) => {
     try {
       const role = req.params.role as "admin" | "employee";
@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      // Create or get demo user
+      // Create demo user in database
       const demoUserId = role === "admin" ? "demo-admin-001" : "demo-employee-001";
       await storage.upsertUser({
         id: demoUserId,
@@ -71,22 +71,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mboPercentage: 25,
       });
 
-      // Manually set the user in the session
-      const demoUser = {
-        claims: { sub: demoUserId },
-        access_token: "demo-token",
-        refresh_token: "demo-refresh",
-        expires_at: Math.floor(Date.now() / 1000) + 86400,
-      };
-      (req.user as any) = demoUser;
-
-      // Save session
-      req.login(demoUser as any, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Session error" });
-        }
-        res.redirect("/");
-      });
+      // Return HTML that sets sessionStorage and redirects
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head><title>Demo Login</title></head>
+        <body>
+          <script>
+            sessionStorage.setItem('demo_mode', 'true');
+            sessionStorage.setItem('demo_role', '${role}');
+            window.location.href = '/';
+          </script>
+        </body>
+        </html>
+      `;
+      res.setHeader("Content-Type", "text/html");
+      res.send(html);
     } catch (error) {
       handleError(res, error);
     }
