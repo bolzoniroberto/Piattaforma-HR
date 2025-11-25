@@ -298,22 +298,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Objective Assignment operations
-  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective; cluster: ObjectiveCluster })[]> {
+  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string }; cluster: ObjectiveCluster })[]> {
     const results = await db
       .select({
         assignment: objectiveAssignments,
         objective: objectives,
         cluster: objectiveClusters,
+        dictionary: objectivesDictionary,
       })
       .from(objectiveAssignments)
       .innerJoin(objectives, eq(objectiveAssignments.objectiveId, objectives.id))
       .innerJoin(objectiveClusters, eq(objectives.clusterId, objectiveClusters.id))
+      .leftJoin(objectivesDictionary, eq(objectives.dictionaryId, objectivesDictionary.id))
       .where(eq(objectiveAssignments.userId, userId))
       .orderBy(desc(objectiveAssignments.assignedAt));
 
     return results.map((row) => ({
       ...row.assignment,
-      objective: row.objective,
+      objective: {
+        ...row.objective,
+        title: row.dictionary?.title || "Obiettivo",
+        description: row.dictionary?.description || "",
+      },
       cluster: row.cluster,
     }));
   }
