@@ -45,16 +45,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin endpoint to manually seed database if needed
   app.post("/api/admin/seed", isAdmin, async (req, res) => {
-    try {
-      const clusters = await storage.getIndicatorClusters();
-      if (clusters.length > 0) {
-        return res.status(400).json({ message: "Database already seeded" });
-      }
-      await seed();
-      res.json({ message: "Database seeded successfully" });
-    } catch (error) {
-      handleError(res, error);
-    }
+    // Seeding disabled - use direct SQL instead
+    res.status(403).json({ message: "Seeding is disabled. Use direct SQL for manual database operations." });
   });
 
   // Demo login - for testing (sets session storage on client)
