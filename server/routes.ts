@@ -34,16 +34,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Seed database on first run (if empty)
-  try {
-    const clusters = await storage.getIndicatorClusters();
-    if (clusters.length === 0) {
-      console.log("📊 Database is empty, running seed...");
-      await seed();
-    }
-  } catch (error) {
-    console.error("⚠️  Could not check/seed database:", error);
-  }
+  // Note: Seeding is done in background after server starts (in app.ts)
+  // This allows the health check endpoint to be available immediately
 
   // Root health check - fast response for deployment health checks
   app.get("/", (_req, res) => {
