@@ -29,8 +29,22 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const headers: Record<string, string> = {};
+    
+    // Add demo mode header if active
+    if (typeof window !== "undefined") {
+      const demoMode = sessionStorage.getItem("demo_mode") === "true";
+      const demoRole = sessionStorage.getItem("demo_role");
+      if (demoMode && demoRole) {
+        headers["X-Demo-Mode"] = "true";
+        headers["X-Demo-User-Id"] = demoRole === "admin" ? "demo-admin-001" : "demo-employee-001";
+        headers["X-Demo-Role"] = demoRole;
+      }
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

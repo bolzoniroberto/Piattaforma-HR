@@ -5,7 +5,7 @@ import type { User } from "@shared/schema";
 export function useAuth() {
   // Check if demo mode is active FIRST
   const demoMode = typeof window !== "undefined" && sessionStorage.getItem("demo_mode") === "true";
-  const demoRole = typeof window !== "undefined" ? sessionStorage.getItem("demo_role") : null;
+  const demoRole = typeof window !== "undefined" ? (sessionStorage.getItem("demo_role") ?? null) : null;
 
   // If demo mode is active, return demo user immediately without fetching
   if (demoMode && demoRole && (demoRole === "admin" || demoRole === "employee")) {
