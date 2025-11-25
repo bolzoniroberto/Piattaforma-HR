@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
-import { Search, Users, UserPlus, Target, Building, ChevronRight } from "lucide-react";
+import { Search, Users, UserPlus, Target, Building, ChevronRight, Trash2, Edit2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,15 +24,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [openDialog, setOpenDialog] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    department: "",
+    ral: "",
+    mboPercentage: "25",
+    role: "employee" as const,
+  });
 
   const { data: allUsers = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -83,6 +114,132 @@ export default function AdminUsersPage() {
       departments: departments.length,
     };
   }, [allUsers, departments]);
+
+  const createUserMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/users", {
+        id: undefined,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        department: formData.department,
+        ral: formData.ral ? parseFloat(formData.ral) : null,
+        mboPercentage: parseInt(formData.mboPercentage),
+        role: formData.role,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Utente creato con successo" });
+      setOpenDialog(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile creare l'utente",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingUser) throw new Error("No user selected");
+      const res = await apiRequest("PATCH", `/api/users/${editingUser.id}`, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        department: formData.department,
+        ral: formData.ral ? parseFloat(formData.ral) : null,
+        mboPercentage: parseInt(formData.mboPercentage),
+        role: formData.role,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Utente aggiornato con successo" });
+      setOpenDialog(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile aggiornare l'utente",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`);
+      return res.status === 204;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Utente eliminato con successo" });
+      setDeleteUserId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile eliminare l'utente",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      department: "",
+      ral: "",
+      mboPercentage: "25",
+      role: "employee",
+    });
+    setEditingUser(null);
+  };
+
+  const handleAddUser = () => {
+    resetForm();
+    setOpenDialog(true);
+  };
+
+  const handleEditUser = (u: User) => {
+    setEditingUser(u);
+    setFormData({
+      firstName: u.firstName || "",
+      lastName: u.lastName || "",
+      email: u.email || "",
+      department: u.department || "",
+      ral: u.ral ? u.ral.toString() : "",
+      mboPercentage: u.mboPercentage?.toString() || "25",
+      role: (u.role as "employee" | "admin") || "employee",
+    });
+    setOpenDialog(true);
+  };
+
+  const handleSaveUser = () => {
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+      toast({
+        title: "Errore",
+        description: "Nome, cognome ed email sono obbligatori",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingUser) {
+      updateUserMutation.mutate();
+    } else {
+      createUserMutation.mutate();
+    }
+  };
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const f = firstName?.[0] || "";
@@ -174,9 +331,9 @@ export default function AdminUsersPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <CardTitle>Elenco Utenti Eligibili</CardTitle>
+                      <CardTitle>Elenco Utenti</CardTitle>
                       <CardDescription>
-                        Tutti gli utenti a cui possono essere assegnati obiettivi
+                        Gestisci tutti gli utenti del sistema
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -213,6 +370,103 @@ export default function AdminUsersPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+                        <DialogTrigger asChild>
+                          <Button onClick={handleAddUser} data-testid="button-add-user">
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Aggiungi Utente
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent data-testid="dialog-user-form">
+                          <DialogHeader>
+                            <DialogTitle>
+                              {editingUser ? "Modifica Utente" : "Aggiungi Nuovo Utente"}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="firstName">Nome</Label>
+                              <Input
+                                id="firstName"
+                                value={formData.firstName}
+                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                data-testid="input-first-name"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="lastName">Cognome</Label>
+                              <Input
+                                id="lastName"
+                                value={formData.lastName}
+                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                data-testid="input-last-name"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="email">Email</Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                data-testid="input-email"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="department">Dipartimento</Label>
+                              <Input
+                                id="department"
+                                value={formData.department}
+                                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                data-testid="input-department"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="ral">RAL (€)</Label>
+                              <Input
+                                id="ral"
+                                type="number"
+                                value={formData.ral}
+                                onChange={(e) => setFormData({ ...formData, ral: e.target.value })}
+                                data-testid="input-ral"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="mboPercentage">MBO % (multiplo di 5)</Label>
+                              <Input
+                                id="mboPercentage"
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="5"
+                                value={formData.mboPercentage}
+                                onChange={(e) => setFormData({ ...formData, mboPercentage: e.target.value })}
+                                data-testid="input-mbo-percentage"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="role">Ruolo</Label>
+                              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as "employee" | "admin" })}>
+                                <SelectTrigger id="role" data-testid="select-role">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="employee">Dipendente</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              onClick={handleSaveUser}
+                              disabled={createUserMutation.isPending || updateUserMutation.isPending}
+                              data-testid="button-save-user"
+                              className="w-full"
+                            >
+                              {createUserMutation.isPending || updateUserMutation.isPending ? "Salvataggio..." : "Salva"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                 </CardHeader>
@@ -277,7 +531,23 @@ export default function AdminUsersPage() {
                             <TableCell className="text-sm">
                               {u.mboPercentage ? `${u.mboPercentage}%` : "-"}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right flex items-center justify-end gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleEditUser(u)}
+                                data-testid={`button-edit-user-${u.id}`}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => setDeleteUserId(u.id)}
+                                data-testid={`button-delete-user-${u.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                               <Link href={`/admin/assignments/${u.id}`}>
                                 <Button variant="ghost" size="sm" data-testid={`button-assign-${u.id}`}>
                                   Assegna
@@ -296,6 +566,27 @@ export default function AdminUsersPage() {
           </main>
         </SidebarInset>
       </div>
+
+      <AlertDialog open={deleteUserId !== null} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare l'utente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa azione non può essere annullata. L'utente sarà eliminato definitivamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-4">
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteUserId && deleteUserMutation.mutate(deleteUserId)}
+              disabled={deleteUserMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteUserMutation.isPending ? "Eliminazione..." : "Elimina"}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }

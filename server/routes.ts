@@ -13,6 +13,7 @@ import {
   insertObjectiveAssignmentSchema,
   insertDocumentSchema,
   insertDocumentAcceptanceSchema,
+  upsertUserSchema,
 } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -146,6 +147,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       res.json(user);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = upsertUserSchema.parse(req.body);
+      const user = await storage.upsertUser(data);
+      res.status(201).json(user);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = upsertUserSchema.partial().parse(req.body);
+      const user = await storage.updateUser(req.params.id, data);
+      res.json(user);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteUser(req.params.id);
+      res.status(204).send();
     } catch (error) {
       handleError(res, error);
     }
