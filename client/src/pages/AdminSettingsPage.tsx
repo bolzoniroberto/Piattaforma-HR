@@ -65,6 +65,7 @@ export default function AdminSettingsPage() {
   const [openClusterDialog, setOpenClusterDialog] = useState(false);
   const [openCalcDialog, setOpenCalcDialog] = useState(false);
   const [openBusinessDialog, setOpenBusinessDialog] = useState(false);
+  const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
   const [editingCluster, setEditingCluster] = useState<IndicatorCluster | null>(null);
   const [editingCalc, setEditingCalc] = useState<CalculationType | null>(null);
   const [editingBusiness, setEditingBusiness] = useState<BusinessFunction | null>(null);
@@ -74,6 +75,7 @@ export default function AdminSettingsPage() {
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
   const [calcForm, setCalcForm] = useState({ name: "", description: "", formula: "" });
   const [businessForm, setBusinessForm] = useState({ name: "", description: "" });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
   // Queries
   const { data: clusters = [], isLoading: clusterLoading } = useQuery<IndicatorCluster[]>({
@@ -214,6 +216,18 @@ export default function AdminSettingsPage() {
     },
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/change-password", passwordForm),
+    onSuccess: () => {
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setOpenPasswordDialog(false);
+      toast({ title: "Successo", description: "Password modificata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nella modifica della password", variant: "destructive" });
+    },
+  });
+
   const handleEditCluster = (cluster: IndicatorCluster) => {
     setEditingCluster(cluster);
     setClusterForm({ name: cluster.name, description: cluster.description || "" });
@@ -279,6 +293,22 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleChangePassword = () => {
+    if (!passwordForm.newPassword.trim()) {
+      toast({ title: "Errore", description: "La nuova password è obbligatoria", variant: "destructive" });
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({ title: "Errore", description: "Le password non corrispondono", variant: "destructive" });
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast({ title: "Errore", description: "La password deve avere almeno 6 caratteri", variant: "destructive" });
+      return;
+    }
+    changePasswordMutation.mutate();
+  };
+
   const style = {
     "--sidebar-width": "16rem",
   };
@@ -300,10 +330,11 @@ export default function AdminSettingsPage() {
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="clusters">Cluster Indicatori</TabsTrigger>
                   <TabsTrigger value="calculations">Tipi di Calcolo</TabsTrigger>
                   <TabsTrigger value="business">Funzioni Aziendali</TabsTrigger>
+                  <TabsTrigger value="security">Sicurezza</TabsTrigger>
                 </TabsList>
 
                 {/* Clusters Tab */}
@@ -620,6 +651,75 @@ export default function AdminSettingsPage() {
                           </TableBody>
                         </Table>
                       )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Security Tab - Change Password */}
+                <TabsContent value="security" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Sicurezza</CardTitle>
+                      <CardDescription>Gestisci la tua password e le impostazioni di sicurezza</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Dialog open={openPasswordDialog} onOpenChange={setOpenPasswordDialog}>
+                        <DialogTrigger asChild>
+                          <Button data-testid="button-change-password">Cambia Password</Button>
+                        </DialogTrigger>
+                        <DialogContent data-testid="dialog-change-password">
+                          <DialogHeader>
+                            <DialogTitle>Cambia Password</DialogTitle>
+                            <DialogDescription>
+                              Inserisci la tua nuova password
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="current-password">Password Attuale *</Label>
+                              <Input
+                                id="current-password"
+                                type="password"
+                                value={passwordForm.currentPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                placeholder="Inserisci la password attuale"
+                                data-testid="input-current-password"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="new-password">Nuova Password *</Label>
+                              <Input
+                                id="new-password"
+                                type="password"
+                                value={passwordForm.newPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                placeholder="Inserisci la nuova password"
+                                data-testid="input-new-password"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="confirm-password">Conferma Password *</Label>
+                              <Input
+                                id="confirm-password"
+                                type="password"
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                placeholder="Conferma la nuova password"
+                                data-testid="input-confirm-password"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={handleChangePassword}
+                              disabled={changePasswordMutation.isPending}
+                              data-testid="button-save-password"
+                            >
+                              {changePasswordMutation.isPending ? "Salvataggio..." : "Salva"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </CardContent>
                   </Card>
                 </TabsContent>

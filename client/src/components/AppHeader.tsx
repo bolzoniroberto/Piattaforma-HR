@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AppHeaderProps {
   userName?: string;
@@ -25,6 +26,24 @@ export default function AppHeader({
   notificationCount = 0,
   showSidebarTrigger = false
 }: AppHeaderProps) {
+  const { user } = useAuth();
+  
+  const handleLogout = async () => {
+    // Clear demo mode
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("demo_mode");
+      sessionStorage.removeItem("demo_role");
+    }
+    
+    // Redirect to logout or login
+    if (user?.id?.startsWith("demo-")) {
+      // Demo user - just redirect to login
+      window.location.href = "/";
+    } else {
+      // Real user - call logout endpoint
+      window.location.href = "/api/logout";
+    }
+  };
   const initials = userName
     .split(" ")
     .map((n) => n[0])
@@ -91,7 +110,7 @@ export default function AppHeader({
               Impostazioni
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem data-testid="menu-logout">
+            <DropdownMenuItem onClick={handleLogout} data-testid="menu-logout">
               <LogOut className="mr-2 h-4 w-4" />
               Esci
             </DropdownMenuItem>
