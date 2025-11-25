@@ -8,6 +8,29 @@ The system uses a modern full-stack architecture with React frontend, Express ba
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes (Latest Session)
+
+## User Management Implementation
+- **AdminUsersPage.tsx**: Complete CRUD functionality for user management
+  - View all users in a table with filters (role, department, search)
+  - Add new users via modal dialog
+  - Edit existing users (update role, department, RAL, MBO %)
+  - Delete users with confirmation dialog
+  - Real-time user statistics (total, employees, admins, departments)
+  
+- **Backend API Routes** (server/routes.ts):
+  - POST /api/users: Create new user
+  - PATCH /api/users/:id: Update user
+  - DELETE /api/users/:id: Delete user
+  
+- **Storage Methods** (server/storage.ts):
+  - updateUser(): Update user data
+  - deleteUser(): Delete user from database
+  
+- **Sidebar Navigation**: 
+  - "Gestione Utenti" (User Management) link already present in admin sidebar
+  - Available at /admin/users route
+
 # System Architecture
 
 ## Frontend Architecture
@@ -29,6 +52,7 @@ Preferred communication style: Simple, everyday language.
 - Employee Dashboard: Personal objective view with progress tracking
 - Admin Dashboard: Overview of all employees and objectives
 - Admin Objectives: Management interface for creating/editing objectives
+- Admin Users: Complete user management with CRUD operations (NEW)
 - Regulation Page: Document viewing and acceptance workflow
 
 ## Backend Architecture
