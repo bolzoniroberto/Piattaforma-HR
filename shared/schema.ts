@@ -121,7 +121,6 @@ export const objectivesDictionary = pgTable("objectives_dictionary", {
   description: text("description"),
   indicatorClusterId: varchar("indicator_cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   calculationTypeId: varchar("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
-  businessFunctionId: varchar("business_function_id").notNull().references(() => businessFunctions.id, { onDelete: "restrict" }),
   type: varchar("type").notNull(), // 'numeric' or 'qualitative'
   // For numeric objectives
   target: numeric("target", { precision: 14, scale: 2 }),
@@ -143,30 +142,10 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;
 export type ObjectivesDictionary = typeof objectivesDictionary.$inferSelect;
 
-// Objective Clusters (for grouping in scoring)
-export const objectiveClusters = pgTable("objective_clusters", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  description: text("description"),
-  weight: integer("weight").notNull().default(33), // percentage weight in evaluation
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertObjectiveClusterSchema = createInsertSchema(objectiveClusters).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertObjectiveCluster = z.infer<typeof insertObjectiveClusterSchema>;
-export type ObjectiveCluster = typeof objectiveClusters.$inferSelect;
-
 // Objectives - Instances assigned to users
 export const objectives = pgTable("objectives", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   dictionaryId: varchar("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "restrict" }),
-  clusterId: varchar("cluster_id").notNull().references(() => objectiveClusters.id, { onDelete: "cascade" }),
   deadline: timestamp("deadline"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -261,10 +240,6 @@ export const calculationTypesRelations = relations(calculationTypes, ({ many }) 
   objectivesDictionary: many(objectivesDictionary),
 }));
 
-export const businessFunctionsRelations = relations(businessFunctions, ({ many }) => ({
-  objectivesDictionary: many(objectivesDictionary),
-}));
-
 export const objectivesDictionaryRelations = relations(objectivesDictionary, ({ one, many }) => ({
   indicatorCluster: one(indicatorClusters, {
     fields: [objectivesDictionary.indicatorClusterId],
@@ -274,14 +249,6 @@ export const objectivesDictionaryRelations = relations(objectivesDictionary, ({ 
     fields: [objectivesDictionary.calculationTypeId],
     references: [calculationTypes.id],
   }),
-  businessFunction: one(businessFunctions, {
-    fields: [objectivesDictionary.businessFunctionId],
-    references: [businessFunctions.id],
-  }),
-  objectives: many(objectives),
-}));
-
-export const objectiveClustersRelations = relations(objectiveClusters, ({ many }) => ({
   objectives: many(objectives),
 }));
 
@@ -289,10 +256,6 @@ export const objectivesRelations = relations(objectives, ({ one, many }) => ({
   dictionary: one(objectivesDictionary, {
     fields: [objectives.dictionaryId],
     references: [objectivesDictionary.id],
-  }),
-  cluster: one(objectiveClusters, {
-    fields: [objectives.clusterId],
-    references: [objectiveClusters.id],
   }),
   assignments: many(objectiveAssignments),
 }));

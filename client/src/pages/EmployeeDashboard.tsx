@@ -19,11 +19,10 @@ import { useToast } from "@/hooks/use-toast";
 export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
   const { toast } = useToast();
-  const [selectedCluster, setSelectedCluster] = useState<string>("all");
 
   // Fetch user's objectives
   const { data: objectiveAssignments = [], isLoading: assignmentsLoading } = useQuery<
-    Array<ObjectiveAssignment & { objective: any; cluster: any }>
+    Array<ObjectiveAssignment & { objective: any }>
   >({
     queryKey: ["/api/my-objectives"],
     enabled: !!user,
@@ -39,7 +38,6 @@ export default function EmployeeDashboard() {
   const { data: stats } = useQuery<{
     totalObjectives: number;
     completedObjectives: number;
-    clusterStats: Array<{ clusterId: string; clusterName: string; progress: number }>;
   }>({
     queryKey: ["/api/my-stats"],
     enabled: !!user,
@@ -84,59 +82,9 @@ export default function EmployeeDashboard() {
       department: user.department || "N/A",
       totalObjectives: stats?.totalObjectives || 0,
       completedObjectives: stats?.completedObjectives || 0,
-      clusters: (stats?.clusterStats || []).map((s) => ({
-        name: s.clusterName,
-        progress: s.progress,
-      })),
+      clusters: [],
     };
   }, [user, stats]);
-
-  // Get unique clusters from assignments
-  const clusters = useMemo(() => {
-    const clusterMap = new Map<string, { id: string; name: string }>();
-    objectiveAssignments.forEach((assignment) => {
-      if (assignment.cluster?.id && assignment.cluster?.name) {
-        clusterMap.set(assignment.cluster.id, {
-          id: assignment.cluster.id,
-          name: assignment.cluster.name,
-        });
-      }
-    });
-    return Array.from(clusterMap.values());
-  }, [objectiveAssignments]);
-
-  // Calculate cluster statistics
-  const clusterStats = useMemo(() => {
-    const statsMap = new Map<string, { name: string; total: number; progress: number; icon: typeof Target }>();
-    
-    objectiveAssignments.forEach((assignment) => {
-      const clusterId = assignment.cluster?.id || "unknown";
-      const clusterName = assignment.cluster?.name || "Sconosciuto";
-      
-      if (!statsMap.has(clusterId)) {
-        // Assign icon based on cluster name
-        let icon = Target;
-        if (clusterName.includes("Gruppo")) icon = Users;
-        else if (clusterName.includes("ESG")) icon = Leaf;
-        else if (clusterName.includes("Direzione") || clusterName.includes("Individual")) icon = Building;
-        
-        statsMap.set(clusterId, { name: clusterName, total: 0, progress: 0, icon });
-      }
-      
-      const current = statsMap.get(clusterId)!;
-      current.total += 1;
-      current.progress += assignment.progress || 0;
-      statsMap.set(clusterId, current);
-    });
-    
-    return Array.from(statsMap.entries()).map(([id, data]) => ({
-      id,
-      name: data.name,
-      count: data.total,
-      avgProgress: data.total > 0 ? Math.round(data.progress / data.total) : 0,
-      icon: data.icon,
-    }));
-  }, [objectiveAssignments]);
 
   // Overall progress
   const overallProgress = useMemo(() => {
@@ -146,16 +94,12 @@ export default function EmployeeDashboard() {
   }, [objectiveAssignments]);
 
   const objectives: Objective[] = useMemo(() => {
-    return objectiveAssignments
-      .filter((assignment) => 
-        selectedCluster === "all" || assignment.cluster?.id === selectedCluster
-      )
-      .map((assignment) => ({
+    return objectiveAssignments.map((assignment) => ({
         id: assignment.id,
         title: assignment.objective?.title || "N/A",
         description: assignment.objective?.description || "",
-        cluster: assignment.cluster?.name || "N/A",
-        clusterId: assignment.cluster?.id || "",
+        cluster: "N/A",
+        clusterId: "",
         status: assignment.status as any,
         deadline: assignment.objective?.deadline
           ? new Date(assignment.objective.deadline).toLocaleDateString("it-IT")
@@ -163,7 +107,7 @@ export default function EmployeeDashboard() {
         progress: assignment.progress,
         readOnly: true, // Employee can only view, not edit
       }));
-  }, [objectiveAssignments, selectedCluster]);
+  }, [objectiveAssignments]);
 
   const documents: Document[] = useMemo(() => {
     const acceptedDocIds = new Set(acceptedDocs.map((d) => d.documentId));
@@ -238,87 +182,31 @@ export default function EmployeeDashboard() {
                   </TabsList>
 
                   <TabsContent value="objectives" className="space-y-6 mt-6">
-                    {/* Vista Complessiva - Statistiche per Cluster */}
+                    {/* Vista Complessiva */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Vista Complessiva</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {/* Overall Progress */}
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium">Progresso Totale</span>
                             <span className="text-sm font-semibold">{overallProgress}%</span>
                           </div>
                           <Progress value={overallProgress} className="h-3" data-testid="progress-overall" />
-                          
-                          {/* Cluster Cards */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                            {clusterStats.map((cluster) => {
-                              const Icon = cluster.icon;
-                              return (
-                                <Card 
-                                  key={cluster.id} 
-                                  className="hover-elevate cursor-pointer"
-                                  onClick={() => setSelectedCluster(cluster.id === selectedCluster ? "all" : cluster.id)}
-                                  data-testid={`card-cluster-${cluster.id}`}
-                                >
-                                  <CardContent className="p-4">
-                                    <div className="flex items-center gap-3 mb-3">
-                                      <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
-                                        <Icon className="h-5 w-5 text-primary" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <h4 className="text-sm font-medium truncate">{cluster.name}</h4>
-                                        <p className="text-xs text-muted-foreground">{cluster.count} obiettivi</p>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <div className="flex justify-between text-xs">
-                                        <span className="text-muted-foreground">Progresso medio</span>
-                                        <span className="font-medium">{cluster.avgProgress}%</span>
-                                      </div>
-                                      <Progress value={cluster.avgProgress} className="h-2" />
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              );
-                            })}
-                          </div>
                         </div>
                       </CardContent>
                     </Card>
 
-                    {/* Filtro per Cluster */}
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
-                      <h3 className="text-lg font-semibold">
-                        {selectedCluster === "all" 
-                          ? "Tutti gli Obiettivi" 
-                          : clusters.find(c => c.id === selectedCluster)?.name || "Obiettivi"}
-                      </h3>
-                      <Select value={selectedCluster} onValueChange={setSelectedCluster}>
-                        <SelectTrigger className="w-[280px]" data-testid="select-cluster-filter">
-                          <SelectValue placeholder="Filtra per cluster" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all" data-testid="select-item-all">Tutti i Cluster</SelectItem>
-                          {clusters.map((cluster) => (
-                            <SelectItem key={cluster.id} value={cluster.id} data-testid={`select-item-${cluster.id}`}>
-                              {cluster.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Titolo Obiettivi */}
+                    <h3 className="text-lg font-semibold">I Miei Obiettivi</h3>
 
-                    {/* Lista Obiettivi Filtrati */}
+                    {/* Lista Obiettivi */}
                     <div className="space-y-4">
                       {objectives.length === 0 ? (
                         <Card>
                           <CardContent className="pt-6 text-center text-muted-foreground">
-                            {selectedCluster === "all" 
-                              ? "Nessun obiettivo assegnato al momento"
-                              : "Nessun obiettivo in questo cluster"}
+                            Nessun obiettivo assegnato al momento
                           </CardContent>
                         </Card>
                       ) : (

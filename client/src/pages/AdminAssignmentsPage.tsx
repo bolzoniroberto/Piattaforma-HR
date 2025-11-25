@@ -75,19 +75,11 @@ interface ObjectiveDictionary {
   };
 }
 
-interface ObjectiveCluster {
-  id: string;
-  name: string;
-  description: string;
-  weight: number;
-}
-
 export default function AdminAssignmentsPage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedCluster, setSelectedCluster] = useState<string>("");
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [assignmentDeadline, setAssignmentDeadline] = useState<string>("");
 
@@ -97,7 +89,7 @@ export default function AdminAssignmentsPage() {
   });
 
   const { data: userAssignments = [], isLoading: assignmentsLoading } = useQuery<
-    Array<ObjectiveAssignment & { objective: any; cluster: any }>
+    Array<ObjectiveAssignment & { objective: any }>
   >({
     queryKey: [`/api/assignments/${userId}`],
     enabled: !!userId,
@@ -105,11 +97,6 @@ export default function AdminAssignmentsPage() {
 
   const { data: objectivesDictionary = [] } = useQuery<ObjectiveDictionary[]>({
     queryKey: ["/api/objectives-dictionary"],
-    enabled: !!user,
-  });
-
-  const { data: objectiveClusters = [] } = useQuery<ObjectiveCluster[]>({
-    queryKey: ["/api/clusters"],
     enabled: !!user,
   });
 
@@ -153,50 +140,17 @@ export default function AdminAssignmentsPage() {
     },
   });
 
-  const assignmentsByCluster = useMemo(() => {
-    const grouped: Record<string, typeof userAssignments> = {};
-    userAssignments.forEach((assignment) => {
-      const clusterName = assignment.cluster?.name || "Non categorizzato";
-      if (!grouped[clusterName]) {
-        grouped[clusterName] = [];
-      }
-      grouped[clusterName].push(assignment);
-    });
-    return grouped;
-  }, [userAssignments]);
-
-  const availableObjectivesByCluster = useMemo(() => {
+  const availableObjectives = useMemo(() => {
     const assignedObjectiveIds = new Set(userAssignments.map((a) => a.objectiveId));
-    const grouped: Record<string, any[]> = {};
-    
-    allObjectives.forEach((obj) => {
-      if (assignedObjectiveIds.has(obj.id)) return;
-      
-      const cluster = objectiveClusters.find((c) => c.id === obj.clusterId);
-      const clusterName = cluster?.name || "Non categorizzato";
-      
-      if (!grouped[clusterName]) {
-        grouped[clusterName] = [];
-      }
-      
+    return allObjectives.filter((obj) => !assignedObjectiveIds.has(obj.id)).map((obj) => {
       const dictEntry = objectivesDictionary.find((d) => d.id === obj.dictionaryId);
-      grouped[clusterName].push({
+      return {
         ...obj,
         title: dictEntry?.title || "Obiettivo",
         description: dictEntry?.description || "",
-        clusterName,
-      });
+      };
     });
-    
-    return grouped;
-  }, [allObjectives, userAssignments, objectiveClusters, objectivesDictionary]);
-
-  const getClusterIcon = (name: string) => {
-    if (name.includes("Gruppo")) return Users;
-    if (name.includes("ESG")) return Leaf;
-    if (name.includes("Direzione") || name.includes("Individual")) return Building;
-    return Target;
-  };
+  }, [allObjectives, userAssignments, objectivesDictionary]);
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const f = firstName?.[0] || "";
@@ -361,7 +315,7 @@ export default function AdminAssignmentsPage() {
                       <div>
                         <CardTitle>Obiettivi Assegnati</CardTitle>
                         <CardDescription>
-                          Obiettivi attualmente assegnati al dipendente, suddivisi per cluster
+                          Obiettivi attualmente assegnati al dipendente
                         </CardDescription>
                       </div>
                       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
@@ -379,58 +333,39 @@ export default function AdminAssignmentsPage() {
                             </DialogDescription>
                           </DialogHeader>
                           
-                          <Tabs defaultValue={objectiveClusters[0]?.id || ""} className="flex-1 overflow-hidden flex flex-col">
-                            <TabsList className="w-full justify-start overflow-x-auto">
-                              {objectiveClusters.map((cluster) => (
-                                <TabsTrigger key={cluster.id} value={cluster.id} className="text-xs">
-                                  {cluster.name.replace("Obiettivi di ", "").replace("Obiettivi ", "")}
-                                </TabsTrigger>
-                              ))}
-                            </TabsList>
-                            
-                            {objectiveClusters.map((cluster) => {
-                              const clusterObjectives = availableObjectivesByCluster[cluster.name] || [];
-                              const Icon = getClusterIcon(cluster.name);
-                              
-                              return (
-                                <TabsContent key={cluster.id} value={cluster.id} className="flex-1 overflow-auto mt-4">
-                                  {clusterObjectives.length === 0 ? (
-                                    <div className="text-center py-8 text-muted-foreground">
-                                      Nessun obiettivo disponibile in questo cluster
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2">
-                                      {clusterObjectives.map((obj) => (
-                                        <div 
-                                          key={obj.id}
-                                          className="flex items-start gap-3 p-3 border rounded-md hover-elevate cursor-pointer"
-                                          onClick={() => {
-                                            setSelectedObjectives((prev) =>
-                                              prev.includes(obj.id)
-                                                ? prev.filter((id) => id !== obj.id)
-                                                : [...prev, obj.id]
-                                            );
-                                          }}
-                                          data-testid={`objective-option-${obj.id}`}
-                                        >
-                                          <Checkbox
-                                            checked={selectedObjectives.includes(obj.id)}
-                                            className="mt-1"
-                                          />
-                                          <div className="flex-1">
-                                            <p className="font-medium text-sm">{obj.title}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                              {obj.description || "Nessuna descrizione"}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </TabsContent>
-                              );
-                            })}
-                          </Tabs>
+                          <div className="flex-1 overflow-auto space-y-2">
+                            {availableObjectives.length === 0 ? (
+                              <div className="text-center py-8 text-muted-foreground">
+                                Nessun obiettivo disponibile
+                              </div>
+                            ) : (
+                              availableObjectives.map((obj: any) => (
+                                <div 
+                                  key={obj.id}
+                                  className="flex items-start gap-3 p-3 border rounded-md hover-elevate cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedObjectives((prev) =>
+                                      prev.includes(obj.id)
+                                        ? prev.filter((id) => id !== obj.id)
+                                        : [...prev, obj.id]
+                                    );
+                                  }}
+                                  data-testid={`objective-option-${obj.id}`}
+                                >
+                                  <Checkbox
+                                    checked={selectedObjectives.includes(obj.id)}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{obj.title}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {obj.description || "Nessuna descrizione"}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
                           
                           <DialogFooter className="mt-4">
                             <div className="flex items-center justify-between w-full gap-4">
@@ -469,80 +404,53 @@ export default function AdminAssignmentsPage() {
                         Nessun obiettivo assegnato. Clicca "Assegna Obiettivo" per iniziare.
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {Object.entries(assignmentsByCluster).map(([clusterName, assignments]) => {
-                          const Icon = getClusterIcon(clusterName);
-                          const clusterProgress = assignments.length > 0
-                            ? Math.round(assignments.reduce((sum, a) => sum + (a.progress || 0), 0) / assignments.length)
-                            : 0;
-                          
-                          return (
-                            <div key={clusterName} className="space-y-3">
-                              <div className="flex items-center justify-between gap-4 pb-2 border-b">
-                                <div className="flex items-center gap-2">
-                                  <Icon className="h-5 w-5 text-primary" />
-                                  <h3 className="font-semibold">{clusterName}</h3>
-                                  <Badge variant="secondary" className="ml-2">
-                                    {assignments.length} obiettivi
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-muted-foreground">Progresso:</span>
-                                  <span className="font-medium">{clusterProgress}%</span>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                {assignments.map((assignment) => (
-                                  <div
-                                    key={assignment.id}
-                                    className="flex items-center gap-4 p-3 border rounded-md"
-                                    data-testid={`assignment-${assignment.id}`}
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm">
-                                        {assignment.objective?.title || "Obiettivo"}
-                                      </p>
-                                      <div className="flex items-center gap-3 mt-2">
-                                        <Progress value={assignment.progress || 0} className="flex-1 h-2" />
-                                        <span className="text-sm font-medium w-12 text-right">
-                                          {assignment.progress || 0}%
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <Badge
-                                      variant={
-                                        assignment.status === "completed" || assignment.status === "completato"
-                                          ? "default"
-                                          : "secondary"
-                                      }
-                                      className="flex items-center gap-1"
-                                    >
-                                      {assignment.status === "completed" || assignment.status === "completato" ? (
-                                        <CheckCircle className="h-3 w-3" />
-                                      ) : (
-                                        <Clock className="h-3 w-3" />
-                                      )}
-                                      {assignment.status === "completed" || assignment.status === "completato"
-                                        ? "Completato"
-                                        : "In Corso"}
-                                    </Badge>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-destructive hover:text-destructive"
-                                      onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
-                                      disabled={deleteAssignmentMutation.isPending}
-                                      data-testid={`button-delete-${assignment.id}`}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ))}
+                      <div className="space-y-2">
+                        {userAssignments.map((assignment: any) => (
+                          <div
+                            key={assignment.id}
+                            className="flex items-center gap-4 p-3 border rounded-md"
+                            data-testid={`assignment-${assignment.id}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">
+                                {assignment.objective?.title || "Obiettivo"}
+                              </p>
+                              <div className="flex items-center gap-3 mt-2">
+                                <Progress value={assignment.progress || 0} className="flex-1 h-2" />
+                                <span className="text-sm font-medium w-12 text-right">
+                                  {assignment.progress || 0}%
+                                </span>
                               </div>
                             </div>
-                          );
-                        })}
+                            <Badge
+                              variant={
+                                assignment.status === "completed" || assignment.status === "completato"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className="flex items-center gap-1"
+                            >
+                              {assignment.status === "completed" || assignment.status === "completato" ? (
+                                <CheckCircle className="h-3 w-3" />
+                              ) : (
+                                <Clock className="h-3 w-3" />
+                              )}
+                              {assignment.status === "completed" || assignment.status === "completato"
+                                ? "Completato"
+                                : "In Corso"}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
+                              disabled={deleteAssignmentMutation.isPending}
+                              data-testid={`button-delete-${assignment.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </CardContent>
