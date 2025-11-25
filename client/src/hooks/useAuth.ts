@@ -8,8 +8,34 @@ export function useAuth() {
     retry: false,
   });
 
+  // Check if demo mode is active
+  const demoMode = typeof window !== "undefined" && sessionStorage.getItem("demo_mode") === "true";
+  const demoRole = typeof window !== "undefined" ? sessionStorage.getItem("demo_role") : null;
+
   if (error) {
     console.error("useAuth error:", error);
+  }
+
+  // Return demo user if demo mode is active
+  if (demoMode && demoRole && (demoRole === "admin" || demoRole === "employee")) {
+    const demoUser: User = {
+      id: demoRole === "admin" ? "demo-admin-001" : "demo-employee-001",
+      email: `${demoRole}@demo.local`,
+      firstName: demoRole === "admin" ? "Admin" : "Dipendente",
+      lastName: "Demo",
+      profileImageUrl: undefined,
+      role: demoRole,
+      department: demoRole === "admin" ? "Management" : "IT Development",
+      ral: undefined,
+      mboPercentage: 25,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return {
+      user: demoUser,
+      isLoading: false,
+      isAuthenticated: true,
+    };
   }
 
   return {

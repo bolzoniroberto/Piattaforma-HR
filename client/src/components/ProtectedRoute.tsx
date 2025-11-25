@@ -21,6 +21,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (!user) {
+    // Allow access if demo mode is enabled (check URL params or session storage)
+    const demoMode = sessionStorage.getItem("demo_mode") === "true";
+    const demoRole = sessionStorage.getItem("demo_role");
+    
+    if (demoMode && (requiredRole === undefined || requiredRole === demoRole)) {
+      return <>{children}</>;
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md">
