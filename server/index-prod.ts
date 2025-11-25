@@ -14,7 +14,22 @@ export async function serveStatic(app: Express, _server: Server) {
     );
   }
 
+  // Pre-load index.html for fast serving to health checks and SPA routing
+  const indexHtmlPath = path.resolve(distPath, "index.html");
+  let indexHtmlContent: Buffer;
+  
+  try {
+    indexHtmlContent = fs.readFileSync(indexHtmlPath);
+  } catch (error) {
+    throw new Error(`Could not read index.html from ${indexHtmlPath}`);
+  }
+
   app.use(express.static(distPath));
+
+  // Root endpoint - serve cached index.html for health checks and SPA routing
+  app.get("/", (_req, res) => {
+    res.type("text/html").send(indexHtmlContent);
+  });
 
   // fall through to index.html if the file doesn't exist
   // but exclude /api routes to avoid serving index.html for API calls
@@ -23,7 +38,7 @@ export async function serveStatic(app: Express, _server: Server) {
     if (req.path.startsWith("/api")) {
       return res.status(404).json({ message: "Not found" });
     }
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.type("text/html").send(indexHtmlContent);
   });
 }
 
