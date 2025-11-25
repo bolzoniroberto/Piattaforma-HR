@@ -6,6 +6,13 @@ async function seed() {
   console.log("🌱 Seeding database...");
 
   try {
+    // Check if database is already seeded
+    const existingClusters = await db.select().from(indicatorClusters).limit(1);
+    if (existingClusters.length > 0) {
+      console.log("⚠️  Database already seeded, skipping seed...");
+      return;
+    }
+
     // Create indicator clusters
     console.log("Creating indicator clusters...");
     const [groupCluster, directionCluster, esgCluster] = await db
