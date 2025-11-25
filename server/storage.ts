@@ -268,9 +268,6 @@ export class DatabaseStorage implements IStorage {
 
   async updateObjectivesDictionaryItem(id: string, itemData: Partial<InsertObjectivesDictionary>): Promise<ObjectivesDictionary> {
     const updateData: any = { ...itemData, updatedAt: new Date() };
-    if (itemData.target !== undefined) {
-      updateData.target = itemData.target;
-    }
     const [item] = await db
       .update(objectivesDictionary)
       .set(updateData)
