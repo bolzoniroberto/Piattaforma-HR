@@ -204,26 +204,14 @@ async function seed() {
         requiresAcceptance: true,
       },
       {
-        title: "Codice di Condotta Aziendale",
-        description: "Norme etiche e comportamentali per tutti i dipendenti",
-        type: "policy",
-        requiresAcceptance: true,
-      },
-      {
-        title: "Accordo di Riservatezza",
-        description: "Non disclosure agreement aziendale",
-        type: "contract",
-        requiresAcceptance: true,
-      },
-      {
-        title: "Linee Guida Valutazione Performance",
-        description: "Criteri e metodologie per la valutazione delle performance annuali",
+        title: "FAQ",
+        description: "Domande frequenti e risposte sul sistema MBO",
         type: "policy",
         requiresAcceptance: false,
       },
     ]);
 
-    console.log("✅ Created 4 documents");
+    console.log("✅ Created 2 documents");
 
     // Create test users
     console.log("Creating test users...");
