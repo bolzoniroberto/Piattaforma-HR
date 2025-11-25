@@ -463,9 +463,10 @@ export default function AdminObjectivesPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead className="w-[35%]">Titolo</TableHead>
-                                  <TableHead className="w-[30%]">Descrizione</TableHead>
-                                  <TableHead className="w-[20%]">Tipo Calcolo</TableHead>
+                                  <TableHead className="w-[30%]">Titolo</TableHead>
+                                  <TableHead className="w-[25%]">Descrizione</TableHead>
+                                  <TableHead className="w-[15%]">Indicatore</TableHead>
+                                  <TableHead className="w-[15%]">Tipo Calcolo</TableHead>
                                   <TableHead className="w-[15%] text-right">Azioni</TableHead>
                                 </TableRow>
                               </TableHeader>
@@ -475,6 +476,11 @@ export default function AdminObjectivesPage() {
                                     <TableCell className="font-medium">{obj.title}</TableCell>
                                     <TableCell className="text-muted-foreground text-sm">
                                       {obj.description || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="secondary">
+                                        {obj.indicatorCluster?.name || "N/A"}
+                                      </Badge>
                                     </TableCell>
                                     <TableCell>
                                       <Badge variant="outline">
