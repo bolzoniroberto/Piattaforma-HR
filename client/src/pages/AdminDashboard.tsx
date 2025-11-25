@@ -1,37 +1,111 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Target, FileCheck, TrendingUp } from "lucide-react";
-import ProgressBar from "@/components/ProgressBar";
+import { Users, Target } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import type { User } from "@shared/schema";
+
+interface ObjectiveDictionary {
+  id: string;
+  title: string;
+  description: string;
+  indicatorClusterId: string;
+  calculationTypeId: string;
+  indicatorCluster?: {
+    id: string;
+    name: string;
+  };
+  calculationType?: {
+    id: string;
+    name: string;
+  };
+}
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<{
+    title: string;
+    description: string;
+  }>({ title: "", description: "" });
 
-  const { data: allUsers = [] } = useQuery<any[]>({
+  const { data: allUsers = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: !!user,
   });
 
-  const { data: allObjectives = [] } = useQuery<any[]>({
-    queryKey: ["/api/objectives"],
+  const { data: objectivesDictionary = [] } = useQuery<ObjectiveDictionary[]>({
+    queryKey: ["/api/objectives-dictionary"],
     enabled: !!user,
   });
 
-  const stats = {
-    totalEmployees: (allUsers || []).length,
-    totalObjectives: (allObjectives || []).length,
-    completedObjectives: (allObjectives || []).filter((obj: any) => obj.status === "completato").length || 0,
-    pendingAcceptances: 0,
+  const updateObjectiveMutation = useMutation({
+    mutationFn: async (data: { id: string; title: string; description: string }) => {
+      const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, {
+        title: data.title,
+        description: data.description,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
+      toast({ title: "Obiettivo aggiornato con successo" });
+      setEditingId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile aggiornare l'obiettivo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditStart = (objective: ObjectiveDictionary) => {
+    setEditingId(objective.id);
+    setEditFormData({
+      title: objective.title,
+      description: objective.description,
+    });
   };
 
-  const clusterStats = [
-    { name: "Obiettivi Strategici", progress: 68, total: 156 },
-    { name: "Obiettivi Operativi", progress: 72, total: 187 },
-    { name: "Obiettivi di Sviluppo", progress: 85, total: 125 },
-  ];
+  const handleEditSave = () => {
+    if (editingId && editFormData.title.trim()) {
+      updateObjectiveMutation.mutate({
+        id: editingId,
+        title: editFormData.title,
+        description: editFormData.description,
+      });
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditFormData({ title: "", description: "" });
+  };
 
   const style = {
     "--sidebar-width": "16rem",
@@ -48,132 +122,203 @@ export default function AdminDashboard() {
             notificationCount={5}
             showSidebarTrigger={true}
           />
-          
+
           <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="max-w-7xl mx-auto space-y-6">
               <div>
                 <h1 className="text-3xl font-semibold mb-2">Dashboard Amministrativa</h1>
                 <p className="text-muted-foreground">
-                  Panoramica del sistema MBO aziendale
+                  Gestione dipendenti e obiettivi
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Dipendenti Totali</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-total-employees">
-                      {stats.totalEmployees}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Utenti attivi nel sistema</p>
-                  </CardContent>
-                </Card>
+              <Tabs defaultValue="employees" className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                  <TabsTrigger value="employees" data-testid="tab-employees">
+                    <Users className="mr-2 h-4 w-4" />
+                    Dipendenti
+                  </TabsTrigger>
+                  <TabsTrigger value="objectives" data-testid="tab-objectives">
+                    <Target className="mr-2 h-4 w-4" />
+                    Obiettivi
+                  </TabsTrigger>
+                </TabsList>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Obiettivi Totali</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-total-objectives">
-                      {stats.totalObjectives}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Obiettivi assegnati</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Completati</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-chart-2" data-testid="stat-completed">
-                      {stats.completedObjectives}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {Math.round((stats.completedObjectives / stats.totalObjectives) * 100)}% del totale
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Accettazioni Pending</CardTitle>
-                    <FileCheck className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-chart-4" data-testid="stat-pending">
-                      {stats.pendingAcceptances}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Documenti da approvare</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Progresso per Cluster</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {clusterStats.map((cluster, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{cluster.name}</span>
-                          <span className="text-muted-foreground">{cluster.total} obiettivi</span>
-                        </div>
-                        <ProgressBar value={cluster.progress} showPercentage={true} />
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Attività Recenti</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        {
-                          user: "Mario Rossi",
-                          action: "ha completato l'obiettivo",
-                          target: "Certificazione AWS",
-                          time: "2 ore fa",
-                        },
-                        {
-                          user: "Laura Bianchi",
-                          action: "ha aggiornato il progresso",
-                          target: "Customer Satisfaction +15%",
-                          time: "5 ore fa",
-                        },
-                        {
-                          user: "Giovanni Verdi",
-                          action: "ha accettato il documento",
-                          target: "Regolamento MBO 2025",
-                          time: "1 giorno fa",
-                        },
-                      ].map((activity, index) => (
-                        <div key={index} className="flex items-start gap-3 pb-4 border-b last:border-b-0">
-                          <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm">
-                              <span className="font-medium">{activity.user}</span>{" "}
-                              {activity.action}{" "}
-                              <span className="font-medium">{activity.target}</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                {/* Tab Dipendenti */}
+                <TabsContent value="employees" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Dipendenti Eligibili ({allUsers.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4">
+                        {allUsers.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            Nessun dipendente disponibile
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            {allUsers.map((emp) => (
+                              <Card key={emp.id} className="p-4 hover-elevate">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-base" data-testid={`text-employee-name-${emp.id}`}>
+                                      {emp.firstName} {emp.lastName}
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
+                                      <div>
+                                        <span className="font-medium">Email:</span> {emp.email}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">Dipartimento:</span>{" "}
+                                        {emp.department || "N/A"}
+                                      </div>
+                                      {emp.ral && (
+                                        <div>
+                                          <span className="font-medium">RAL:</span> €
+                                          {Number(emp.ral).toLocaleString("it-IT")}
+                                        </div>
+                                      )}
+                                      <div>
+                                        <span className="font-medium">MBO %:</span> {emp.mboPercentage}%
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        data-testid={`button-view-assignments-${emp.id}`}
+                                      >
+                                        Assegna
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>
+                                          Assegna obiettivi a {emp.firstName} {emp.lastName}
+                                        </DialogTitle>
+                                      </DialogHeader>
+                                      <div className="text-sm text-muted-foreground">
+                                        <p>Usa il menu "Assegnazione Obiettivi" nella sidebar per gestire le assegnazioni.</p>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                </div>
+                              </Card>
+                            ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Tab Obiettivi */}
+                <TabsContent value="objectives" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Obiettivi Disponibili ({objectivesDictionary.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4">
+                        {objectivesDictionary.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            Nessun obiettivo disponibile
+                          </p>
+                        ) : (
+                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                            {objectivesDictionary.map((obj) => (
+                              <Card
+                                key={obj.id}
+                                className="p-4 hover-elevate flex flex-col"
+                                data-testid={`card-objective-${obj.id}`}
+                              >
+                                {editingId === obj.id ? (
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label htmlFor={`title-${obj.id}`}>Titolo</Label>
+                                      <Input
+                                        id={`title-${obj.id}`}
+                                        value={editFormData.title}
+                                        onChange={(e) =>
+                                          setEditFormData({ ...editFormData, title: e.target.value })
+                                        }
+                                        data-testid={`input-objective-title-${obj.id}`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor={`description-${obj.id}`}>Descrizione</Label>
+                                      <Textarea
+                                        id={`description-${obj.id}`}
+                                        value={editFormData.description}
+                                        onChange={(e) =>
+                                          setEditFormData({ ...editFormData, description: e.target.value })
+                                        }
+                                        data-testid={`input-objective-description-${obj.id}`}
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        onClick={handleEditSave}
+                                        disabled={updateObjectiveMutation.isPending}
+                                        data-testid={`button-save-objective-${obj.id}`}
+                                      >
+                                        Salva
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleEditCancel}
+                                        data-testid={`button-cancel-objective-${obj.id}`}
+                                      >
+                                        Annulla
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex-1">
+                                      <h3 className="font-semibold text-sm mb-2" data-testid={`text-objective-title-${obj.id}`}>
+                                        {obj.title}
+                                      </h3>
+                                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                                        {obj.description}
+                                      </p>
+                                      <div className="flex flex-wrap gap-2 mb-3">
+                                        {obj.indicatorCluster && (
+                                          <div className="inline-block bg-secondary px-2 py-1 rounded text-xs">
+                                            {obj.indicatorCluster.name}
+                                          </div>
+                                        )}
+                                        {obj.calculationType && (
+                                          <div className="inline-block bg-secondary px-2 py-1 rounded text-xs">
+                                            {obj.calculationType.name}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditStart(obj)}
+                                      data-testid={`button-edit-objective-${obj.id}`}
+                                    >
+                                      Modifica
+                                    </Button>
+                                  </>
+                                )}
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           </main>
         </SidebarInset>
