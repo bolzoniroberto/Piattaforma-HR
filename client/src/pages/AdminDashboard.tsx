@@ -1,25 +1,37 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Target, FileCheck, TrendingUp } from "lucide-react";
 import ProgressBar from "@/components/ProgressBar";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminDashboard() {
-  // Mock data - todo: remove mock functionality
-  const [stats] = useState({
-    totalEmployees: 156,
-    totalObjectives: 468,
-    completedObjectives: 312,
-    pendingAcceptances: 23,
+  const { user } = useAuth();
+
+  const { data: allUsers = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+    enabled: !!user,
   });
 
-  const [clusterStats] = useState([
+  const { data: allObjectives = [] } = useQuery<any[]>({
+    queryKey: ["/api/objectives"],
+    enabled: !!user,
+  });
+
+  const stats = {
+    totalEmployees: (allUsers || []).length,
+    totalObjectives: (allObjectives || []).length,
+    completedObjectives: (allObjectives || []).filter((obj: any) => obj.status === "completato").length || 0,
+    pendingAcceptances: 0,
+  };
+
+  const clusterStats = [
     { name: "Obiettivi Strategici", progress: 68, total: 156 },
     { name: "Obiettivi Operativi", progress: 72, total: 187 },
     { name: "Obiettivi di Sviluppo", progress: 85, total: 125 },
-  ]);
+  ];
 
   const style = {
     "--sidebar-width": "16rem",

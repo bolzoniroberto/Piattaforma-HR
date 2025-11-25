@@ -99,6 +99,7 @@ export default function EmployeeDashboard() {
         ? new Date(assignment.objective.deadline).toLocaleDateString("it-IT")
         : undefined,
       progress: assignment.progress,
+      readOnly: true, // Employee can only view, not edit
     }));
   }, [objectiveAssignments]);
 

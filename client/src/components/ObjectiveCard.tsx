@@ -17,6 +17,7 @@ export interface Objective {
   status: ObjectiveStatus;
   deadline?: string;
   progress?: number;
+  readOnly?: boolean;
 }
 
 interface ObjectiveCardProps {
@@ -46,9 +47,13 @@ export default function ObjectiveCard({ objective, onStatusChange }: ObjectiveCa
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem data-testid="menu-edit">Modifica</DropdownMenuItem>
-            <DropdownMenuItem data-testid="menu-details">Dettagli</DropdownMenuItem>
-            {onStatusChange && (
+            {!objective.readOnly && (
+              <>
+                <DropdownMenuItem data-testid="menu-edit">Modifica</DropdownMenuItem>
+                <DropdownMenuItem data-testid="menu-details">Dettagli</DropdownMenuItem>
+              </>
+            )}
+            {onStatusChange && !objective.readOnly && (
               <>
                 <DropdownMenuItem onClick={() => onStatusChange(objective.id, "in_corso")}>
                   Segna in corso
@@ -57,6 +62,9 @@ export default function ObjectiveCard({ objective, onStatusChange }: ObjectiveCa
                   Segna completato
                 </DropdownMenuItem>
               </>
+            )}
+            {objective.readOnly && (
+              <DropdownMenuItem data-testid="menu-details">Visualizza Dettagli</DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>

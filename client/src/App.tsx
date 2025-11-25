@@ -9,15 +9,32 @@ import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import RegulationPage from "@/pages/RegulationPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/" component={EmployeeDashboard} />
-      <Route path="/regulation" component={RegulationPage} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/objectives" component={AdminObjectivesPage} />
+      <Route path="/" render={() => (
+        <ProtectedRoute>
+          <EmployeeDashboard />
+        </ProtectedRoute>
+      )} />
+      <Route path="/regulation" render={() => (
+        <ProtectedRoute>
+          <RegulationPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin" render={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminDashboard />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/objectives" render={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminObjectivesPage />
+        </ProtectedRoute>
+      )} />
       <Route component={NotFound} />
     </Switch>
   );

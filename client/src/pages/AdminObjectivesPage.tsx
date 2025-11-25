@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -25,32 +26,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminObjectivesPage() {
-  // Mock data - todo: remove mock functionality
-  const [clusters] = useState<ObjectiveCluster[]>([
-    {
-      id: "1",
-      name: "Obiettivi Strategici",
-      description: "Obiettivi a lungo termine allineati con la visione aziendale",
-      totalObjectives: 156,
-      completedObjectives: 106,
-    },
-    {
-      id: "2",
-      name: "Obiettivi Operativi",
-      description: "Obiettivi operativi per migliorare l'efficienza dei processi",
-      totalObjectives: 187,
-      completedObjectives: 135,
-    },
-    {
-      id: "3",
-      name: "Obiettivi di Sviluppo",
-      description: "Obiettivi di crescita personale e professionale",
-      totalObjectives: 125,
-      completedObjectives: 106,
-    },
-  ]);
+  const { user } = useAuth();
+
+  const { data: clusterData = [] } = useQuery<any[]>({
+    queryKey: ["/api/clusters"],
+    enabled: !!user,
+  });
+
+  const transformedClusters: ObjectiveCluster[] = (clusterData || []).map((cluster: any) => ({
+    id: cluster.id,
+    name: cluster.name,
+    description: cluster.description,
+    totalObjectives: 0,
+    completedObjectives: 0,
+  }));
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -76,7 +68,7 @@ export default function AdminObjectivesPage() {
                 <div>
                   <h1 className="text-3xl font-semibold mb-2">Gestione Obiettivi</h1>
                   <p className="text-muted-foreground">
-                    Crea e assegna obiettivi ai dipendenti
+                    Gestisci il dizionario MBO e i cluster di obiettivi
                   </p>
                 </div>
                 
@@ -193,15 +185,19 @@ export default function AdminObjectivesPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {clusters.map((cluster) => (
-                      <ObjectiveClusterCard
-                        key={cluster.id}
-                        cluster={cluster}
-                        onClick={() => console.log("Cluster clicked:", cluster.id)}
-                      />
-                    ))}
-                  </div>
+                  {transformedClusters.length === 0 ? (
+                    <p className="text-center text-muted-foreground">Nessun cluster configurato</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {transformedClusters.map((cluster) => (
+                        <ObjectiveClusterCard
+                          key={cluster.id}
+                          cluster={cluster}
+                          onClick={() => console.log("Cluster clicked:", cluster.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
