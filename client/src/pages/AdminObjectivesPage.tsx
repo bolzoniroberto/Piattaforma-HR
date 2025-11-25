@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Filter, Target, Users, Leaf, Building, ChevronRight, Calculator, Layers } from "lucide-react";
+import { Search, Plus, Filter, Target, Users, Leaf, Building, ChevronRight, Calculator, Layers, Edit, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,15 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -81,6 +90,8 @@ export default function AdminObjectivesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndicatorCluster, setSelectedIndicatorCluster] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newObjective, setNewObjective] = useState({
     title: "",
     description: "",
@@ -128,6 +139,49 @@ export default function AdminObjectivesPage() {
     },
   });
 
+  const updateObjectiveMutation = useMutation({
+    mutationFn: async (data: { id: string; title: string; description: string; indicatorClusterId: string; calculationTypeId: string }) => {
+      const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, {
+        title: data.title,
+        description: data.description,
+        indicatorClusterId: data.indicatorClusterId,
+        calculationTypeId: data.calculationTypeId,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
+      toast({ title: "Obiettivo aggiornato con successo" });
+      setEditingId(null);
+      setIsDialogOpen(false);
+      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile aggiornare l'obiettivo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteObjectiveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/objectives-dictionary/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
+      toast({ title: "Obiettivo eliminato con successo" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile eliminare l'obiettivo",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredObjectives = useMemo(() => {
     let filtered = objectivesDictionary;
     
@@ -162,8 +216,25 @@ export default function AdminObjectivesPage() {
   const getClusterIcon = (name: string) => {
     if (name.includes("Gruppo")) return Users;
     if (name.includes("ESG")) return Leaf;
-    if (name.includes("Individual")) return Building;
+    if (name.includes("Direzione")) return Building;
     return Target;
+  };
+
+  const handleEditObjective = (obj: ObjectiveDictionary) => {
+    setEditingId(obj.id);
+    setNewObjective({
+      title: obj.title,
+      description: obj.description || "",
+      indicatorClusterId: obj.indicatorClusterId,
+      calculationTypeId: obj.calculationTypeId,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setEditingId(null);
+    setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "" });
+    setIsDialogOpen(false);
   };
 
   const style = {
@@ -191,7 +262,7 @@ export default function AdminObjectivesPage() {
                   </p>
                 </div>
                 
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
                   <DialogTrigger asChild>
                     <Button data-testid="button-add-objective">
                       <Plus className="mr-2 h-4 w-4" />
@@ -200,9 +271,9 @@ export default function AdminObjectivesPage() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                      <DialogTitle>Crea Nuovo Obiettivo</DialogTitle>
+                      <DialogTitle>{editingId ? "Modifica Obiettivo" : "Crea Nuovo Obiettivo"}</DialogTitle>
                       <DialogDescription>
-                        Aggiungi un nuovo obiettivo al dizionario MBO
+                        {editingId ? "Modifica i dettagli dell'obiettivo" : "Aggiungi un nuovo obiettivo al dizionario MBO"}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -269,17 +340,23 @@ export default function AdminObjectivesPage() {
                     <DialogFooter>
                       <Button
                         variant="outline"
-                        onClick={() => setIsDialogOpen(false)}
+                        onClick={handleCloseDialog}
                         data-testid="button-cancel"
                       >
                         Annulla
                       </Button>
                       <Button
-                        onClick={() => createObjectiveMutation.mutate(newObjective)}
-                        disabled={!newObjective.title || !newObjective.indicatorClusterId || !newObjective.calculationTypeId || createObjectiveMutation.isPending}
-                        data-testid="button-create"
+                        onClick={() => {
+                          if (editingId) {
+                            updateObjectiveMutation.mutate({ id: editingId, ...newObjective });
+                          } else {
+                            createObjectiveMutation.mutate(newObjective);
+                          }
+                        }}
+                        disabled={!newObjective.title || !newObjective.indicatorClusterId || !newObjective.calculationTypeId || createObjectiveMutation.isPending || updateObjectiveMutation.isPending}
+                        data-testid={editingId ? "button-update" : "button-create"}
                       >
-                        {createObjectiveMutation.isPending ? "Creazione..." : "Crea Obiettivo"}
+                        {editingId ? (updateObjectiveMutation.isPending ? "Aggiornamento..." : "Aggiorna Obiettivo") : (createObjectiveMutation.isPending ? "Creazione..." : "Crea Obiettivo")}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -386,9 +463,10 @@ export default function AdminObjectivesPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead className="w-[40%]">Titolo</TableHead>
-                                  <TableHead className="w-[35%]">Descrizione</TableHead>
-                                  <TableHead>Tipo Calcolo</TableHead>
+                                  <TableHead className="w-[35%]">Titolo</TableHead>
+                                  <TableHead className="w-[30%]">Descrizione</TableHead>
+                                  <TableHead className="w-[20%]">Tipo Calcolo</TableHead>
+                                  <TableHead className="w-[15%] text-right">Azioni</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -402,6 +480,45 @@ export default function AdminObjectivesPage() {
                                       <Badge variant="outline">
                                         {obj.calculationType?.name || "N/A"}
                                       </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditObjective(obj)}
+                                          data-testid={`button-edit-objective-${obj.id}`}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <AlertDialog open={deleteId === obj.id} onOpenChange={(open) => !open && setDeleteId(null)}>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setDeleteId(obj.id)}
+                                            data-testid={`button-delete-objective-${obj.id}`}
+                                          >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Elimina Obiettivo</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Sei sicuro di voler eliminare "{obj.title}"? Questa azione non può essere annullata.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <div className="flex justify-end gap-2">
+                                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => deleteObjectiveMutation.mutate(obj.id)}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                              >
+                                                Elimina
+                                              </AlertDialogAction>
+                                            </div>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
                                     </TableCell>
                                   </TableRow>
                                 ))}

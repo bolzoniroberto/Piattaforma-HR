@@ -8,7 +8,7 @@ async function seed() {
   try {
     // Create indicator clusters
     console.log("Creating indicator clusters...");
-    const [groupCluster, individualCluster, esgCluster] = await db
+    const [groupCluster, directionCluster, esgCluster] = await db
       .insert(indicatorClusters)
       .values([
         {
@@ -16,7 +16,7 @@ async function seed() {
           description: "Obiettivi a livello di team/dipartimento",
         },
         {
-          name: "Obiettivi Individuali",
+          name: "Obiettivi di Direzione",
           description: "Obiettivi personali e di direzione",
         },
         {
@@ -30,7 +30,7 @@ async function seed() {
 
     // Create calculation types
     console.log("Creating calculation types...");
-    const [linearCalc, targetCalc, inverseCalc] = await db
+    const [linearCalc, targetCalc] = await db
       .insert(calculationTypes)
       .values([
         {
@@ -43,15 +43,10 @@ async function seed() {
           description: "100% solo al raggiungimento del target",
           formula: "score = 100 if actual >= target else 0",
         },
-        {
-          name: "Interpolazione Lineare Inversa",
-          description: "Punteggio inversamente proporzionale (per ridurre target)",
-          formula: "score = 100 - ((actual / target) * 100)",
-        },
       ])
       .returning();
 
-    console.log("✅ Created 3 calculation types");
+    console.log("✅ Created 2 calculation types");
 
     // Create objectives dictionary
     console.log("Creating objectives dictionary...");
@@ -61,7 +56,7 @@ async function seed() {
         {
           title: "Migliorare la customer satisfaction del 15%",
           description: "Implementare un nuovo sistema di feedback clienti e ridurre i tempi di risposta.",
-          indicatorClusterId: individualCluster.id,
+          indicatorClusterId: directionCluster.id,
           calculationTypeId: linearCalc.id,
         },
         {
@@ -80,13 +75,13 @@ async function seed() {
           title: "Ridurre i tempi di risposta del supporto del 30%",
           description: "Ottimizzare i processi interni e implementare automazioni per il supporto clienti.",
           indicatorClusterId: groupCluster.id,
-          calculationTypeId: inverseCalc.id,
+          calculationTypeId: linearCalc.id,
         },
         {
           title: "Ridurre bug in produzione del 40%",
           description: "Implementare test automatizzati e code review più rigorosi.",
-          indicatorClusterId: individualCluster.id,
-          calculationTypeId: inverseCalc.id,
+          indicatorClusterId: directionCluster.id,
+          calculationTypeId: targetCalc.id,
         },
         {
           title: "Migliorare l'efficienza operativa del 25%",
@@ -97,7 +92,7 @@ async function seed() {
         {
           title: "Completare certificazione AWS Solutions Architect",
           description: "Ottenere la certificazione professionale per supportare la migrazione cloud dell'azienda.",
-          indicatorClusterId: individualCluster.id,
+          indicatorClusterId: directionCluster.id,
           calculationTypeId: targetCalc.id,
         },
         {
