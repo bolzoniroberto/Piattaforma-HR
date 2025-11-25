@@ -20,9 +20,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 
 // Initialize demo mode BEFORE React render (at module load time)
+// Only activate if ?demo=admin or ?demo=employee is explicitly passed
 if (typeof window !== "undefined") {
   const params = new URLSearchParams(window.location.search);
-  const demoRole = params.get("demo") || "employee";
+  const demoRole = params.get("demo");
   if (demoRole === "admin" || demoRole === "employee") {
     sessionStorage.setItem("demo_mode", "true");
     sessionStorage.setItem("demo_role", demoRole);
@@ -34,7 +35,9 @@ function RootPage() {
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && user?.role === "admin") {
+    if (!isLoading && !user) {
+      navigate("/login");
+    } else if (!isLoading && user?.role === "admin") {
       navigate("/admin");
     }
   }, [user, isLoading, navigate]);
@@ -43,8 +46,12 @@ function RootPage() {
     return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Caricamento...</p></div>;
   }
 
-  if (user?.role === "admin") {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento...</p></div>;
+  if (!user) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento al login...</p></div>;
+  }
+
+  if (user.role === "admin") {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento al dashboard admin...</p></div>;
   }
 
   return (
