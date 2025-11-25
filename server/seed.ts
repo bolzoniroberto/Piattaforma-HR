@@ -232,13 +232,18 @@ async function seed() {
   }
 }
 
-// Run the seed function
-seed()
-  .then(() => {
-    console.log("🎉 Seed completed");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("💥 Seed failed:", error);
-    process.exit(1);
-  });
+// Export for programmatic use
+export { seed };
+
+// Run the seed function only if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  seed()
+    .then(() => {
+      console.log("🎉 Seed completed");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("💥 Seed failed:", error);
+      process.exit(1);
+    });
+}

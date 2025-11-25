@@ -3,6 +3,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { seed } from "./seed";
 import {
   insertIndicatorClusterSchema,
   insertCalculationTypeSchema,
@@ -32,6 +33,64 @@ function handleError(res: any, error: unknown) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Seed database on first run (if empty)
+  try {
+    const clusters = await storage.getIndicatorClusters();
+    if (clusters.length === 0) {
+      console.log("📊 Database is empty, running seed...");
+      await seed();
+    }
+  } catch (error) {
+    console.error("⚠️  Could not check/seed database:", error);
+  }
+
+  // Health check - no auth required
+  app.get("/api/health", async (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Demo login - for testing (creates a session without OIDC)
+  app.get("/api/demo-login/:role", async (req, res) => {
+    try {
+      const role = req.params.role as "admin" | "employee";
+      if (!["admin", "employee"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      // Create or get demo user
+      const demoUserId = role === "admin" ? "demo-admin-001" : "demo-employee-001";
+      await storage.upsertUser({
+        id: demoUserId,
+        email: `${role}@demo.local`,
+        firstName: role === "admin" ? "Admin" : "Dipendente",
+        lastName: "Demo",
+        profileImageUrl: undefined,
+        department: role === "admin" ? "Management" : "IT Development",
+        ral: undefined,
+        mboPercentage: 25,
+      });
+
+      // Manually set the user in the session
+      const demoUser = {
+        claims: { sub: demoUserId },
+        access_token: "demo-token",
+        refresh_token: "demo-refresh",
+        expires_at: Math.floor(Date.now() / 1000) + 86400,
+      };
+      (req.user as any) = demoUser;
+
+      // Save session
+      req.login(demoUser as any, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Session error" });
+        }
+        res.redirect("/");
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
 
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req, res) => {
