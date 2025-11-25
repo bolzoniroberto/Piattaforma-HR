@@ -63,7 +63,7 @@ export default function AdminUsersPage() {
     department: "",
     ral: "",
     mboPercentage: "25",
-    role: "employee" as const,
+    role: "employee" as "employee" | "admin",
   });
 
   const { data: allUsers = [], isLoading } = useQuery<User[]>({
