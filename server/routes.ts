@@ -7,6 +7,7 @@ import { seed } from "./seed";
 import {
   insertIndicatorClusterSchema,
   insertCalculationTypeSchema,
+  insertBusinessFunctionSchema,
   insertObjectivesDictionarySchema,
   insertObjectiveClusterSchema,
   insertObjectiveSchema,
@@ -253,6 +254,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/calculation-types/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       await storage.deleteCalculationType(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Business Functions routes
+  app.get("/api/business-functions", isAuthenticated, async (req, res) => {
+    try {
+      const functions = await storage.getBusinessFunctions();
+      res.json(functions);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/business-functions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const business = await storage.getBusinessFunction(req.params.id);
+      if (!business) {
+        return res.status(404).json({ message: "Business function not found" });
+      }
+      res.json(business);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/business-functions", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertBusinessFunctionSchema.parse(req.body);
+      const business = await storage.createBusinessFunction(data);
+      res.status(201).json(business);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/business-functions/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertBusinessFunctionSchema.partial().parse(req.body);
+      const business = await storage.updateBusinessFunction(req.params.id, data);
+      res.json(business);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/business-functions/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteBusinessFunction(req.params.id);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);

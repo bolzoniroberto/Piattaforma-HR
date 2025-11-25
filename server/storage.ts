@@ -3,6 +3,7 @@ import {
   users,
   indicatorClusters,
   calculationTypes,
+  businessFunctions,
   objectivesDictionary,
   objectiveClusters,
   objectives,
@@ -15,6 +16,8 @@ import {
   type InsertIndicatorCluster,
   type CalculationType,
   type InsertCalculationType,
+  type BusinessFunction,
+  type InsertBusinessFunction,
   type ObjectivesDictionary,
   type InsertObjectivesDictionary,
   type ObjectiveCluster,
@@ -52,6 +55,13 @@ export interface IStorage {
   createCalculationType(type: InsertCalculationType): Promise<CalculationType>;
   updateCalculationType(id: string, type: Partial<InsertCalculationType>): Promise<CalculationType>;
   deleteCalculationType(id: string): Promise<void>;
+  
+  // Business Function operations
+  getBusinessFunctions(): Promise<BusinessFunction[]>;
+  getBusinessFunction(id: string): Promise<BusinessFunction | undefined>;
+  createBusinessFunction(business: InsertBusinessFunction): Promise<BusinessFunction>;
+  updateBusinessFunction(id: string, business: Partial<InsertBusinessFunction>): Promise<BusinessFunction>;
+  deleteBusinessFunction(id: string): Promise<void>;
   
   // Objectives Dictionary operations
   getObjectivesDictionary(): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType })[]>;
@@ -194,6 +204,34 @@ export class DatabaseStorage implements IStorage {
     await db.delete(calculationTypes).where(eq(calculationTypes.id, id));
   }
 
+  // Business Function operations
+  async getBusinessFunctions(): Promise<BusinessFunction[]> {
+    return await db.select().from(businessFunctions).orderBy(businessFunctions.name);
+  }
+
+  async getBusinessFunction(id: string): Promise<BusinessFunction | undefined> {
+    const [business] = await db.select().from(businessFunctions).where(eq(businessFunctions.id, id));
+    return business;
+  }
+
+  async createBusinessFunction(businessData: InsertBusinessFunction): Promise<BusinessFunction> {
+    const [business] = await db.insert(businessFunctions).values(businessData).returning();
+    return business;
+  }
+
+  async updateBusinessFunction(id: string, businessData: Partial<InsertBusinessFunction>): Promise<BusinessFunction> {
+    const [business] = await db
+      .update(businessFunctions)
+      .set({ ...businessData, updatedAt: new Date() })
+      .where(eq(businessFunctions.id, id))
+      .returning();
+    return business;
+  }
+
+  async deleteBusinessFunction(id: string): Promise<void> {
+    await db.delete(businessFunctions).where(eq(businessFunctions.id, id));
+  }
+
   // Objectives Dictionary operations
   async getObjectivesDictionary(): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType })[]> {
     const results = await db
@@ -235,14 +273,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createObjectivesDictionaryItem(itemData: InsertObjectivesDictionary): Promise<ObjectivesDictionary> {
-    const [item] = await db.insert(objectivesDictionary).values(itemData).returning();
+    const insertData: any = itemData;
+    const [item] = await db.insert(objectivesDictionary).values(insertData).returning();
     return item;
   }
 
   async updateObjectivesDictionaryItem(id: string, itemData: Partial<InsertObjectivesDictionary>): Promise<ObjectivesDictionary> {
+    const updateData: any = { ...itemData, updatedAt: new Date() };
+    if (itemData.target !== undefined) {
+      updateData.target = itemData.target;
+    }
     const [item] = await db
       .update(objectivesDictionary)
-      .set({ ...itemData, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(objectivesDictionary.id, id))
       .returning();
     return item;

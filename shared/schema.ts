@@ -96,6 +96,24 @@ export const insertCalculationTypeSchema = createInsertSchema(calculationTypes).
 export type InsertCalculationType = z.infer<typeof insertCalculationTypeSchema>;
 export type CalculationType = typeof calculationTypes.$inferSelect;
 
+// Business Functions (Funzioni Aziendali) - for objective verification source
+export const businessFunctions = pgTable("business_functions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // Department/function name
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBusinessFunctionSchema = createInsertSchema(businessFunctions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBusinessFunction = z.infer<typeof insertBusinessFunctionSchema>;
+export type BusinessFunction = typeof businessFunctions.$inferSelect;
+
 // Objectives Dictionary - Repository of all possible objectives
 export const objectivesDictionary = pgTable("objectives_dictionary", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -103,6 +121,11 @@ export const objectivesDictionary = pgTable("objectives_dictionary", {
   description: text("description"),
   indicatorClusterId: varchar("indicator_cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   calculationTypeId: varchar("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
+  businessFunctionId: varchar("business_function_id").notNull().references(() => businessFunctions.id, { onDelete: "restrict" }),
+  type: varchar("type").notNull(), // 'numeric' or 'qualitative'
+  // For numeric objectives
+  target: numeric("target", { precision: 14, scale: 2 }),
+  unit: varchar("unit"), // e.g., "€", "%", "kg", etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -111,6 +134,10 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  type: z.enum(['numeric', 'qualitative']),
+  target: z.number().optional(),
+  unit: z.string().optional(),
 });
 
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;
@@ -234,6 +261,10 @@ export const calculationTypesRelations = relations(calculationTypes, ({ many }) 
   objectivesDictionary: many(objectivesDictionary),
 }));
 
+export const businessFunctionsRelations = relations(businessFunctions, ({ many }) => ({
+  objectivesDictionary: many(objectivesDictionary),
+}));
+
 export const objectivesDictionaryRelations = relations(objectivesDictionary, ({ one, many }) => ({
   indicatorCluster: one(indicatorClusters, {
     fields: [objectivesDictionary.indicatorClusterId],
@@ -242,6 +273,10 @@ export const objectivesDictionaryRelations = relations(objectivesDictionary, ({ 
   calculationType: one(calculationTypes, {
     fields: [objectivesDictionary.calculationTypeId],
     references: [calculationTypes.id],
+  }),
+  businessFunction: one(businessFunctions, {
+    fields: [objectivesDictionary.businessFunctionId],
+    references: [businessFunctions.id],
   }),
   objectives: many(objectives),
 }));

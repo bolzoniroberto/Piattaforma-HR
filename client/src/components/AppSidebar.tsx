@@ -40,6 +40,11 @@ const menuItems = [
     url: "/admin/documents",
     icon: FileText,
   },
+  {
+    title: "Impostazioni",
+    url: "/admin/settings",
+    icon: Settings,
+  },
 ];
 
 export default function AppSidebar() {
