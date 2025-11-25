@@ -8,8 +8,6 @@ import express, {
 } from "express";
 
 import { registerRoutes } from "./routes";
-import { seed } from "./seed";
-import { storage } from "./storage";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -94,25 +92,5 @@ export default async function runApp(
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
-    
-    // Seed database in background if empty, doesn't block server startup
-    // Uses setImmediate to ensure it runs after health checks can pass
-    setImmediate(async () => {
-      try {
-        const clusters = await storage.getIndicatorClusters();
-        if (clusters.length === 0) {
-          log("📊 Database is empty, running seed in background...");
-          // Call seed but DON'T await it to avoid blocking
-          seed().then(() => {
-            log("✨ Seed completed successfully");
-          }).catch((error) => {
-            console.error("⚠️ Seed failed:", error);
-            // Don't throw - just log it
-          });
-        }
-      } catch (error) {
-        console.error("⚠️ Seed check error:", error);
-      }
-    });
   });
 }
