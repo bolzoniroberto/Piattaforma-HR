@@ -3,20 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
 export function useAuth() {
-  const { data: user, isLoading, error } = useQuery<User>({
-    queryKey: ["/api/auth/user"],
-    retry: false,
-  });
-
-  // Check if demo mode is active
+  // Check if demo mode is active FIRST
   const demoMode = typeof window !== "undefined" && sessionStorage.getItem("demo_mode") === "true";
   const demoRole = typeof window !== "undefined" ? sessionStorage.getItem("demo_role") : null;
 
-  if (error) {
-    console.error("useAuth error:", error);
-  }
-
-  // Return demo user if demo mode is active
+  // If demo mode is active, return demo user immediately without fetching
   if (demoMode && demoRole && (demoRole === "admin" || demoRole === "employee")) {
     const demoUser: User = {
       id: demoRole === "admin" ? "demo-admin-001" : "demo-employee-001",
@@ -36,6 +27,16 @@ export function useAuth() {
       isLoading: false,
       isAuthenticated: true,
     };
+  }
+
+  // Otherwise fetch real user from API
+  const { data: user, isLoading, error } = useQuery<User>({
+    queryKey: ["/api/auth/user"],
+    retry: false,
+  });
+
+  if (error) {
+    console.error("useAuth error:", error);
   }
 
   return {
