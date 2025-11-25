@@ -15,22 +15,22 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/" render={() => (
+      <Route path="/" component={() => (
         <ProtectedRoute>
           <EmployeeDashboard />
         </ProtectedRoute>
       )} />
-      <Route path="/regulation" render={() => (
+      <Route path="/regulation" component={() => (
         <ProtectedRoute>
           <RegulationPage />
         </ProtectedRoute>
       )} />
-      <Route path="/admin" render={() => (
+      <Route path="/admin" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminDashboard />
         </ProtectedRoute>
       )} />
-      <Route path="/admin/objectives" render={() => (
+      <Route path="/admin/objectives" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminObjectivesPage />
         </ProtectedRoute>
