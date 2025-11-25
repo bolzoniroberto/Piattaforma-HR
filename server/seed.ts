@@ -1,6 +1,6 @@
 // Script to seed the database with sample data
 import { db } from "./db";
-import { indicatorClusters, calculationTypes, objectivesDictionary, objectiveClusters, objectives, documents } from "@shared/schema";
+import { indicatorClusters, calculationTypes, objectivesDictionary, objectiveClusters, objectives, documents, users } from "@shared/schema";
 
 async function seed() {
   console.log("🌱 Seeding database...");
@@ -224,6 +224,33 @@ async function seed() {
     ]);
 
     console.log("✅ Created 4 documents");
+
+    // Create test users
+    console.log("Creating test users...");
+    await db.insert(users).values([
+      {
+        id: "test-user-giovanni",
+        email: "giovanni@example.com",
+        firstName: "Giovanni",
+        lastName: "Utente",
+        role: "employee",
+        department: "IT Development",
+        ral: "45000.00",
+        mboPercentage: 20,
+      },
+      {
+        id: "test-admin-franco",
+        email: "franco@example.com",
+        firstName: "Franco",
+        lastName: "Amministratore",
+        role: "admin",
+        department: "Management",
+        ral: "75000.00",
+        mboPercentage: 30,
+      },
+    ]);
+
+    console.log("✅ Created 2 test users (Giovanni - employee, Franco - admin)");
 
     console.log("✨ Database seeded successfully!");
   } catch (error) {
