@@ -9,6 +9,8 @@ import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import RegulationPage from "@/pages/RegulationPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
+import AdminUsersPage from "@/pages/AdminUsersPage";
+import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
@@ -33,6 +35,16 @@ function Router() {
       <Route path="/admin/objectives" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminObjectivesPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/users" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminUsersPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/assignments/:userId" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminAssignmentsPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />
