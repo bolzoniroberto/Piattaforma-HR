@@ -1,6 +1,9 @@
 // Integration: javascript_database
 import {
   users,
+  indicatorClusters,
+  calculationTypes,
+  objectivesDictionary,
   objectiveClusters,
   objectives,
   objectiveAssignments,
@@ -8,6 +11,12 @@ import {
   documentAcceptances,
   type User,
   type UpsertUser,
+  type IndicatorCluster,
+  type InsertIndicatorCluster,
+  type CalculationType,
+  type InsertCalculationType,
+  type ObjectivesDictionary,
+  type InsertObjectivesDictionary,
   type ObjectiveCluster,
   type InsertObjectiveCluster,
   type Objective,
@@ -26,6 +35,28 @@ export interface IStorage {
   // User operations - Required for Replit Auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  
+  // Indicator Cluster operations
+  getIndicatorClusters(): Promise<IndicatorCluster[]>;
+  getIndicatorCluster(id: string): Promise<IndicatorCluster | undefined>;
+  createIndicatorCluster(cluster: InsertIndicatorCluster): Promise<IndicatorCluster>;
+  updateIndicatorCluster(id: string, cluster: Partial<InsertIndicatorCluster>): Promise<IndicatorCluster>;
+  deleteIndicatorCluster(id: string): Promise<void>;
+  
+  // Calculation Type operations
+  getCalculationTypes(): Promise<CalculationType[]>;
+  getCalculationType(id: string): Promise<CalculationType | undefined>;
+  createCalculationType(type: InsertCalculationType): Promise<CalculationType>;
+  updateCalculationType(id: string, type: Partial<InsertCalculationType>): Promise<CalculationType>;
+  deleteCalculationType(id: string): Promise<void>;
+  
+  // Objectives Dictionary operations
+  getObjectivesDictionary(): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType })[]>;
+  getObjectivesDictionaryItem(id: string): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType }) | undefined>;
+  createObjectivesDictionaryItem(item: InsertObjectivesDictionary): Promise<ObjectivesDictionary>;
+  updateObjectivesDictionaryItem(id: string, item: Partial<InsertObjectivesDictionary>): Promise<ObjectivesDictionary>;
+  deleteObjectivesDictionaryItem(id: string): Promise<void>;
   
   // Objective Cluster operations
   getObjectiveClusters(): Promise<ObjectiveCluster[]>;
@@ -86,6 +117,124 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.lastName, users.firstName);
+  }
+
+  // Indicator Cluster operations
+  async getIndicatorClusters(): Promise<IndicatorCluster[]> {
+    return await db.select().from(indicatorClusters).orderBy(indicatorClusters.name);
+  }
+
+  async getIndicatorCluster(id: string): Promise<IndicatorCluster | undefined> {
+    const [cluster] = await db.select().from(indicatorClusters).where(eq(indicatorClusters.id, id));
+    return cluster;
+  }
+
+  async createIndicatorCluster(clusterData: InsertIndicatorCluster): Promise<IndicatorCluster> {
+    const [cluster] = await db.insert(indicatorClusters).values(clusterData).returning();
+    return cluster;
+  }
+
+  async updateIndicatorCluster(id: string, clusterData: Partial<InsertIndicatorCluster>): Promise<IndicatorCluster> {
+    const [cluster] = await db
+      .update(indicatorClusters)
+      .set({ ...clusterData, updatedAt: new Date() })
+      .where(eq(indicatorClusters.id, id))
+      .returning();
+    return cluster;
+  }
+
+  async deleteIndicatorCluster(id: string): Promise<void> {
+    await db.delete(indicatorClusters).where(eq(indicatorClusters.id, id));
+  }
+
+  // Calculation Type operations
+  async getCalculationTypes(): Promise<CalculationType[]> {
+    return await db.select().from(calculationTypes).orderBy(calculationTypes.name);
+  }
+
+  async getCalculationType(id: string): Promise<CalculationType | undefined> {
+    const [type] = await db.select().from(calculationTypes).where(eq(calculationTypes.id, id));
+    return type;
+  }
+
+  async createCalculationType(typeData: InsertCalculationType): Promise<CalculationType> {
+    const [type] = await db.insert(calculationTypes).values(typeData).returning();
+    return type;
+  }
+
+  async updateCalculationType(id: string, typeData: Partial<InsertCalculationType>): Promise<CalculationType> {
+    const [type] = await db
+      .update(calculationTypes)
+      .set({ ...typeData, updatedAt: new Date() })
+      .where(eq(calculationTypes.id, id))
+      .returning();
+    return type;
+  }
+
+  async deleteCalculationType(id: string): Promise<void> {
+    await db.delete(calculationTypes).where(eq(calculationTypes.id, id));
+  }
+
+  // Objectives Dictionary operations
+  async getObjectivesDictionary(): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType })[]> {
+    const results = await db
+      .select({
+        item: objectivesDictionary,
+        indicatorCluster: indicatorClusters,
+        calculationType: calculationTypes,
+      })
+      .from(objectivesDictionary)
+      .innerJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
+      .innerJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
+      .orderBy(objectivesDictionary.title);
+
+    return results.map((row) => ({
+      ...row.item,
+      indicatorCluster: row.indicatorCluster,
+      calculationType: row.calculationType,
+    }));
+  }
+
+  async getObjectivesDictionaryItem(id: string): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType }) | undefined> {
+    const [result] = await db
+      .select({
+        item: objectivesDictionary,
+        indicatorCluster: indicatorClusters,
+        calculationType: calculationTypes,
+      })
+      .from(objectivesDictionary)
+      .innerJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
+      .innerJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
+      .where(eq(objectivesDictionary.id, id));
+
+    if (!result) return undefined;
+    return {
+      ...result.item,
+      indicatorCluster: result.indicatorCluster,
+      calculationType: result.calculationType,
+    };
+  }
+
+  async createObjectivesDictionaryItem(itemData: InsertObjectivesDictionary): Promise<ObjectivesDictionary> {
+    const [item] = await db.insert(objectivesDictionary).values(itemData).returning();
+    return item;
+  }
+
+  async updateObjectivesDictionaryItem(id: string, itemData: Partial<InsertObjectivesDictionary>): Promise<ObjectivesDictionary> {
+    const [item] = await db
+      .update(objectivesDictionary)
+      .set({ ...itemData, updatedAt: new Date() })
+      .where(eq(objectivesDictionary.id, id))
+      .returning();
+    return item;
+  }
+
+  async deleteObjectivesDictionaryItem(id: string): Promise<void> {
+    await db.delete(objectivesDictionary).where(eq(objectivesDictionary.id, id));
   }
 
   // Objective Cluster operations

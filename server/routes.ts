@@ -4,6 +4,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import {
+  insertIndicatorClusterSchema,
+  insertCalculationTypeSchema,
+  insertObjectivesDictionarySchema,
   insertObjectiveClusterSchema,
   insertObjectiveSchema,
   insertObjectiveAssignmentSchema,
@@ -36,6 +39,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       const user = await storage.getUser(userId);
       res.json(user);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Indicator Clusters routes
+  app.get("/api/indicator-clusters", isAuthenticated, async (req, res) => {
+    try {
+      const clusters = await storage.getIndicatorClusters();
+      res.json(clusters);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/indicator-clusters", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertIndicatorClusterSchema.parse(req.body);
+      const cluster = await storage.createIndicatorCluster(data);
+      res.status(201).json(cluster);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/indicator-clusters/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertIndicatorClusterSchema.partial().parse(req.body);
+      const cluster = await storage.updateIndicatorCluster(req.params.id, data);
+      res.json(cluster);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/indicator-clusters/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteIndicatorCluster(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Calculation Types routes
+  app.get("/api/calculation-types", isAuthenticated, async (req, res) => {
+    try {
+      const types = await storage.getCalculationTypes();
+      res.json(types);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/calculation-types", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCalculationTypeSchema.parse(req.body);
+      const type = await storage.createCalculationType(data);
+      res.status(201).json(type);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/calculation-types/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCalculationTypeSchema.partial().parse(req.body);
+      const type = await storage.updateCalculationType(req.params.id, data);
+      res.json(type);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/calculation-types/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteCalculationType(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Objectives Dictionary routes
+  app.get("/api/objectives-dictionary", isAuthenticated, async (req, res) => {
+    try {
+      const items = await storage.getObjectivesDictionary();
+      res.json(items);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/objectives-dictionary/:id", isAuthenticated, async (req, res) => {
+    try {
+      const item = await storage.getObjectivesDictionaryItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: "Objective dictionary item not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/objectives-dictionary", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertObjectivesDictionarySchema.parse(req.body);
+      const item = await storage.createObjectivesDictionaryItem(data);
+      res.status(201).json(item);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/objectives-dictionary/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertObjectivesDictionarySchema.partial().parse(req.body);
+      const item = await storage.updateObjectivesDictionaryItem(req.params.id, data);
+      res.json(item);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/objectives-dictionary/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteObjectivesDictionaryItem(req.params.id);
+      res.status(204).send();
     } catch (error) {
       handleError(res, error);
     }
