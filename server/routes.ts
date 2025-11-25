@@ -124,6 +124,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/user", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized - no user ID" });
+      }
+      
+      // In demo mode, create the user if it doesn't exist
+      if (req.headers["x-demo-mode"] === "true") {
+        const demoRole = req.headers["x-demo-role"] as string;
+        const existingUser = await storage.getUser(userId);
+        
+        if (!existingUser) {
+          // Create demo user
+          await storage.upsertUser({
+            id: userId,
+            email: `${demoRole}@demo.local`,
+            firstName: demoRole === "admin" ? "Admin" : "Dipendente",
+            lastName: "Demo",
+            profileImageUrl: undefined,
+            department: demoRole === "admin" ? "Management" : "IT Development",
+            role: demoRole,
+            ral: undefined,
+            mboPercentage: 25,
+          });
+        }
+      }
+      
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
