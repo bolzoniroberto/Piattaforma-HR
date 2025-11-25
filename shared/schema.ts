@@ -121,9 +121,6 @@ export const objectivesDictionary = pgTable("objectives_dictionary", {
   description: text("description"),
   indicatorClusterId: varchar("indicator_cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   calculationTypeId: varchar("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
-  // For numeric objectives
-  target: numeric("target", { precision: 14, scale: 2 }),
-  unit: varchar("unit"), // e.g., "€", "%", "kg", etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -132,9 +129,6 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
   id: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
-  target: z.number().optional(),
-  unit: z.string().optional(),
 });
 
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;
