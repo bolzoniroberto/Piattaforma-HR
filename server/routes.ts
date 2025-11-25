@@ -38,12 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Root health check - must respond quickly for deployment health checks
-  app.get("/", (_req, res) => {
-    res.status(200).end();
-  });
-
-  // Health check - no auth required
+  // Health check - no auth required (used for deployment health checks)
   app.get("/api/health", async (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
