@@ -11,6 +11,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
 import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
+import AdminAssignmentsBulkPage from "@/pages/AdminAssignmentsBulkPage";
+import AdminReportingPage from "@/pages/AdminReportingPage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -80,6 +82,16 @@ function Router() {
       <Route path="/admin/assignments/:userId" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminAssignmentsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/assignments-bulk" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminAssignmentsBulkPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/reporting" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminReportingPage />
         </ProtectedRoute>
       )} />
       <Route path="/admin/documents" component={() => (
