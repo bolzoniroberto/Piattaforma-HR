@@ -17,28 +17,47 @@ import {
   FileText,
   Settings,
   BarChart,
+  Network,
+  CheckCircle,
 } from "lucide-react";
 
-const menuItems = [
+const dashboardItem = {
+  title: "Dashboard",
+  url: "/admin",
+  icon: LayoutDashboard,
+};
+
+const beneficiariItems = [
   {
-    title: "Dashboard",
-    url: "/admin",
-    icon: LayoutDashboard,
+    title: "Gestione Utenti",
+    url: "/admin/users",
+    icon: Users,
   },
+  {
+    title: "Strutture",
+    url: "/admin/documents",
+    icon: Network,
+  },
+];
+
+const goalSettingItems = [
   {
     title: "Database Obiettivi",
     url: "/admin/objectives",
     icon: Target,
   },
   {
-    title: "Utenti",
-    url: "/admin/users",
-    icon: Users,
-  },
-  {
-    title: "Documenti",
-    url: "/admin/documents",
+    title: "Assegnazione Obiettivi",
+    url: "/admin/assignments-bulk",
     icon: FileText,
+  },
+];
+
+const rendicontazioneItems = [
+  {
+    title: "Rendicontazione",
+    url: "/admin/reporting",
+    icon: CheckCircle,
   },
   {
     title: "Impostazioni",
@@ -49,6 +68,24 @@ const menuItems = [
 
 export default function AppSidebar() {
   const [location] = useLocation();
+
+  const renderMenuGroup = (items: Array<{ title: string; url: string; icon: any }>) => (
+    <SidebarMenu>
+      {items.map((item) => {
+        const isActive = location === item.url;
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton asChild isActive={isActive}>
+              <Link href={item.url} data-testid={`link-sidebar-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
+                <item.icon className="h-4 w-4" />
+                <span>{item.title}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
+  );
 
   return (
     <Sidebar>
@@ -64,24 +101,43 @@ export default function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
+        {/* Dashboard */}
         <SidebarGroup>
-          <SidebarGroupLabel>Gestione</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
-                const isActive = location === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link href={item.url} data-testid={`link-sidebar-${item.title.toLowerCase()}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === dashboardItem.url}>
+                  <Link href={dashboardItem.url} data-testid="link-sidebar-dashboard">
+                    <dashboardItem.icon className="h-4 w-4" />
+                    <span>{dashboardItem.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* 1. Beneficiari */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Beneficiari</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {renderMenuGroup(beneficiariItems)}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* 2. Goal Setting */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Goal Setting</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {renderMenuGroup(goalSettingItems)}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* 3. Rendicontazione */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Rendicontazione</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {renderMenuGroup(rendicontazioneItems)}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
