@@ -18,6 +18,10 @@ import { ZodError } from "zod";
 
 // Helper to get user ID from request
 function getUserId(req: Request): string {
+  // Check for demo mode header first
+  if (req.headers["x-demo-user-id"]) {
+    return req.headers["x-demo-user-id"] as string;
+  }
   return (req.user as any)?.claims?.sub;
 }
 
@@ -78,6 +82,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ral: undefined,
         mboPercentage: 25,
       });
+
+      // For demo employee, assign some objectives
+      if (role === "employee") {
+        try {
+          // Get first few objectives (from objectives table, not dictionary) to assign
+          const objectives = await storage.getObjectives();
+          if (objectives.length > 0) {
+            // Assign first 3 objectives to demo employee
+            for (let i = 0; i < Math.min(3, objectives.length); i++) {
+              const objective = objectives[i];
+              
+              try {
+                await storage.createObjectiveAssignment({
+                  userId: demoUserId,
+                  objectiveId: objective.id,
+                  status: "in_progress",
+                  progress: Math.floor(Math.random() * 80),
+                });
+              } catch (e) {
+                // Ignore if assignment already exists or other errors
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Assignment error:", e);
+          // Ignore assignment errors - it's not critical for demo
+        }
+      }
 
       // Return HTML that sets sessionStorage and redirects
       const html = `
