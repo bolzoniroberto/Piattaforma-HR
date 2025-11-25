@@ -8,6 +8,7 @@ import {
   text,
   integer,
   boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -96,7 +97,9 @@ export const objectiveAssignments = pgTable("objective_assignments", {
   progress: integer("progress").notNull().default(0), // 0-100
   assignedAt: timestamp("assigned_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  uniqueUserObjective: uniqueIndex("unique_user_objective").on(table.userId, table.objectiveId),
+}));
 
 export const insertObjectiveAssignmentSchema = createInsertSchema(objectiveAssignments).omit({
   id: true,
@@ -134,7 +137,9 @@ export const documentAcceptances = pgTable("document_acceptances", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   documentId: varchar("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
   acceptedAt: timestamp("accepted_at").defaultNow(),
-});
+}, (table) => ({
+  uniqueUserDocument: uniqueIndex("unique_user_document").on(table.userId, table.documentId),
+}));
 
 export const insertDocumentAcceptanceSchema = createInsertSchema(documentAcceptances).omit({
   id: true,

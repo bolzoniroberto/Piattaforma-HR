@@ -2,7 +2,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import {
   insertObjectiveClusterSchema,
   insertObjectiveSchema,
@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/clusters", isAuthenticated, async (req, res) => {
+  app.post("/api/clusters", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertObjectiveClusterSchema.parse(req.body);
       const cluster = await storage.createObjectiveCluster(data);
@@ -73,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/clusters/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/clusters/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertObjectiveClusterSchema.partial().parse(req.body);
       const cluster = await storage.updateObjectiveCluster(req.params.id, data);
@@ -83,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/clusters/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/clusters/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       await storage.deleteObjectiveCluster(req.params.id);
       res.status(204).send();
@@ -117,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/objectives", isAuthenticated, async (req, res) => {
+  app.post("/api/objectives", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertObjectiveSchema.parse(req.body);
       const objective = await storage.createObjective(data);
@@ -127,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/objectives/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/objectives/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertObjectiveSchema.partial().parse(req.body);
       const objective = await storage.updateObjective(req.params.id, data);
@@ -137,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/objectives/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/objectives/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       await storage.deleteObjective(req.params.id);
       res.status(204).send();
@@ -157,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/assignments/:userId", isAuthenticated, async (req, res) => {
+  app.get("/api/assignments/:userId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const assignments = await storage.getObjectiveAssignments(req.params.userId);
       res.json(assignments);
@@ -166,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/assignments", isAuthenticated, async (req, res) => {
+  app.post("/api/assignments", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertObjectiveAssignmentSchema.parse(req.body);
       const assignment = await storage.createObjectiveAssignment(data);
@@ -178,15 +178,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/assignments/:id", isAuthenticated, async (req, res) => {
     try {
+      const userId = getUserId(req);
+      const assignment = await storage.getObjectiveAssignment(req.params.id);
+      
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const isAdmin = user.role === "admin";
+      const isOwner = assignment.userId === userId;
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ message: "Forbidden - Can only update own assignments" });
+      }
+
       const data = insertObjectiveAssignmentSchema.partial().parse(req.body);
-      const assignment = await storage.updateObjectiveAssignment(req.params.id, data);
-      res.json(assignment);
+
+      if (!isAdmin) {
+        if (data.userId || data.objectiveId) {
+          return res.status(403).json({ 
+            message: "Forbidden - Employees can only update progress and status" 
+          });
+        }
+      }
+
+      const updatedAssignment = await storage.updateObjectiveAssignment(req.params.id, data);
+      res.json(updatedAssignment);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.delete("/api/assignments/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/assignments/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       await storage.deleteObjectiveAssignment(req.params.id);
       res.status(204).send();
@@ -217,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/documents", isAuthenticated, async (req, res) => {
+  app.post("/api/documents", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertDocumentSchema.parse(req.body);
       const document = await storage.createDocument(data);
@@ -227,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/documents/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/documents/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const data = insertDocumentSchema.partial().parse(req.body);
       const document = await storage.updateDocument(req.params.id, data);
@@ -237,7 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/documents/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/documents/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       await storage.deleteDocument(req.params.id);
       res.status(204).send();
@@ -293,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/stats/:userId", isAuthenticated, async (req, res) => {
+  app.get("/api/stats/:userId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const stats = await storage.getUserStats(req.params.userId);
       const clusterStats = await storage.getClusterStats(req.params.userId);
