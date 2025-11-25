@@ -1,14 +1,15 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import ObjectiveClusterCard, { type ObjectiveCluster } from "@/components/ObjectiveClusterCard";
-import { Search, Plus, Filter } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Plus, Filter, Target, Users, Leaf, Building, ChevronRight, Calculator, Layers } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,26 +28,143 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface ObjectiveDictionary {
+  id: string;
+  title: string;
+  description: string;
+  indicatorClusterId: string;
+  calculationTypeId: string;
+  indicatorCluster?: {
+    id: string;
+    name: string;
+  };
+  calculationType?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface ObjectiveCluster {
+  id: string;
+  name: string;
+  description: string;
+  weight: number;
+}
+
+interface IndicatorCluster {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface CalculationType {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export default function AdminObjectivesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIndicatorCluster, setSelectedIndicatorCluster] = useState<string>("all");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newObjective, setNewObjective] = useState({
+    title: "",
+    description: "",
+    indicatorClusterId: "",
+    calculationTypeId: "",
+  });
 
-  const { data: clusterData = [] } = useQuery<any[]>({
+  const { data: objectivesDictionary = [], isLoading: dictLoading } = useQuery<ObjectiveDictionary[]>({
+    queryKey: ["/api/objectives-dictionary"],
+    enabled: !!user,
+  });
+
+  const { data: objectiveClusters = [] } = useQuery<ObjectiveCluster[]>({
     queryKey: ["/api/clusters"],
     enabled: !!user,
   });
 
-  const transformedClusters: ObjectiveCluster[] = (clusterData || []).map((cluster: any) => ({
-    id: cluster.id,
-    name: cluster.name,
-    description: cluster.description,
-    totalObjectives: 0,
-    completedObjectives: 0,
-  }));
+  const { data: indicatorClusters = [] } = useQuery<IndicatorCluster[]>({
+    queryKey: ["/api/indicator-clusters"],
+    enabled: !!user,
+  });
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { data: calculationTypes = [] } = useQuery<CalculationType[]>({
+    queryKey: ["/api/calculation-types"],
+    enabled: !!user,
+  });
+
+  const createObjectiveMutation = useMutation({
+    mutationFn: async (data: typeof newObjective) => {
+      const res = await apiRequest("POST", "/api/objectives-dictionary", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
+      toast({ title: "Obiettivo creato con successo" });
+      setIsDialogOpen(false);
+      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile creare l'obiettivo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const filteredObjectives = useMemo(() => {
+    let filtered = objectivesDictionary;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (obj) =>
+          obj.title.toLowerCase().includes(query) ||
+          obj.description?.toLowerCase().includes(query)
+      );
+    }
+    
+    if (selectedIndicatorCluster !== "all") {
+      filtered = filtered.filter((obj) => obj.indicatorClusterId === selectedIndicatorCluster);
+    }
+    
+    return filtered;
+  }, [objectivesDictionary, searchQuery, selectedIndicatorCluster]);
+
+  const objectivesByIndicatorCluster = useMemo(() => {
+    const grouped: Record<string, ObjectiveDictionary[]> = {};
+    filteredObjectives.forEach((obj) => {
+      const clusterName = obj.indicatorCluster?.name || "Non categorizzato";
+      if (!grouped[clusterName]) {
+        grouped[clusterName] = [];
+      }
+      grouped[clusterName].push(obj);
+    });
+    return grouped;
+  }, [filteredObjectives]);
+
+  const getClusterIcon = (name: string) => {
+    if (name.includes("Gruppo")) return Users;
+    if (name.includes("ESG")) return Leaf;
+    if (name.includes("Individual")) return Building;
+    return Target;
+  };
 
   const style = {
     "--sidebar-width": "16rem",
@@ -57,7 +176,7 @@ export default function AdminObjectivesPage() {
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1">
           <AppHeader
-            userName="Admin User"
+            userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin"}
             userRole="Amministratore"
             showSidebarTrigger={true}
           />
@@ -66,9 +185,9 @@ export default function AdminObjectivesPage() {
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-3xl font-semibold mb-2">Gestione Obiettivi</h1>
+                  <h1 className="text-3xl font-semibold mb-2">Database Obiettivi</h1>
                   <p className="text-muted-foreground">
-                    Gestisci il dizionario MBO e i cluster di obiettivi
+                    Gestisci il dizionario completo degli obiettivi MBO
                   </p>
                 </div>
                 
@@ -83,7 +202,7 @@ export default function AdminObjectivesPage() {
                     <DialogHeader>
                       <DialogTitle>Crea Nuovo Obiettivo</DialogTitle>
                       <DialogDescription>
-                        Inserisci i dettagli del nuovo obiettivo da assegnare
+                        Aggiungi un nuovo obiettivo al dizionario MBO
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -91,7 +210,9 @@ export default function AdminObjectivesPage() {
                         <Label htmlFor="objective-title">Titolo</Label>
                         <Input
                           id="objective-title"
-                          placeholder="Es. Migliorare la customer satisfaction"
+                          placeholder="Es. Migliorare la customer satisfaction del 15%"
+                          value={newObjective.title}
+                          onChange={(e) => setNewObjective({ ...newObjective, title: e.target.value })}
                           data-testid="input-objective-title"
                         />
                       </div>
@@ -100,48 +221,52 @@ export default function AdminObjectivesPage() {
                         <Textarea
                           id="objective-description"
                           placeholder="Descrizione dettagliata dell'obiettivo..."
-                          rows={4}
+                          rows={3}
+                          value={newObjective.description}
+                          onChange={(e) => setNewObjective({ ...newObjective, description: e.target.value })}
                           data-testid="input-objective-description"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="objective-cluster">Cluster</Label>
-                          <Select>
-                            <SelectTrigger id="objective-cluster" data-testid="select-cluster">
-                              <SelectValue placeholder="Seleziona cluster" />
+                          <Label htmlFor="indicator-cluster">Categoria Indicatore</Label>
+                          <Select
+                            value={newObjective.indicatorClusterId}
+                            onValueChange={(value) => setNewObjective({ ...newObjective, indicatorClusterId: value })}
+                          >
+                            <SelectTrigger id="indicator-cluster" data-testid="select-indicator-cluster">
+                              <SelectValue placeholder="Seleziona categoria" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="strategici">Obiettivi Strategici</SelectItem>
-                              <SelectItem value="operativi">Obiettivi Operativi</SelectItem>
-                              <SelectItem value="sviluppo">Obiettivi di Sviluppo</SelectItem>
+                              {indicatorClusters.map((cluster) => (
+                                <SelectItem key={cluster.id} value={cluster.id}>
+                                  {cluster.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="objective-deadline">Scadenza</Label>
-                          <Input
-                            id="objective-deadline"
-                            type="date"
-                            data-testid="input-objective-deadline"
-                          />
+                          <Label htmlFor="calculation-type">Tipo di Calcolo</Label>
+                          <Select
+                            value={newObjective.calculationTypeId}
+                            onValueChange={(value) => setNewObjective({ ...newObjective, calculationTypeId: value })}
+                          >
+                            <SelectTrigger id="calculation-type" data-testid="select-calculation-type">
+                              <SelectValue placeholder="Seleziona calcolo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {calculationTypes.map((type) => (
+                                <SelectItem key={type.id} value={type.id}>
+                                  {type.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="objective-assignee">Assegna a</Label>
-                        <Select>
-                          <SelectTrigger id="objective-assignee" data-testid="select-assignee">
-                            <SelectValue placeholder="Seleziona dipendente" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user1">Mario Rossi</SelectItem>
-                            <SelectItem value="user2">Laura Bianchi</SelectItem>
-                            <SelectItem value="user3">Giovanni Verdi</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
-                    <div className="flex justify-end gap-2">
+                    <DialogFooter>
                       <Button
                         variant="outline"
                         onClick={() => setIsDialogOpen(false)}
@@ -150,23 +275,67 @@ export default function AdminObjectivesPage() {
                         Annulla
                       </Button>
                       <Button
-                        onClick={() => {
-                          console.log("Create objective");
-                          setIsDialogOpen(false);
-                        }}
+                        onClick={() => createObjectiveMutation.mutate(newObjective)}
+                        disabled={!newObjective.title || !newObjective.indicatorClusterId || !newObjective.calculationTypeId || createObjectiveMutation.isPending}
                         data-testid="button-create"
                       >
-                        Crea Obiettivo
+                        {createObjectiveMutation.isPending ? "Creazione..." : "Crea Obiettivo"}
                       </Button>
-                    </div>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Obiettivi nel Database</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="stat-total-objectives">
+                      {objectivesDictionary.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Totale obiettivi disponibili</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Cluster Obiettivi</CardTitle>
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="stat-total-clusters">
+                      {objectiveClusters.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Cluster di assegnazione</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Tipi di Calcolo</CardTitle>
+                    <Calculator className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="stat-calculation-types">
+                      {calculationTypes.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Formule di valutazione</p>
+                  </CardContent>
+                </Card>
               </div>
 
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <CardTitle>Cluster di Obiettivi</CardTitle>
+                    <div>
+                      <CardTitle>Dizionario Obiettivi</CardTitle>
+                      <CardDescription>
+                        Tutti gli obiettivi disponibili organizzati per categoria
+                      </CardDescription>
+                    </div>
                     <div className="flex items-center gap-2">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -178,24 +347,69 @@ export default function AdminObjectivesPage() {
                           data-testid="input-search"
                         />
                       </div>
-                      <Button variant="outline" size="icon" data-testid="button-filter">
-                        <Filter className="h-4 w-4" />
-                      </Button>
+                      <Select value={selectedIndicatorCluster} onValueChange={setSelectedIndicatorCluster}>
+                        <SelectTrigger className="w-[200px]" data-testid="select-filter-cluster">
+                          <SelectValue placeholder="Filtra per categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutte le categorie</SelectItem>
+                          {indicatorClusters.map((cluster) => (
+                            <SelectItem key={cluster.id} value={cluster.id}>
+                              {cluster.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {transformedClusters.length === 0 ? (
-                    <p className="text-center text-muted-foreground">Nessun cluster configurato</p>
+                  {dictLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                  ) : Object.keys(objectivesByIndicatorCluster).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nessun obiettivo trovato
+                    </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {transformedClusters.map((cluster) => (
-                        <ObjectiveClusterCard
-                          key={cluster.id}
-                          cluster={cluster}
-                          onClick={() => console.log("Cluster clicked:", cluster.id)}
-                        />
-                      ))}
+                    <div className="space-y-6">
+                      {Object.entries(objectivesByIndicatorCluster).map(([clusterName, objectives]) => {
+                        const Icon = getClusterIcon(clusterName);
+                        return (
+                          <div key={clusterName} className="space-y-3">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                              <Icon className="h-5 w-5 text-primary" />
+                              <h3 className="font-semibold">{clusterName}</h3>
+                              <Badge variant="secondary" className="ml-auto">
+                                {objectives.length} obiettivi
+                              </Badge>
+                            </div>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[40%]">Titolo</TableHead>
+                                  <TableHead className="w-[35%]">Descrizione</TableHead>
+                                  <TableHead>Tipo Calcolo</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {objectives.map((obj) => (
+                                  <TableRow key={obj.id} data-testid={`row-objective-${obj.id}`}>
+                                    <TableCell className="font-medium">{obj.title}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                      {obj.description || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">
+                                        {obj.calculationType?.name || "N/A"}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
@@ -203,63 +417,32 @@ export default function AdminObjectivesPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Obiettivi Recenti</CardTitle>
+                  <CardTitle>Cluster di Assegnazione</CardTitle>
+                  <CardDescription>
+                    I cluster utilizzati per assegnare gli obiettivi ai dipendenti
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        title: "Migliorare la customer satisfaction del 15%",
-                        assignedTo: "Mario Rossi",
-                        cluster: "Strategici",
-                        status: "in_corso",
-                      },
-                      {
-                        title: "Ridurre i tempi di risposta del supporto",
-                        assignedTo: "Laura Bianchi",
-                        cluster: "Operativi",
-                        status: "assegnato",
-                      },
-                      {
-                        title: "Completare certificazione AWS",
-                        assignedTo: "Giovanni Verdi",
-                        cluster: "Sviluppo",
-                        status: "completato",
-                      },
-                    ].map((objective, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between gap-4 p-4 border rounded-md hover-elevate"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm mb-1">{objective.title}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            Assegnato a: {objective.assignedTo}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {objective.cluster}
-                          </Badge>
-                          <Badge
-                            variant={
-                              objective.status === "completato"
-                                ? "default"
-                                : objective.status === "in_corso"
-                                ? "secondary"
-                                : "outline"
-                            }
-                            className="text-xs"
-                          >
-                            {objective.status === "completato"
-                              ? "Completato"
-                              : objective.status === "in_corso"
-                              ? "In Corso"
-                              : "Assegnato"}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {objectiveClusters.map((cluster) => {
+                      const Icon = getClusterIcon(cluster.name);
+                      return (
+                        <Card key={cluster.id} className="hover-elevate" data-testid={`card-cluster-${cluster.id}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                                <Icon className="h-5 w-5 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm">{cluster.name}</h4>
+                                <p className="text-xs text-muted-foreground">Peso: {cluster.weight}%</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{cluster.description}</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

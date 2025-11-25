@@ -26,7 +26,7 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Obiettivi",
+    title: "Database Obiettivi",
     url: "/admin/objectives",
     icon: Target,
   },
@@ -36,19 +36,9 @@ const menuItems = [
     icon: Users,
   },
   {
-    title: "Report",
-    url: "/admin/reports",
-    icon: BarChart,
-  },
-  {
     title: "Documenti",
     url: "/admin/documents",
     icon: FileText,
-  },
-  {
-    title: "Impostazioni",
-    url: "/admin/settings",
-    icon: Settings,
   },
 ];
 
