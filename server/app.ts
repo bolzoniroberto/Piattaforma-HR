@@ -8,6 +8,8 @@ import express, {
 } from "express";
 
 import { registerRoutes } from "./routes";
+import { seed } from "./seed";
+import { storage } from "./storage";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
