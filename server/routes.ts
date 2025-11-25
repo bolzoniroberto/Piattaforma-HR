@@ -140,10 +140,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: `${demoRole}@demo.local`,
             firstName: demoRole === "admin" ? "Admin" : "Dipendente",
             lastName: "Demo",
-            profileImageUrl: undefined,
+            profileImageUrl: null,
             department: demoRole === "admin" ? "Management" : "IT Development",
-            role: demoRole,
-            ral: undefined,
+            ral: null,
             mboPercentage: 25,
           });
         }
