@@ -34,13 +34,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Note: Seeding is done in background after server starts (in app.ts)
-  // This allows the health check endpoint to be available immediately
-  // The "/" root is served by the static middleware (Vite in dev, Express static in prod)
+  // Root health check - must respond quickly for deployment health checks
+  app.get("/", (_req, res) => {
+    res.status(200).end();
+  });
 
   // Health check - no auth required
   app.get("/api/health", async (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Admin endpoint to manually seed database if needed
+  app.post("/api/admin/seed", isAdmin, async (req, res) => {
+    try {
+      const clusters = await storage.getIndicatorClusters();
+      if (clusters.length > 0) {
+        return res.status(400).json({ message: "Database already seeded" });
+      }
+      await seed();
+      res.json({ message: "Database seeded successfully" });
+    } catch (error) {
+      handleError(res, error);
+    }
   });
 
   // Demo login - for testing (sets session storage on client)

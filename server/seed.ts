@@ -235,8 +235,9 @@ async function seed() {
 // Export for programmatic use
 export { seed };
 
-// Run the seed function only if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run the seed function only if executed directly as a script
+// Add a check to prevent accidental execution in other contexts
+if (typeof process !== "undefined" && process.argv && import.meta.url === `file://${process.argv[1]}`) {
   seed()
     .then(() => {
       console.log("🎉 Seed completed");
