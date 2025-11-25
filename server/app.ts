@@ -77,20 +77,31 @@ export default async function runApp(
     throw err;
   });
 
-  // importantly run the final setup after setting up all the other routes so
-  // the catch-all route doesn't interfere with the other routes
-  await setup(app, server);
+  // Add a lightweight root endpoint for health checks
+  // This responds immediately before static file serving setup
+  app.get("/", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
+  
+  // Start listening IMMEDIATELY so health checks can pass
+  // while setup continues in the background
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+  });
+
+  // Run setup in background after server is listening
+  // This prevents health checks from timing out during setup
+  setup(app, server).catch((error) => {
+    console.error("Setup error:", error);
   });
 }
