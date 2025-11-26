@@ -103,8 +103,8 @@ export const businessFunctions = pgTable("business_functions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(), // Department/function name
   description: text("description"),
-  level: integer("level").notNull().default(1), // 1 = primo livello, 2 = secondo livello
-  parentId: varchar("parent_id").references(() => businessFunctions.id, { onDelete: "cascade" }), // Reference to parent structure
+  primoLivelloId: varchar("primo_livello_id"), // Reference to first level structure
+  secondoLivelloId: varchar("secondo_livello_id"), // Reference to second level structure
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
