@@ -297,16 +297,16 @@ export default function AdminSettingsPage() {
               <div className="mb-8">
                 <h1 className="text-3xl font-bold flex items-center gap-2">
                   <Settings className="h-8 w-8" />
-                  Funzioni Aziendali
+                  Impostazioni Strutture
                 </h1>
-                <p className="text-muted-foreground mt-2">Configura strutture, tipi di calcolo e indicatori</p>
+                <p className="text-muted-foreground mt-2">Configura indicatori, tipi di calcolo e funzioni aziendali</p>
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="clusters">Indicatori</TabsTrigger>
                   <TabsTrigger value="calculations">Tipi di Calcolo</TabsTrigger>
-                  <TabsTrigger value="business">Cluster Obiettivi</TabsTrigger>
+                  <TabsTrigger value="business">Funzioni Aziendali</TabsTrigger>
                 </TabsList>
 
                 {/* Clusters Tab */}
@@ -531,7 +531,7 @@ export default function AdminSettingsPage() {
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                       <div>
                         <CardTitle>Funzioni Aziendali</CardTitle>
-                        <CardDescription>Crea e gestisci le funzioni aziendali per la verifica degli obiettivi</CardDescription>
+                        <CardDescription>Crea e gestisci le strutture aziendali di primo e secondo livello</CardDescription>
                       </div>
                       <Dialog open={openBusinessDialog} onOpenChange={setOpenBusinessDialog}>
                         <DialogTrigger asChild>
