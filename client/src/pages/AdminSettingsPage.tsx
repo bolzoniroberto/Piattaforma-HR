@@ -57,6 +57,9 @@ interface BusinessFunction {
   id: string;
   name: string;
   description?: string;
+  level: number;
+  parentId?: string;
+  parent?: BusinessFunction;
 }
 
 export default function AdminSettingsPage() {
@@ -73,7 +76,7 @@ export default function AdminSettingsPage() {
 
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
   const [calcForm, setCalcForm] = useState({ name: "", description: "", formula: "" });
-  const [businessForm, setBusinessForm] = useState({ name: "", description: "" });
+  const [businessForm, setBusinessForm] = useState({ name: "", description: "", level: 1, parentId: "" });
 
   // Queries
   const { data: clusters = [], isLoading: clusterLoading } = useQuery<IndicatorCluster[]>({

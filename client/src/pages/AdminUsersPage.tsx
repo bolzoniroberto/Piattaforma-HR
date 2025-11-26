@@ -61,6 +61,7 @@ export default function AdminUsersPage() {
     lastName: "",
     email: "",
     department: "",
+    managerId: "",
     ral: "",
     mboPercentage: "25",
     role: "employee" as "employee" | "admin",
