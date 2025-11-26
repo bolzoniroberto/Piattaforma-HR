@@ -10,26 +10,29 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (Latest Session)
 
-## User Management Implementation
-- **AdminUsersPage.tsx**: Complete CRUD functionality for user management
-  - View all users in a table with filters (role, department, search)
-  - Add new users via modal dialog
-  - Edit existing users (update role, department, RAL, MBO %)
-  - Delete users with confirmation dialog
-  - Real-time user statistics (total, employees, admins, departments)
+## Test Data Seeding Feature
+- **POST /api/seed**: Admin-only endpoint for populating comprehensive test data
+  - Creates 3 indicator clusters (Gruppo, Performance/Direzione, ESG)
+  - Creates 3+ calculation types (Lineare Crescente, Target Secco, Lineare Decrescente, etc.)
+  - Creates 4+ business functions with hierarchical structure (primoLivello/secondoLivello)
+  - Creates sample objectives dictionary entries linked to clusters and calculation types
+  - Creates demo users with various roles and departments
   
-- **Backend API Routes** (server/routes.ts):
-  - POST /api/users: Create new user
-  - PATCH /api/users/:id: Update user
-  - DELETE /api/users/:id: Delete user
-  
-- **Storage Methods** (server/storage.ts):
-  - updateUser(): Update user data
-  - deleteUser(): Delete user from database
-  
-- **Sidebar Navigation**: 
-  - "Gestione Utenti" (User Management) link already present in admin sidebar
-  - Available at /admin/users route
+- **AdminSettingsPage.tsx**: Added "Popola Dati Test" button
+  - Calls /api/seed endpoint
+  - Shows success/error toast with counts of created entities
+  - Invalidates all relevant queries after seeding
+
+## Assignment Workflow Fixes
+- Fixed 500 error in POST /api/assignments and /api/assignments/bulk
+- Assignment endpoints now fetch indicatorClusterId from objectives_dictionary before creating objective instance
+- Ensures clusterId (NOT NULL constraint) is always populated correctly
+
+## User Management Enhancement
+- **AdminUsersPage.tsx**: Department field now uses Select component
+  - Options populated from /api/business-functions
+  - Displays as "primoLivello › secondoLivello" format
+  - Complete CRUD functionality preserved
 
 # System Architecture
 
