@@ -53,6 +53,7 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   ral: true,
   mboPercentage: true,
 }).extend({
+  ral: z.coerce.number().nullable().optional(),
   mboPercentage: z.number().int().min(0).max(100).refine((val) => val % 5 === 0, {
     message: "MBO percentage must be a multiple of 5%",
   }).optional(),
