@@ -481,6 +481,7 @@ export default function AdminUsersPage() {
                       Nessun utente trovato
                     </div>
                   ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -566,6 +567,7 @@ export default function AdminUsersPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
