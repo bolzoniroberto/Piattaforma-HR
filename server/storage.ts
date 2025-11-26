@@ -222,22 +222,28 @@ export class DatabaseStorage implements IStorage {
 
   // Objectives Dictionary operations
   async getObjectivesDictionary(): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType })[]> {
-    const results = await db
-      .select({
-        item: objectivesDictionary,
-        indicatorCluster: indicatorClusters,
-        calculationType: calculationTypes,
-      })
-      .from(objectivesDictionary)
-      .innerJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
-      .innerJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
-      .orderBy(objectivesDictionary.title);
+    try {
+      const results = await db
+        .select({
+          item: objectivesDictionary,
+          indicatorCluster: indicatorClusters,
+          calculationType: calculationTypes,
+        })
+        .from(objectivesDictionary)
+        .innerJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
+        .innerJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
+        .orderBy(objectivesDictionary.title);
 
-    return results.map((row) => ({
-      ...row.item,
-      indicatorCluster: row.indicatorCluster,
-      calculationType: row.calculationType,
-    }));
+      return results.map((row) => ({
+        ...row.item,
+        indicatorCluster: row.indicatorCluster,
+        calculationType: row.calculationType,
+      }));
+    } catch (error) {
+      console.error("Error in getObjectivesDictionary:", error);
+      // Return empty array on error instead of throwing
+      return [];
+    }
   }
 
   async getObjectivesDictionaryItem(id: string): Promise<(ObjectivesDictionary & { indicatorCluster: IndicatorCluster; calculationType: CalculationType }) | undefined> {
