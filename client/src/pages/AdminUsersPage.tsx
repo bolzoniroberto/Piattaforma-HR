@@ -199,6 +199,7 @@ export default function AdminUsersPage() {
       lastName: "",
       email: "",
       department: "",
+      managerId: "",
       ral: "",
       mboPercentage: "25",
       role: "employee",
@@ -218,6 +219,7 @@ export default function AdminUsersPage() {
       lastName: u.lastName || "",
       email: u.email || "",
       department: u.department || "",
+      managerId: u.managerId || "",
       ral: u.ral ? u.ral.toString() : "",
       mboPercentage: u.mboPercentage?.toString() || "25",
       role: (u.role as "employee" | "admin") || "employee",
@@ -488,6 +490,7 @@ export default function AdminUsersPage() {
                           <TableHead>Ruolo</TableHead>
                           <TableHead>RAL</TableHead>
                           <TableHead>MBO %</TableHead>
+                          <TableHead>Premio MBO</TableHead>
                           <TableHead className="text-right">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -531,6 +534,9 @@ export default function AdminUsersPage() {
                             </TableCell>
                             <TableCell className="text-sm">
                               {u.mboPercentage ? `${u.mboPercentage}%` : "-"}
+                            </TableCell>
+                            <TableCell className="text-sm font-medium text-primary">
+                              {u.ral && u.mboPercentage ? `€${Math.round((Number(u.ral) * u.mboPercentage) / 100).toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right flex items-center justify-end gap-2">
                               <Button 
