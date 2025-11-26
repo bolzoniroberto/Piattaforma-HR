@@ -612,29 +612,23 @@ export default function AdminSettingsPage() {
                             </div>
                             <div>
                               <Label htmlFor="business-primo-livello">Struttura di Primo Livello</Label>
-                              <Select value={businessForm.primoLivelloId || ""} onValueChange={(val) => setBusinessForm({ ...businessForm, primoLivelloId: val })}>
-                                <SelectTrigger id="business-primo-livello" data-testid="select-business-primo-livello">
-                                  <SelectValue placeholder="Seleziona primo livello" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {businessFunctions.map((b) => (
-                                    <SelectItem key={b.id} value={b.id} data-testid={`option-primo-livello-${b.id}`}>{b.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Input
+                                id="business-primo-livello"
+                                value={businessForm.primoLivelloId}
+                                onChange={(e) => setBusinessForm({ ...businessForm, primoLivelloId: e.target.value })}
+                                placeholder="Es: Direzione Generale"
+                                data-testid="input-business-primo-livello"
+                              />
                             </div>
                             <div>
                               <Label htmlFor="business-secondo-livello">Struttura di Secondo Livello</Label>
-                              <Select value={businessForm.secondoLivelloId || ""} onValueChange={(val) => setBusinessForm({ ...businessForm, secondoLivelloId: val })}>
-                                <SelectTrigger id="business-secondo-livello" data-testid="select-business-secondo-livello">
-                                  <SelectValue placeholder="Seleziona secondo livello" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {businessFunctions.map((b) => (
-                                    <SelectItem key={b.id} value={b.id} data-testid={`option-secondo-livello-${b.id}`}>{b.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Input
+                                id="business-secondo-livello"
+                                value={businessForm.secondoLivelloId}
+                                onChange={(e) => setBusinessForm({ ...businessForm, secondoLivelloId: e.target.value })}
+                                placeholder="Es: IT Development"
+                                data-testid="input-business-secondo-livello"
+                              />
                             </div>
                             <div>
                               <Label htmlFor="business-description">Descrizione</Label>
