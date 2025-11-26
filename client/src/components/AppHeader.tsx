@@ -55,9 +55,9 @@ export default function AppHeader({
     <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-50">
       <div className="flex items-center gap-4">
         {showSidebarTrigger && <SidebarTrigger data-testid="button-sidebar-toggle" />}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <img src={logoPath} alt="Gruppo 24 Ore" className="h-8" />
-          <h1 className="text-xl font-semibold text-foreground">Sistema MBO</h1>
+          <h1 className="text-lg font-semibold text-foreground">Gruppo 24 Ore</h1>
         </div>
       </div>
 
