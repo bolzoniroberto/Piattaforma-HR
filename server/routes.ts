@@ -458,9 +458,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/assignments", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const data = insertObjectiveAssignmentSchema.parse(req.body);
-      const assignment = await storage.createObjectiveAssignment(data);
+      const { userId, objectiveId, status, progress, weight } = req.body;
+      
+      if (!userId || !objectiveId) {
+        return res.status(400).json({ message: "userId and objectiveId are required" });
+      }
+
+      // Create an objective instance from dictionary
+      const objective = await storage.createObjective({
+        dictionaryId: objectiveId,
+        deadline: null,
+      });
+
+      // Create the assignment with the new objective
+      const assignment = await storage.createObjectiveAssignment({
+        userId,
+        objectiveId: objective.id,
+        status: status || "assegnato",
+        progress: progress || 0,
+        weight: weight || 20,
+      });
+      
       res.status(201).json(assignment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Bulk assignment - assign one objective to all users in a department
+  app.post("/api/assignments/bulk", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { objectiveId, department, weight } = req.body;
+      
+      if (!objectiveId || !department) {
+        return res.status(400).json({ message: "objectiveId and department are required" });
+      }
+
+      // Get all users in the department
+      const allUsers = await storage.getAllUsers();
+      const departmentUsers = allUsers.filter(
+        (u: any) => u.department === department && u.role === "employee"
+      );
+
+      if (departmentUsers.length === 0) {
+        return res.status(400).json({ message: "No employees found in this department" });
+      }
+
+      // Create an objective instance from dictionary
+      const objective = await storage.createObjective({
+        dictionaryId: objectiveId,
+        deadline: null,
+      });
+
+      // Create assignments for each user
+      const assignments = [];
+      for (const user of departmentUsers) {
+        try {
+          const assignment = await storage.createObjectiveAssignment({
+            userId: user.id,
+            objectiveId: objective.id,
+            status: "assegnato",
+            progress: 0,
+            weight: weight || 20,
+          });
+          assignments.push(assignment);
+        } catch (err) {
+          // Skip if assignment already exists (unique constraint)
+          console.log(`Skipping duplicate assignment for user ${user.id}`);
+        }
+      }
+
+      res.status(201).json({ 
+        message: "Bulk assignment completed",
+        assignedCount: assignments.length,
+        totalUsers: departmentUsers.length,
+        assignments
+      });
     } catch (error) {
       handleError(res, error);
     }
