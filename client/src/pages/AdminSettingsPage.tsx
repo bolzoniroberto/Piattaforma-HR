@@ -65,7 +65,6 @@ export default function AdminSettingsPage() {
   const [openClusterDialog, setOpenClusterDialog] = useState(false);
   const [openCalcDialog, setOpenCalcDialog] = useState(false);
   const [openBusinessDialog, setOpenBusinessDialog] = useState(false);
-  const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
   const [editingCluster, setEditingCluster] = useState<IndicatorCluster | null>(null);
   const [editingCalc, setEditingCalc] = useState<CalculationType | null>(null);
   const [editingBusiness, setEditingBusiness] = useState<BusinessFunction | null>(null);
@@ -75,7 +74,6 @@ export default function AdminSettingsPage() {
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
   const [calcForm, setCalcForm] = useState({ name: "", description: "", formula: "" });
   const [businessForm, setBusinessForm] = useState({ name: "", description: "" });
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
   // Queries
   const { data: clusters = [], isLoading: clusterLoading } = useQuery<IndicatorCluster[]>({
@@ -216,18 +214,6 @@ export default function AdminSettingsPage() {
     },
   });
 
-  const changePasswordMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/change-password", passwordForm),
-    onSuccess: () => {
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setOpenPasswordDialog(false);
-      toast({ title: "Successo", description: "Password modificata con successo" });
-    },
-    onError: () => {
-      toast({ title: "Errore", description: "Errore nella modifica della password", variant: "destructive" });
-    },
-  });
-
   const handleEditCluster = (cluster: IndicatorCluster) => {
     setEditingCluster(cluster);
     setClusterForm({ name: cluster.name, description: cluster.description || "" });
@@ -326,15 +312,14 @@ export default function AdminSettingsPage() {
                   <Settings className="h-8 w-8" />
                   Impostazioni Sistema
                 </h1>
-                <p className="text-muted-foreground mt-2">Gestisci cluster, tipi di calcolo e funzioni aziendali</p>
+                <p className="text-muted-foreground mt-2">Configura i parametri di struttura del sistema</p>
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="clusters">Cluster Indicatori</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="clusters">Indicatori</TabsTrigger>
                   <TabsTrigger value="calculations">Tipi di Calcolo</TabsTrigger>
-                  <TabsTrigger value="business">Funzioni Aziendali</TabsTrigger>
-                  <TabsTrigger value="security">Sicurezza</TabsTrigger>
+                  <TabsTrigger value="business">Cluster Obiettivi</TabsTrigger>
                 </TabsList>
 
                 {/* Clusters Tab */}

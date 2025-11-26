@@ -16,8 +16,6 @@ import {
   Users,
   FileText,
   Settings,
-  BarChart,
-  Network,
   CheckCircle,
 } from "lucide-react";
 
@@ -27,16 +25,16 @@ const dashboardItem = {
   icon: LayoutDashboard,
 };
 
-const beneficiariItems = [
+const impostazioneStruttureItems = [
   {
     title: "Gestione Utenti",
     url: "/admin/users",
     icon: Users,
   },
   {
-    title: "Strutture",
-    url: "/admin/documents",
-    icon: Network,
+    title: "Impostazione Strutture",
+    url: "/admin/settings",
+    icon: Settings,
   },
 ];
 
@@ -117,11 +115,11 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* 1. Beneficiari */}
+        {/* 1. Impostazione Strutture */}
         <SidebarGroup>
-          <SidebarGroupLabel>Beneficiari</SidebarGroupLabel>
+          <SidebarGroupLabel>Impostazione Strutture</SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderMenuGroup(beneficiariItems)}
+            {renderMenuGroup(impostazioneStruttureItems)}
           </SidebarGroupContent>
         </SidebarGroup>
 
