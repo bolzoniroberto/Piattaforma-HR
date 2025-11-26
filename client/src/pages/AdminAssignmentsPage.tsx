@@ -54,10 +54,11 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, ObjectiveAssignment } from "@shared/schema";
+import type { User, ObjectiveAssignment, IndicatorCluster } from "@shared/schema";
 
 interface ObjectiveDictionary {
   id: string;
@@ -75,13 +76,23 @@ interface ObjectiveDictionary {
   };
 }
 
+interface SelectedObjectiveDetail {
+  id: string;
+  title: string;
+  description: string;
+  clusterId: string;
+  weight: number;
+}
+
 export default function AdminAssignmentsPage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
+  const [selectedObjectives, setSelectedObjectives] = useState<SelectedObjectiveDetail[]>([]);
   const [assignmentDeadline, setAssignmentDeadline] = useState<string>("");
+  const [configObjective, setConfigObjective] = useState<ObjectiveDictionary | null>(null);
+  const [configWeight, setConfigWeight] = useState<number>(20);
 
   const { data: targetUser, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
@@ -100,8 +111,13 @@ export default function AdminAssignmentsPage() {
     enabled: !!user,
   });
 
+  const { data: indicatorClusters = [] } = useQuery<IndicatorCluster[]>({
+    queryKey: ["/api/indicator-clusters"],
+    enabled: !!user,
+  });
+
   const createAssignmentMutation = useMutation({
-    mutationFn: async (data: { userId: string; objectiveId: string; status: string; progress: number }) => {
+    mutationFn: async (data: { userId: string; objectiveId: string; status: string; progress: number; weight?: number }) => {
       const res = await apiRequest("POST", "/api/assignments", data);
       return res.json();
     },
@@ -136,13 +152,12 @@ export default function AdminAssignmentsPage() {
   });
 
   const availableObjectives = useMemo(() => {
+    const selectedIds = new Set(selectedObjectives.map((s) => s.id));
     const assignedObjectiveIds = new Set(userAssignments.map((a) => a.objectiveId));
-    return objectivesDictionary.filter((obj) => !assignedObjectiveIds.has(obj.id)).map((obj) => ({
-      id: obj.id,
-      title: obj.title,
-      description: obj.description || "",
-    }));
-  }, [objectivesDictionary, userAssignments]);
+    return objectivesDictionary.filter(
+      (obj) => !assignedObjectiveIds.has(obj.id) && !selectedIds.has(obj.id)
+    );
+  }, [objectivesDictionary, userAssignments, selectedObjectives]);
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const f = firstName?.[0] || "";
@@ -153,17 +168,39 @@ export default function AdminAssignmentsPage() {
   const handleAssignSelected = async () => {
     if (!userId || selectedObjectives.length === 0) return;
     
-    for (const objectiveId of selectedObjectives) {
+    for (const obj of selectedObjectives) {
       await createAssignmentMutation.mutateAsync({
         userId,
-        objectiveId,
+        objectiveId: obj.id,
         status: "in_progress",
         progress: 0,
+        weight: obj.weight,
       });
     }
     
     setSelectedObjectives([]);
     setIsAssignDialogOpen(false);
+  };
+
+  const handleAddObjectiveWithConfig = () => {
+    if (!configObjective || !configObjective.indicatorClusterId) {
+      toast({ title: "Errore", description: "Seleziona un cluster", variant: "destructive" });
+      return;
+    }
+    
+    setSelectedObjectives((prev) => [
+      ...prev,
+      {
+        id: configObjective.id,
+        title: configObjective.title,
+        description: configObjective.description || "",
+        clusterId: configObjective.indicatorClusterId,
+        weight: configWeight,
+      },
+    ]);
+    
+    setConfigObjective(null);
+    setConfigWeight(20);
   };
 
   const overallProgress = useMemo(() => {
@@ -331,33 +368,52 @@ export default function AdminAssignmentsPage() {
                                 Nessun obiettivo disponibile
                               </div>
                             ) : (
-                              availableObjectives.map((obj: any) => (
+                              availableObjectives.map((obj: ObjectiveDictionary) => (
                                 <div 
                                   key={obj.id}
                                   className="flex items-start gap-3 p-3 border rounded-md hover-elevate cursor-pointer"
                                   onClick={() => {
-                                    setSelectedObjectives((prev) =>
-                                      prev.includes(obj.id)
-                                        ? prev.filter((id) => id !== obj.id)
-                                        : [...prev, obj.id]
-                                    );
+                                    setConfigObjective(obj);
+                                    setConfigWeight(20);
                                   }}
                                   data-testid={`objective-option-${obj.id}`}
                                 >
-                                  <Checkbox
-                                    checked={selectedObjectives.includes(obj.id)}
-                                    className="mt-1"
-                                  />
                                   <div className="flex-1">
                                     <p className="font-medium text-sm">{obj.title}</p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {obj.description || "Nessuna descrizione"}
                                     </p>
+                                    {obj.indicatorCluster && (
+                                      <Badge variant="outline" className="mt-2 text-xs">
+                                        {obj.indicatorCluster.name}
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               ))
                             )}
                           </div>
+                          
+                          {selectedObjectives.length > 0 && (
+                            <div className="border-t pt-3 space-y-2">
+                              <p className="text-sm font-medium">Obiettivi selezionati:</p>
+                              <div className="space-y-1 max-h-[120px] overflow-auto">
+                                {selectedObjectives.map((obj) => (
+                                  <div key={obj.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
+                                    <span>{obj.title} ({obj.weight}%)</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5"
+                                      onClick={() => setSelectedObjectives((prev) => prev.filter((o) => o.id !== obj.id))}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           
                           <DialogFooter className="mt-4">
                             <div className="flex items-center justify-between w-full gap-4">
@@ -384,6 +440,74 @@ export default function AdminAssignmentsPage() {
                               </div>
                             </div>
                           </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Configuration Dialog */}
+                      <Dialog open={!!configObjective} onOpenChange={(open) => !open && setConfigObjective(null)}>
+                        <DialogContent className="sm:max-w-[400px]">
+                          <DialogHeader>
+                            <DialogTitle>Configura Obiettivo</DialogTitle>
+                            <DialogDescription>
+                              {configObjective?.title}
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="cluster">Cluster Obiettivo</Label>
+                              <Select 
+                                value={configObjective?.indicatorClusterId || ""} 
+                                onValueChange={(val) => {
+                                  if (configObjective) {
+                                    setConfigObjective({ ...configObjective, indicatorClusterId: val });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger id="cluster">
+                                  <SelectValue placeholder="Seleziona cluster" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {indicatorClusters.map((cluster) => (
+                                    <SelectItem key={cluster.id} value={cluster.id}>
+                                      {cluster.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="weight">Peso nella Scheda ({configWeight}%)</Label>
+                              <Slider
+                                id="weight"
+                                min={5}
+                                max={100}
+                                step={5}
+                                value={[configWeight]}
+                                onValueChange={(val) => setConfigWeight(val[0])}
+                                className="mt-2"
+                              />
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Seleziona il peso in percentuale (multipli di 5%)
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 justify-end pt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => setConfigObjective(null)}
+                            >
+                              Annulla
+                            </Button>
+                            <Button
+                              onClick={handleAddObjectiveWithConfig}
+                              data-testid="button-confirm-config"
+                            >
+                              Aggiungi
+                            </Button>
+                          </div>
                         </DialogContent>
                       </Dialog>
                     </div>
