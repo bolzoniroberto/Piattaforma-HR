@@ -297,9 +297,9 @@ export default function AdminSettingsPage() {
               <div className="mb-8">
                 <h1 className="text-3xl font-bold flex items-center gap-2">
                   <Settings className="h-8 w-8" />
-                  Impostazioni Sistema
+                  Funzioni Aziendali
                 </h1>
-                <p className="text-muted-foreground mt-2">Configura i parametri di struttura del sistema</p>
+                <p className="text-muted-foreground mt-2">Configura strutture, tipi di calcolo e indicatori</p>
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
