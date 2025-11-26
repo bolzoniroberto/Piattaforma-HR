@@ -489,9 +489,6 @@ export default function AdminUsersPage() {
                           <TableHead>Email</TableHead>
                           <TableHead>Dipartimento</TableHead>
                           <TableHead>Ruolo</TableHead>
-                          <TableHead>RAL</TableHead>
-                          <TableHead>MBO %</TableHead>
-                          <TableHead>Premio MBO</TableHead>
                           <TableHead className="text-right">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -529,15 +526,6 @@ export default function AdminUsersPage() {
                               <Badge variant={u.role === "admin" ? "default" : "secondary"}>
                                 {u.role === "admin" ? "Admin" : "Dipendente"}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {u.ral ? `€${Number(u.ral).toLocaleString()}` : "-"}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {u.mboPercentage ? `${u.mboPercentage}%` : "-"}
-                            </TableCell>
-                            <TableCell className="text-sm font-medium text-primary">
-                              {u.ral && u.mboPercentage ? `€${Math.round((Number(u.ral) * u.mboPercentage) / 100).toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right flex items-center justify-end gap-2">
                               <Button 
