@@ -35,6 +35,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("employee"), // employee or admin
   department: varchar("department"),
+  managerId: varchar("manager_id").references(() => users.id, { onDelete: "set null" }), // Manager/responsabile
   ral: numeric("ral", { precision: 12, scale: 2 }), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
   createdAt: timestamp("created_at").defaultNow(),
@@ -48,6 +49,7 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   lastName: true,
   profileImageUrl: true,
   department: true,
+  managerId: true,
   ral: true,
   mboPercentage: true,
 }).extend({
@@ -96,11 +98,13 @@ export const insertCalculationTypeSchema = createInsertSchema(calculationTypes).
 export type InsertCalculationType = z.infer<typeof insertCalculationTypeSchema>;
 export type CalculationType = typeof calculationTypes.$inferSelect;
 
-// Business Functions (Funzioni Aziendali) - for objective verification source
+// Business Functions (Strutture) - for objective verification source
 export const businessFunctions = pgTable("business_functions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(), // Department/function name
   description: text("description"),
+  level: integer("level").notNull().default(1), // 1 = primo livello, 2 = secondo livello
+  parentId: varchar("parent_id").references(() => businessFunctions.id, { onDelete: "cascade" }), // Reference to parent structure
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
