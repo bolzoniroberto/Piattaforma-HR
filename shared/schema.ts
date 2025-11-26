@@ -142,6 +142,7 @@ export type ObjectivesDictionary = typeof objectivesDictionary.$inferSelect;
 export const objectives = pgTable("objectives", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   dictionaryId: varchar("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "restrict" }),
+  clusterId: varchar("cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   deadline: timestamp("deadline"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

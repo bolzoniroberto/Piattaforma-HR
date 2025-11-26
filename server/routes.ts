@@ -464,9 +464,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "userId and objectiveId are required" });
       }
 
-      // Create an objective instance from dictionary
+      // Get the dictionary item to retrieve clusterId
+      const dictionaryItem = await storage.getObjectivesDictionaryItem(objectiveId);
+      if (!dictionaryItem) {
+        return res.status(404).json({ message: "Objective dictionary item not found" });
+      }
+
+      // Create an objective instance from dictionary with clusterId
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
+        clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
       });
 
@@ -494,6 +501,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "objectiveId and department are required" });
       }
 
+      // Get the dictionary item to retrieve clusterId
+      const dictionaryItem = await storage.getObjectivesDictionaryItem(objectiveId);
+      if (!dictionaryItem) {
+        return res.status(404).json({ message: "Objective dictionary item not found" });
+      }
+
       // Get all users in the department
       const allUsers = await storage.getAllUsers();
       const departmentUsers = allUsers.filter(
@@ -504,9 +517,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No employees found in this department" });
       }
 
-      // Create an objective instance from dictionary
+      // Create an objective instance from dictionary with clusterId
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
+        clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
       });
 
