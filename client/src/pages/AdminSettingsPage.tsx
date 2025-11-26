@@ -35,6 +35,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Edit, Trash2, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -181,7 +188,7 @@ export default function AdminSettingsPage() {
     mutationFn: () => apiRequest("POST", "/api/business-functions", businessForm),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-functions"] });
-      setBusinessForm({ name: "", description: "" });
+      setBusinessForm({ name: "", description: "", level: 1, parentId: "" });
       setOpenBusinessDialog(false);
       toast({ title: "Successo", description: "Funzione aziendale creata con successo" });
     },
@@ -194,7 +201,7 @@ export default function AdminSettingsPage() {
     mutationFn: () => apiRequest("PATCH", `/api/business-functions/${editingBusiness?.id}`, businessForm),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-functions"] });
-      setBusinessForm({ name: "", description: "" });
+      setBusinessForm({ name: "", description: "", level: 1, parentId: "" });
       setEditingBusiness(null);
       setOpenBusinessDialog(false);
       toast({ title: "Successo", description: "Funzione aziendale aggiornata con successo" });
@@ -231,7 +238,12 @@ export default function AdminSettingsPage() {
 
   const handleEditBusiness = (business: BusinessFunction) => {
     setEditingBusiness(business);
-    setBusinessForm({ name: business.name, description: business.description || "" });
+    setBusinessForm({ 
+      name: business.name, 
+      description: business.description || "", 
+      level: business.level || 1,
+      parentId: business.parentId || ""
+    });
     setOpenBusinessDialog(true);
   };
 
@@ -535,7 +547,7 @@ export default function AdminSettingsPage() {
                       </div>
                       <Dialog open={openBusinessDialog} onOpenChange={setOpenBusinessDialog}>
                         <DialogTrigger asChild>
-                          <Button onClick={() => { setEditingBusiness(null); setBusinessForm({ name: "", description: "" }); }} data-testid="button-add-business">
+                          <Button onClick={() => { setEditingBusiness(null); setBusinessForm({ name: "", description: "", level: 1, parentId: "" }); }} data-testid="button-add-business">
                             <Plus className="h-4 w-4 mr-2" />
                             Nuova Funzione
                           </Button>
@@ -558,6 +570,33 @@ export default function AdminSettingsPage() {
                                 data-testid="input-business-name"
                               />
                             </div>
+                            <div>
+                              <Label htmlFor="business-level">Livello Struttura</Label>
+                              <Select value={businessForm.level?.toString() || "1"} onValueChange={(val) => setBusinessForm({ ...businessForm, level: parseInt(val), parentId: "" })}>
+                                <SelectTrigger id="business-level" data-testid="select-business-level">
+                                  <SelectValue placeholder="Seleziona il livello" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">Primo Livello</SelectItem>
+                                  <SelectItem value="2">Secondo Livello</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {businessForm.level === 2 && (
+                              <div>
+                                <Label htmlFor="business-parent">Struttura Genitore *</Label>
+                                <Select value={businessForm.parentId || ""} onValueChange={(val) => setBusinessForm({ ...businessForm, parentId: val })}>
+                                  <SelectTrigger id="business-parent" data-testid="select-business-parent">
+                                    <SelectValue placeholder="Seleziona la struttura genitore" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {businessFunctions.filter((b) => b.level === 1).map((b) => (
+                                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                             <div>
                               <Label htmlFor="business-description">Descrizione</Label>
                               <Textarea
@@ -591,6 +630,7 @@ export default function AdminSettingsPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Nome</TableHead>
+                              <TableHead>Livello</TableHead>
                               <TableHead>Descrizione</TableHead>
                               <TableHead className="w-24">Azioni</TableHead>
                             </TableRow>
@@ -599,6 +639,7 @@ export default function AdminSettingsPage() {
                             {businessFunctions.map((business) => (
                               <TableRow key={business.id} data-testid={`row-business-${business.id}`}>
                                 <TableCell className="font-medium" data-testid={`text-business-name-${business.id}`}>{business.name}</TableCell>
+                                <TableCell data-testid={`text-business-level-${business.id}`}>{business.level === 1 ? "Primo Livello" : "Secondo Livello"}</TableCell>
                                 <TableCell data-testid={`text-business-description-${business.id}`}>{business.description || "-"}</TableCell>
                                 <TableCell className="space-x-2">
                                   <Button
