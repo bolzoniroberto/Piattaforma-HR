@@ -15,6 +15,7 @@ import AdminAssignmentsBulkPage from "@/pages/AdminAssignmentsBulkPage";
 import AdminReportingPage from "@/pages/AdminReportingPage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
+import AdminUserDetailPage from "@/pages/AdminUserDetailPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
@@ -84,6 +85,11 @@ function Router() {
       <Route path="/admin/users" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminUsersPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/users/:userId" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminUserDetailPage />
         </ProtectedRoute>
       )} />
       <Route path="/admin/assignments/:userId" component={() => (

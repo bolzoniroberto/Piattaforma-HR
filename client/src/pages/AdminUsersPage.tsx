@@ -539,14 +539,15 @@ export default function AdminUsersPage() {
                               {u.ral && u.mboPercentage ? `€${Math.round((Number(u.ral) * u.mboPercentage) / 100).toLocaleString()}` : "-"}
                             </TableCell>
                             <TableCell className="text-right flex items-center justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleEditUser(u)}
-                                data-testid={`button-edit-user-${u.id}`}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
+                              <Link href={`/admin/users/${u.id}`}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  data-testid={`button-edit-user-${u.id}`}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </Link>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
