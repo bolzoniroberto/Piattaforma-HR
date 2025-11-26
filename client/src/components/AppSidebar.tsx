@@ -26,14 +26,14 @@ const dashboardItem = {
   icon: LayoutDashboard,
 };
 
-const funzioniAziendaliItems = [
+const impostazioniStruttureItems = [
   {
     title: "Gestione Utenti",
     url: "/admin/users",
     icon: Users,
   },
   {
-    title: "Funzioni Aziendali",
+    title: "Impostazioni Strutture",
     url: "/admin/settings",
     icon: Settings,
   },
@@ -114,11 +114,11 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* 1. Funzioni Aziendali */}
+        {/* 1. Impostazioni Strutture */}
         <SidebarGroup>
-          <SidebarGroupLabel>Funzioni Aziendali</SidebarGroupLabel>
+          <SidebarGroupLabel>Impostazioni Strutture</SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderMenuGroup(funzioniAziendaliItems)}
+            {renderMenuGroup(impostazioniStruttureItems)}
           </SidebarGroupContent>
         </SidebarGroup>
 
