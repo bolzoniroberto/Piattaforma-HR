@@ -18,7 +18,6 @@ import {
   Settings,
   CheckCircle,
 } from "lucide-react";
-import logo24ore from "@assets/logo-24ore.svg";
 
 const dashboardItem = {
   title: "Dashboard",
@@ -88,15 +87,6 @@ export default function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b p-4">
-        <div className="flex items-center gap-3">
-          <img src={logo24ore} alt="Gruppo 24 Ore" className="h-8" />
-          <div>
-            <h2 className="font-semibold text-sm">Sistema MBO</h2>
-            <p className="text-xs text-muted-foreground">Gruppo 24 Ore</p>
-          </div>
-        </div>
-      </SidebarHeader>
       <SidebarContent>
         {/* Dashboard */}
         <SidebarGroup>
