@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import logoPath from "@assets/image_1764169863444.png";
 
 interface AppHeaderProps {
   userName?: string;
@@ -55,9 +56,7 @@ export default function AppHeader({
       <div className="flex items-center gap-4">
         {showSidebarTrigger && <SidebarTrigger data-testid="button-sidebar-toggle" />}
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-semibold text-sm">MBO</span>
-          </div>
+          <img src={logoPath} alt="Gruppo 24 Ore" className="h-8" />
           <h1 className="text-xl font-semibold text-foreground">Sistema MBO</h1>
         </div>
       </div>
