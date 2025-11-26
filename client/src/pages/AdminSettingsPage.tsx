@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Settings } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Database } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -293,6 +293,32 @@ export default function AdminSettingsPage() {
     }
   };
 
+  // Seed mutation
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/seed", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/indicator-clusters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calculation-types"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-functions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ 
+        title: "Dati di test creati", 
+        description: `Creati: ${data.created?.indicatorClusters || 0} cluster, ${data.created?.calculationTypes || 0} tipi calcolo, ${data.created?.businessFunctions || 0} funzioni, ${data.created?.objectives || 0} obiettivi, ${data.created?.users || 0} utenti`
+      });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Errore", 
+        description: error instanceof Error ? error.message : "Errore nella creazione dei dati di test", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const style = {
     "--sidebar-width": "16rem",
   };
@@ -309,12 +335,23 @@ export default function AdminSettingsPage() {
           />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-6xl mx-auto">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  <Settings className="h-8 w-8" />
-                  Impostazioni Strutture
-                </h1>
-                <p className="text-muted-foreground mt-2">Configura indicatori, tipi di calcolo e funzioni aziendali</p>
+              <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <h1 className="text-3xl font-bold flex items-center gap-2">
+                    <Settings className="h-8 w-8" />
+                    Impostazioni Strutture
+                  </h1>
+                  <p className="text-muted-foreground mt-2">Configura indicatori, tipi di calcolo e funzioni aziendali</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => seedMutation.mutate()}
+                  disabled={seedMutation.isPending}
+                  data-testid="button-seed-data"
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  {seedMutation.isPending ? "Creazione..." : "Popola Dati Test"}
+                </Button>
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">

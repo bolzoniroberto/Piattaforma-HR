@@ -731,6 +731,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed dummy data endpoint (admin only)
+  app.post("/api/seed", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      // Create indicator clusters
+      const indicatorClusters = [
+        { name: "Obiettivi di Gruppo", description: "Obiettivi legati alle performance del gruppo aziendale" },
+        { name: "Obiettivi di Direzione", description: "Obiettivi specifici della direzione di appartenenza" },
+        { name: "Obiettivi ESG", description: "Obiettivi legati a sostenibilità, governance e responsabilità sociale" },
+        { name: "Obiettivi Individuali", description: "Obiettivi personali di sviluppo e performance" },
+      ];
+      
+      const createdClusters = [];
+      for (const cluster of indicatorClusters) {
+        const created = await storage.createIndicatorCluster(cluster);
+        createdClusters.push(created);
+      }
+      
+      // Create calculation types
+      const calculationTypes = [
+        { name: "Interpolazione Lineare", description: "Calcolo lineare tra soglia e target", formula: "(valore - soglia) / (target - soglia) * 100" },
+        { name: "100% al Target", description: "100% solo se raggiunto il target esatto", formula: "valore >= target ? 100 : 0" },
+        { name: "Lineare Inversa", description: "Più basso il valore, migliore il risultato", formula: "(target - valore) / (target - soglia) * 100" },
+        { name: "Soglia On/Off", description: "Attivazione binaria sopra soglia", formula: "valore >= soglia ? 100 : 0" },
+      ];
+      
+      const createdCalcTypes = [];
+      for (const calcType of calculationTypes) {
+        const created = await storage.createCalculationType(calcType);
+        createdCalcTypes.push(created);
+      }
+      
+      // Create business functions
+      const businessFunctions = [
+        { name: "IT Development", description: "Sviluppo software e sistemi", primoLivelloId: null, secondoLivelloId: null },
+        { name: "Marketing", description: "Marketing e comunicazione", primoLivelloId: null, secondoLivelloId: null },
+        { name: "Finance", description: "Amministrazione e finanza", primoLivelloId: null, secondoLivelloId: null },
+        { name: "HR", description: "Risorse umane", primoLivelloId: null, secondoLivelloId: null },
+        { name: "Sales", description: "Vendite e sviluppo commerciale", primoLivelloId: null, secondoLivelloId: null },
+        { name: "Operations", description: "Operazioni e logistica", primoLivelloId: null, secondoLivelloId: null },
+      ];
+      
+      for (const bf of businessFunctions) {
+        await storage.createBusinessFunction(bf);
+      }
+      
+      // Create objectives dictionary
+      const objectivesDict = [
+        { title: "Incremento fatturato gruppo +10%", description: "Raggiungere un incremento del fatturato consolidato del 10% rispetto all'anno precedente", indicatorClusterId: createdClusters[0].id, calculationTypeId: createdCalcTypes[0].id },
+        { title: "Margine operativo lordo >15%", description: "Mantenere il MOL sopra il 15% del fatturato", indicatorClusterId: createdClusters[0].id, calculationTypeId: createdCalcTypes[1].id },
+        { title: "Customer satisfaction >4.5", description: "Raggiungere un punteggio NPS medio superiore a 4.5", indicatorClusterId: createdClusters[1].id, calculationTypeId: createdCalcTypes[0].id },
+        { title: "Riduzione time-to-market -20%", description: "Ridurre i tempi di rilascio prodotti del 20%", indicatorClusterId: createdClusters[1].id, calculationTypeId: createdCalcTypes[2].id },
+        { title: "Riduzione emissioni CO2 -15%", description: "Ridurre le emissioni di CO2 del 15% rispetto all'anno base", indicatorClusterId: createdClusters[2].id, calculationTypeId: createdCalcTypes[2].id },
+        { title: "Gender diversity >40%", description: "Raggiungere almeno il 40% di rappresentanza femminile in ruoli manageriali", indicatorClusterId: createdClusters[2].id, calculationTypeId: createdCalcTypes[0].id },
+        { title: "Completamento certificazioni", description: "Ottenere almeno 2 certificazioni professionali nell'anno", indicatorClusterId: createdClusters[3].id, calculationTypeId: createdCalcTypes[3].id },
+        { title: "Progetti completati on-time", description: "Completare almeno l'80% dei progetti entro le deadline", indicatorClusterId: createdClusters[3].id, calculationTypeId: createdCalcTypes[0].id },
+      ];
+      
+      for (const obj of objectivesDict) {
+        await storage.createObjectivesDictionaryItem(obj);
+      }
+      
+      // Create dummy users
+      const dummyUsers = [
+        { id: "user-001", email: "mario.rossi@gruppo24ore.it", firstName: "Mario", lastName: "Rossi", department: "IT Development", role: "employee" as const, mboPercentage: 25 },
+        { id: "user-002", email: "laura.bianchi@gruppo24ore.it", firstName: "Laura", lastName: "Bianchi", department: "Marketing", role: "employee" as const, mboPercentage: 30 },
+        { id: "user-003", email: "giuseppe.verdi@gruppo24ore.it", firstName: "Giuseppe", lastName: "Verdi", department: "Finance", role: "employee" as const, mboPercentage: 20 },
+        { id: "user-004", email: "francesca.neri@gruppo24ore.it", firstName: "Francesca", lastName: "Neri", department: "HR", role: "employee" as const, mboPercentage: 25 },
+        { id: "user-005", email: "paolo.ferrari@gruppo24ore.it", firstName: "Paolo", lastName: "Ferrari", department: "Sales", role: "employee" as const, mboPercentage: 35 },
+        { id: "user-006", email: "anna.colombo@gruppo24ore.it", firstName: "Anna", lastName: "Colombo", department: "Operations", role: "employee" as const, mboPercentage: 20 },
+        { id: "user-007", email: "luca.martini@gruppo24ore.it", firstName: "Luca", lastName: "Martini", department: "IT Development", role: "employee" as const, mboPercentage: 25 },
+        { id: "user-008", email: "chiara.romano@gruppo24ore.it", firstName: "Chiara", lastName: "Romano", department: "Marketing", role: "employee" as const, mboPercentage: 30 },
+      ];
+      
+      for (const user of dummyUsers) {
+        await storage.upsertUser(user);
+      }
+      
+      res.json({ 
+        message: "Seed data created successfully",
+        created: {
+          indicatorClusters: createdClusters.length,
+          calculationTypes: createdCalcTypes.length,
+          businessFunctions: businessFunctions.length,
+          objectives: objectivesDict.length,
+          users: dummyUsers.length,
+        }
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -72,13 +72,22 @@ export default function AdminUsersPage() {
     enabled: !!user,
   });
 
+  const { data: businessFunctions = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/business-functions"],
+    enabled: !!user,
+  });
+
   const departments = useMemo(() => {
+    // Get departments from business functions first, then from existing users
     const depts = new Set<string>();
+    businessFunctions.forEach((bf) => {
+      if (bf.name) depts.add(bf.name);
+    });
     allUsers.forEach((u) => {
       if (u.department) depts.add(u.department);
     });
     return Array.from(depts).sort();
-  }, [allUsers]);
+  }, [allUsers, businessFunctions]);
 
   const filteredUsers = useMemo(() => {
     let filtered = allUsers;
@@ -417,12 +426,21 @@ export default function AdminUsersPage() {
                             </div>
                             <div>
                               <Label htmlFor="department">Dipartimento</Label>
-                              <Input
-                                id="department"
-                                value={formData.department}
-                                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                                data-testid="input-department"
-                              />
+                              <Select 
+                                value={formData.department} 
+                                onValueChange={(value) => setFormData({ ...formData, department: value })}
+                              >
+                                <SelectTrigger id="department" data-testid="select-department">
+                                  <SelectValue placeholder="Seleziona dipartimento" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {departments.map((dept) => (
+                                    <SelectItem key={dept} value={dept}>
+                                      {dept}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div>
                               <Label htmlFor="ral">RAL (€)</Label>
