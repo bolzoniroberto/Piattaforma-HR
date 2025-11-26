@@ -301,8 +301,12 @@ export default function AdminSettingsPage() {
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AppSidebar />
-        <SidebarInset className="flex flex-col">
-          <AppHeader />
+        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
+          <AppHeader
+            userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin"}
+            userRole="Amministratore"
+            showSidebarTrigger={true}
+          />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-6xl mx-auto">
               <div className="mb-8">

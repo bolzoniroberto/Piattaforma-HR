@@ -256,7 +256,7 @@ export default function AdminUsersPage() {
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1">
+        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
           <AppHeader
             userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin"}
             userRole="Amministratore"
