@@ -82,7 +82,7 @@ export default function AdminSettingsPage() {
 
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
   const [calcForm, setCalcForm] = useState({ name: "", description: "", formula: "" });
-  const [businessForm, setBusinessForm] = useState({ name: "", description: "" });
+  const [businessForm, setBusinessForm] = useState({ name: "", description: "", primoLivelloId: "", secondoLivelloId: "" });
 
   // Queries
   const { data: clusters = [], isLoading: clusterLoading } = useQuery<IndicatorCluster[]>({
@@ -239,7 +239,9 @@ export default function AdminSettingsPage() {
     setEditingBusiness(business);
     setBusinessForm({ 
       name: business.name, 
-      description: business.description || ""
+      description: business.description || "",
+      primoLivelloId: business.primoLivelloId || "",
+      secondoLivelloId: business.secondoLivelloId || ""
     });
     setOpenBusinessDialog(true);
   };
@@ -544,7 +546,7 @@ export default function AdminSettingsPage() {
                       </div>
                       <Dialog open={openBusinessDialog} onOpenChange={setOpenBusinessDialog}>
                         <DialogTrigger asChild>
-                          <Button onClick={() => { setEditingBusiness(null); setBusinessForm({ name: "", description: "" }); }} data-testid="button-add-business">
+                          <Button onClick={() => { setEditingBusiness(null); setBusinessForm({ name: "", description: "", primoLivelloId: "", secondoLivelloId: "" }); }} data-testid="button-add-business">
                             <Plus className="h-4 w-4 mr-2" />
                             Nuovo Dipartimento
                           </Button>
@@ -553,7 +555,7 @@ export default function AdminSettingsPage() {
                           <DialogHeader>
                             <DialogTitle>{editingBusiness ? "Modifica Dipartimento" : "Nuovo Dipartimento"}</DialogTitle>
                             <DialogDescription>
-                              Compila i dettagli del dipartimento (struttura di primo livello)
+                              Compila i dettagli del dipartimento con le sue strutture gerarchiche
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
@@ -566,6 +568,32 @@ export default function AdminSettingsPage() {
                                 placeholder="Es: Contabilità, Risorse Umane, IT"
                                 data-testid="input-business-name"
                               />
+                            </div>
+                            <div>
+                              <Label htmlFor="business-primo-livello">Struttura di Primo Livello</Label>
+                              <Select value={businessForm.primoLivelloId || ""} onValueChange={(val) => setBusinessForm({ ...businessForm, primoLivelloId: val })}>
+                                <SelectTrigger id="business-primo-livello" data-testid="select-business-primo-livello">
+                                  <SelectValue placeholder="Seleziona primo livello" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {businessFunctions.map((b) => (
+                                    <SelectItem key={b.id} value={b.id} data-testid={`option-primo-livello-${b.id}`}>{b.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="business-secondo-livello">Struttura di Secondo Livello</Label>
+                              <Select value={businessForm.secondoLivelloId || ""} onValueChange={(val) => setBusinessForm({ ...businessForm, secondoLivelloId: val })}>
+                                <SelectTrigger id="business-secondo-livello" data-testid="select-business-secondo-livello">
+                                  <SelectValue placeholder="Seleziona secondo livello" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {businessFunctions.map((b) => (
+                                    <SelectItem key={b.id} value={b.id} data-testid={`option-secondo-livello-${b.id}`}>{b.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div>
                               <Label htmlFor="business-description">Descrizione</Label>
@@ -600,6 +628,8 @@ export default function AdminSettingsPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Nome Dipartimento</TableHead>
+                              <TableHead>Primo Livello</TableHead>
+                              <TableHead>Secondo Livello</TableHead>
                               <TableHead>Descrizione</TableHead>
                               <TableHead className="w-24">Azioni</TableHead>
                             </TableRow>
@@ -608,6 +638,8 @@ export default function AdminSettingsPage() {
                             {businessFunctions.map((business) => (
                               <TableRow key={business.id} data-testid={`row-business-${business.id}`}>
                                 <TableCell className="font-medium" data-testid={`text-business-name-${business.id}`}>{business.name}</TableCell>
+                                <TableCell data-testid={`text-business-primo-${business.id}`}>{businessFunctions.find((b) => b.id === business.primoLivelloId)?.name || "-"}</TableCell>
+                                <TableCell data-testid={`text-business-secondo-${business.id}`}>{businessFunctions.find((b) => b.id === business.secondoLivelloId)?.name || "-"}</TableCell>
                                 <TableCell data-testid={`text-business-description-${business.id}`}>{business.description || "-"}</TableCell>
                                 <TableCell className="space-x-2">
                                   <Button
