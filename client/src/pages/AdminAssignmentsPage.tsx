@@ -100,11 +100,6 @@ export default function AdminAssignmentsPage() {
     enabled: !!user,
   });
 
-  const { data: allObjectives = [] } = useQuery<any[]>({
-    queryKey: ["/api/objectives"],
-    enabled: !!user,
-  });
-
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: { userId: string; objectiveId: string; status: string; progress: number }) => {
       const res = await apiRequest("POST", "/api/assignments", data);
@@ -142,15 +137,12 @@ export default function AdminAssignmentsPage() {
 
   const availableObjectives = useMemo(() => {
     const assignedObjectiveIds = new Set(userAssignments.map((a) => a.objectiveId));
-    return allObjectives.filter((obj) => !assignedObjectiveIds.has(obj.id)).map((obj) => {
-      const dictEntry = objectivesDictionary.find((d) => d.id === obj.dictionaryId);
-      return {
-        ...obj,
-        title: dictEntry?.title || "Obiettivo",
-        description: dictEntry?.description || "",
-      };
-    });
-  }, [allObjectives, userAssignments, objectivesDictionary]);
+    return objectivesDictionary.filter((obj) => !assignedObjectiveIds.has(obj.id)).map((obj) => ({
+      id: obj.id,
+      title: obj.title,
+      description: obj.description || "",
+    }));
+  }, [objectivesDictionary, userAssignments]);
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const f = firstName?.[0] || "";
