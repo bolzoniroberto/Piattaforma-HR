@@ -119,18 +119,11 @@ export default function AdminAssignmentsPage() {
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: { userId: string; objectiveId: string; status: string; progress: number; weight?: number }) => {
       const res = await apiRequest("POST", "/api/assignments", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Impossibile assegnare l'obiettivo");
+      }
       return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/assignments/${userId}`] });
-      toast({ title: "Obiettivo assegnato con successo" });
-    },
-    onError: (error) => {
-      toast({
-        title: "Errore",
-        description: error instanceof Error ? error.message : "Impossibile assegnare l'obiettivo",
-        variant: "destructive",
-      });
     },
   });
 
@@ -168,13 +161,45 @@ export default function AdminAssignmentsPage() {
   const handleAssignSelected = async () => {
     if (!userId || selectedObjectives.length === 0) return;
     
+    let successCount = 0;
+    const errors: string[] = [];
+    
     for (const obj of selectedObjectives) {
-      await createAssignmentMutation.mutateAsync({
-        userId,
-        objectiveId: obj.id,
-        status: "in_progress",
-        progress: 0,
-        weight: obj.weight,
+      try {
+        await createAssignmentMutation.mutateAsync({
+          userId,
+          objectiveId: obj.id,
+          status: "in_progress",
+          progress: 0,
+          weight: obj.weight,
+        });
+        successCount++;
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : `Errore per "${obj.title}"`);
+      }
+    }
+    
+    // Invalidate queries after all assignments are done
+    queryClient.invalidateQueries({ queryKey: [`/api/assignments/${userId}`] });
+    
+    // Show single summary toast
+    if (successCount > 0 && errors.length === 0) {
+      toast({ 
+        title: successCount === 1 
+          ? "Obiettivo assegnato con successo" 
+          : `${successCount} obiettivi assegnati con successo` 
+      });
+    } else if (successCount > 0 && errors.length > 0) {
+      toast({ 
+        title: `${successCount} obiettivi assegnati`,
+        description: `${errors.length} non assegnati: ${errors[0]}`,
+        variant: "destructive"
+      });
+    } else if (errors.length > 0) {
+      toast({ 
+        title: "Impossibile assegnare gli obiettivi",
+        description: errors[0],
+        variant: "destructive"
       });
     }
     
