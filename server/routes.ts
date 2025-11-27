@@ -513,6 +513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "objectiveId and department are required" });
       }
 
+      const assignmentWeight = weight || 20;
+
       // Get the dictionary item to retrieve clusterId
       const dictionaryItem = await storage.getObjectivesDictionaryItem(objectiveId);
       if (!dictionaryItem) {
@@ -529,6 +531,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No employees found in this department" });
       }
 
+      // Check weight limits for each user before creating assignments
+      const skippedUsers: string[] = [];
+      const eligibleUsers = [];
+      
+      for (const user of departmentUsers) {
+        const existingAssignments = await storage.getObjectiveAssignments(user.id);
+        const currentTotalWeight = existingAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
+        
+        if (currentTotalWeight + assignmentWeight > 100) {
+          skippedUsers.push(`${user.firstName || ''} ${user.lastName || ''} (${currentTotalWeight}% assegnato)`);
+        } else {
+          eligibleUsers.push(user);
+        }
+      }
+
+      if (eligibleUsers.length === 0) {
+        return res.status(400).json({ 
+          message: `Nessun utente può ricevere questo obiettivo: tutti supererebbero il 100%. Utenti esclusi: ${skippedUsers.join(', ')}`
+        });
+      }
+
       // Create an objective instance from dictionary with clusterId
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
@@ -536,16 +559,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deadline: null,
       });
 
-      // Create assignments for each user
+      // Create assignments for each eligible user
       const assignments = [];
-      for (const user of departmentUsers) {
+      for (const user of eligibleUsers) {
         try {
           const assignment = await storage.createObjectiveAssignment({
             userId: user.id,
             objectiveId: objective.id,
             status: "assegnato",
             progress: 0,
-            weight: weight || 20,
+            weight: assignmentWeight,
           });
           assignments.push(assignment);
         } catch (err) {
@@ -558,6 +581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Bulk assignment completed",
         assignedCount: assignments.length,
         totalUsers: departmentUsers.length,
+        skippedUsers: skippedUsers.length,
+        skippedDetails: skippedUsers,
         assignments
       });
     } catch (error) {
