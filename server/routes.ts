@@ -464,6 +464,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "userId and objectiveId are required" });
       }
 
+      const assignmentWeight = weight || 20;
+
+      // Check if total weight would exceed 100%
+      const existingAssignments = await storage.getObjectiveAssignments(userId);
+      const currentTotalWeight = existingAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
+      
+      if (currentTotalWeight + assignmentWeight > 100) {
+        return res.status(400).json({ 
+          message: `Impossibile assegnare: il peso totale supererebbe il 100%. Peso attuale: ${currentTotalWeight}%, nuovo peso: ${assignmentWeight}%, disponibile: ${100 - currentTotalWeight}%`
+        });
+      }
+
       // Get the dictionary item to retrieve clusterId
       const dictionaryItem = await storage.getObjectivesDictionaryItem(objectiveId);
       if (!dictionaryItem) {
@@ -483,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         objectiveId: objective.id,
         status: status || "assegnato",
         progress: progress || 0,
-        weight: weight || 20,
+        weight: assignmentWeight,
       });
       
       res.status(201).json(assignment);
