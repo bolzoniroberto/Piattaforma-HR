@@ -316,16 +316,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Objective Assignment operations
-  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string } })[]> {
+  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { 
+    objective: Objective & { 
+      title?: string; 
+      description?: string;
+      indicatorCluster?: IndicatorCluster;
+      calculationType?: CalculationType;
+    } 
+  })[]> {
     const results = await db
       .select({
         assignment: objectiveAssignments,
         objective: objectives,
         dictionary: objectivesDictionary,
+        indicatorCluster: indicatorClusters,
+        calculationType: calculationTypes,
       })
       .from(objectiveAssignments)
       .innerJoin(objectives, eq(objectiveAssignments.objectiveId, objectives.id))
       .leftJoin(objectivesDictionary, eq(objectives.dictionaryId, objectivesDictionary.id))
+      .leftJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
+      .leftJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
       .where(eq(objectiveAssignments.userId, userId))
       .orderBy(desc(objectiveAssignments.assignedAt));
 
@@ -335,6 +346,8 @@ export class DatabaseStorage implements IStorage {
         ...row.objective,
         title: row.dictionary?.title || "Obiettivo",
         description: row.dictionary?.description || "",
+        indicatorCluster: row.indicatorCluster || undefined,
+        calculationType: row.calculationType || undefined,
       },
     }));
   }
