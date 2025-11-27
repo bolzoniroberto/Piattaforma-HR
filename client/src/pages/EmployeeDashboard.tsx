@@ -2,19 +2,35 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import EmployeeCard from "@/components/EmployeeCard";
-import ObjectiveCard, { type Objective } from "@/components/ObjectiveCard";
 import DocumentList, { type Document } from "@/components/DocumentList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { FileText, AlertCircle, Target, Users, Leaf, Building } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ObjectiveAssignment, Document as DocumentType } from "@shared/schema";
+import type { ObjectiveAssignment, Document as DocumentType, IndicatorCluster, CalculationType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import StatusBadge, { type ObjectiveStatus } from "@/components/StatusBadge";
+
+interface EnrichedObjective {
+  id: string;
+  title: string;
+  description: string;
+  clusterName: string;
+  clusterId: string;
+  calculationTypeName: string;
+  calculationTypeId: string;
+  status: ObjectiveStatus;
+  deadline?: string;
+  progress: number;
+  weight: number;
+  economicValue: number;
+}
 
 export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
@@ -83,31 +99,59 @@ export default function EmployeeDashboard() {
       totalObjectives: stats?.totalObjectives || 0,
       completedObjectives: stats?.completedObjectives || 0,
       clusters: [],
+      ral: parseFloat(String(user.ral || 0)),
+      mboPercentage: user.mboPercentage || 0,
     };
   }, [user, stats]);
 
-  // Overall progress
+  // Calculate MBO target value
+  const mboTarget = useMemo(() => {
+    if (!employee) return 0;
+    return employee.ral * (employee.mboPercentage / 100);
+  }, [employee]);
+
+  // Overall progress (weighted by objective weight)
   const overallProgress = useMemo(() => {
     if (objectiveAssignments.length === 0) return 0;
-    const total = objectiveAssignments.reduce((sum, a) => sum + (a.progress || 0), 0);
-    return Math.round(total / objectiveAssignments.length);
+    let totalWeight = 0;
+    let weightedProgress = 0;
+    objectiveAssignments.forEach(a => {
+      const weight = a.weight || 0;
+      totalWeight += weight;
+      weightedProgress += (a.progress || 0) * weight;
+    });
+    if (totalWeight === 0) return 0;
+    return Math.round(weightedProgress / totalWeight);
   }, [objectiveAssignments]);
 
-  const objectives: Objective[] = useMemo(() => {
-    return objectiveAssignments.map((assignment) => ({
+  // Total assigned weight
+  const totalWeight = useMemo(() => {
+    return objectiveAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
+  }, [objectiveAssignments]);
+
+  const objectives: EnrichedObjective[] = useMemo(() => {
+    return objectiveAssignments.map((assignment) => {
+      const weight = assignment.weight || 0;
+      const economicValue = mboTarget * (weight / 100);
+      
+      return {
         id: assignment.id,
         title: assignment.objective?.title || "N/A",
         description: assignment.objective?.description || "",
-        cluster: "N/A",
-        clusterId: "",
-        status: assignment.status as any,
+        clusterName: (assignment.objective as any)?.indicatorCluster?.name || "N/A",
+        clusterId: (assignment.objective as any)?.indicatorCluster?.id || "",
+        calculationTypeName: (assignment.objective as any)?.calculationType?.name || "N/A",
+        calculationTypeId: (assignment.objective as any)?.calculationType?.id || "",
+        status: assignment.status as ObjectiveStatus,
         deadline: assignment.objective?.deadline
           ? new Date(assignment.objective.deadline).toLocaleDateString("it-IT")
           : undefined,
-        progress: assignment.progress,
-        readOnly: true, // Employee can only view, not edit
-      }));
-  }, [objectiveAssignments]);
+        progress: assignment.progress || 0,
+        weight,
+        economicValue,
+      };
+    });
+  }, [objectiveAssignments, mboTarget]);
 
   const documents: Document[] = useMemo(() => {
     const acceptedDocIds = new Set(acceptedDocs.map((d) => d.documentId));
@@ -182,16 +226,60 @@ export default function EmployeeDashboard() {
                   </TabsList>
 
                   <TabsContent value="objectives" className="space-y-6 mt-6">
-                    {/* Vista Complessiva */}
+                    {/* Vista Complessiva MBO */}
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Vista Complessiva</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5" />
+                          Riepilogo MBO
+                        </CardTitle>
+                        <CardDescription>
+                          Il tuo obiettivo MBO annuale e il progresso complessivo
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Progresso Totale</span>
-                            <span className="text-sm font-semibold">{overallProgress}%</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                          <div className="bg-muted/50 rounded-lg p-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                              <Euro className="h-4 w-4" />
+                              MBO Target
+                            </div>
+                            <div className="text-2xl font-semibold font-mono">
+                              {mboTarget.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {employee.mboPercentage}% della RAL
+                            </div>
+                          </div>
+                          <div className="bg-muted/50 rounded-lg p-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                              <Target className="h-4 w-4" />
+                              Peso Assegnato
+                            </div>
+                            <div className="text-2xl font-semibold font-mono">
+                              {totalWeight}%
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {objectives.length} obiettivi
+                            </div>
+                          </div>
+                          <div className="bg-muted/50 rounded-lg p-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                              <TrendingUp className="h-4 w-4" />
+                              Progresso Ponderato
+                            </div>
+                            <div className="text-2xl font-semibold font-mono">
+                              {overallProgress}%
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Media pesata sui pesi
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">Progresso Complessivo</span>
+                            <span className="font-semibold">{overallProgress}%</span>
                           </div>
                           <Progress value={overallProgress} className="h-3" data-testid="progress-overall" />
                         </div>
@@ -201,7 +289,7 @@ export default function EmployeeDashboard() {
                     {/* Titolo Obiettivi */}
                     <h3 className="text-lg font-semibold">I Miei Obiettivi</h3>
 
-                    {/* Lista Obiettivi */}
+                    {/* Lista Obiettivi Arricchita */}
                     <div className="space-y-4">
                       {objectives.length === 0 ? (
                         <Card>
@@ -211,16 +299,75 @@ export default function EmployeeDashboard() {
                         </Card>
                       ) : (
                         objectives.map((objective) => (
-                          <ObjectiveCard
-                            key={objective.id}
-                            objective={objective}
-                            onStatusChange={(id, status) => {
-                              const assignment = objectiveAssignments.find((a) => a.id === id);
-                              if (assignment) {
-                                updateObjectiveMutation.mutate({ assignmentId: id, status });
-                              }
-                            }}
-                          />
+                          <Card key={objective.id} className="hover-elevate" data-testid={`card-objective-${objective.id}`}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 space-y-1">
+                                  <h3 className="font-semibold text-base leading-tight">{objective.title}</h3>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="outline" className="text-xs">
+                                      {objective.clusterName}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Calculator className="h-3 w-3 mr-1" />
+                                      {objective.calculationTypeName}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <StatusBadge status={objective.status} />
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {objective.description}
+                              </p>
+                              
+                              <Separator />
+                              
+                              {/* Info economiche e peso */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Target className="h-3 w-3" />
+                                    Peso
+                                  </div>
+                                  <div className="text-lg font-semibold font-mono">{objective.weight}%</div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Euro className="h-3 w-3" />
+                                    Valore Economico
+                                  </div>
+                                  <div className="text-lg font-semibold font-mono text-primary">
+                                    {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <TrendingUp className="h-3 w-3" />
+                                    Progresso
+                                  </div>
+                                  <div className="text-lg font-semibold font-mono">{objective.progress}%</div>
+                                </div>
+                                {objective.deadline && (
+                                  <div className="space-y-1">
+                                    <div className="text-xs text-muted-foreground">Scadenza</div>
+                                    <div className="text-sm font-medium">{objective.deadline}</div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Barra progresso */}
+                              <div className="pt-2">
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary rounded-full transition-all"
+                                    style={{ width: `${objective.progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         ))
                       )}
                     </div>
