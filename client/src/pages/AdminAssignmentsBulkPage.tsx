@@ -100,13 +100,24 @@ export default function AdminAssignmentsBulkPage() {
   const bulkAssignMutation = useMutation({
     mutationFn: async (data: { objectiveId: string; department: string; weight: number }) => {
       const res = await apiRequest("POST", "/api/assignments/bulk", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Impossibile completare l'assegnazione");
+      }
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      
+      let description = `Obiettivo assegnato a ${data.assignedCount} dipendenti`;
+      if (data.skippedUsers > 0) {
+        description += `. ${data.skippedUsers} esclusi (peso > 100%)`;
+      }
+      
       toast({
         title: "Assegnazione completata",
-        description: `Obiettivo assegnato a ${data.assignedCount || usersInDepartment.length} dipendenti`,
+        description,
+        variant: data.skippedUsers > 0 ? "default" : "default",
       });
       setStep(1);
       setSelectedObjective(null);
