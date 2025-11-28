@@ -108,7 +108,7 @@ export default function AdminReportingPage() {
     }
 
     if (typeFilter !== "all") {
-      filtered = filtered.filter((item) => item.objective.objectiveType === typeFilter);
+      filtered = filtered.filter((item) => item.dictionary?.objectiveType === typeFilter);
     }
 
     if (clusterFilter !== "all") {
@@ -120,8 +120,8 @@ export default function AdminReportingPage() {
 
   const stats = useMemo(() => {
     const total = objectivesWithAssignments.length;
-    const numeric = objectivesWithAssignments.filter((o) => o.objective.objectiveType === "numeric").length;
-    const qualitative = objectivesWithAssignments.filter((o) => o.objective.objectiveType === "qualitative").length;
+    const numeric = objectivesWithAssignments.filter((o) => o.dictionary?.objectiveType === "numeric").length;
+    const qualitative = objectivesWithAssignments.filter((o) => o.dictionary?.objectiveType === "qualitative").length;
     const reported = objectivesWithAssignments.filter((o) => o.objective.reportedAt).length;
     return { total, numeric, qualitative, reported };
   }, [objectivesWithAssignments]);
@@ -319,7 +319,7 @@ export default function AdminReportingPage() {
                         <TableBody>
                           {filteredObjectives.map((item) => {
                             const isReported = !!item.objective.reportedAt;
-                            const isNumeric = item.objective.objectiveType === "numeric";
+                            const isNumeric = item.dictionary?.objectiveType === "numeric";
 
                             return (
                               <TableRow key={item.objective.id} data-testid={`row-objective-${item.objective.id}`}>
@@ -444,10 +444,10 @@ export default function AdminReportingPage() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
                   Tipo: <span className="font-medium text-foreground">
-                    {selectedObjective.objective.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}
+                    {selectedObjective.dictionary?.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}
                   </span>
                 </p>
-                {selectedObjective.objective.objectiveType === "numeric" && selectedObjective.dictionary?.targetValue && (
+                {selectedObjective.dictionary?.objectiveType === "numeric" && selectedObjective.dictionary?.targetValue && (
                   <p className="text-sm text-muted-foreground">
                     Target: <span className="font-medium text-foreground">
                       {Number(selectedObjective.dictionary.targetValue).toLocaleString()}
@@ -476,11 +476,11 @@ export default function AdminReportingPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {selectedObjective.objective.objectiveType === "numeric"
+                  {selectedObjective.dictionary?.objectiveType === "numeric"
                     ? "Valore Rendicontato"
                     : "Risultato"}
                 </label>
-                {selectedObjective.objective.objectiveType === "numeric" ? (
+                {selectedObjective.dictionary?.objectiveType === "numeric" ? (
                   <Input
                     type="number"
                     placeholder="Inserisci il valore raggiunto"
