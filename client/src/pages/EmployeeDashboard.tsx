@@ -286,22 +286,15 @@ export default function EmployeeDashboard() {
                           <div className="bg-muted/50 rounded-lg p-4">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                               <TrendingUp className="h-4 w-4" />
-                              Progresso Ponderato
+                              Percentuale Raggiungimento MBO
                             </div>
                             <div className="text-2xl font-semibold font-mono">
                               {overallProgress}%
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              Media pesata sui pesi
+                              Obiettivi raggiunti
                             </div>
                           </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium">Progresso Complessivo</span>
-                            <span className="font-semibold">{overallProgress}%</span>
-                          </div>
-                          <Progress value={overallProgress} className="h-3" data-testid="progress-overall" />
                         </div>
                       </CardContent>
                     </Card>
