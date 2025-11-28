@@ -55,7 +55,6 @@ export default function AdminReportingPage() {
   const [selectedObjective, setSelectedObjective] = useState<ObjectiveWithAssignments | null>(null);
   const [reportValue, setReportValue] = useState<string>("");
   const [qualitativeResult, setQualitativeResult] = useState<string>("");
-  const [targetValue, setTargetValue] = useState<string>("");
 
   const style = {
     "--sidebar-width": "16rem",
@@ -72,11 +71,10 @@ export default function AdminReportingPage() {
   });
 
   const reportMutation = useMutation({
-    mutationFn: async (data: { objectiveId: string; actualValue?: number; qualitativeResult?: string; targetValue?: number }) => {
+    mutationFn: async (data: { objectiveId: string; actualValue?: number; qualitativeResult?: string }) => {
       const res = await apiRequest("PATCH", `/api/objectives/${data.objectiveId}/report`, {
         actualValue: data.actualValue,
         qualitativeResult: data.qualitativeResult,
-        targetValue: data.targetValue,
       });
       return res.json();
     },
@@ -87,7 +85,6 @@ export default function AdminReportingPage() {
       setSelectedObjective(null);
       setReportValue("");
       setQualitativeResult("");
-      setTargetValue("");
     },
     onError: (error) => {
       toast({
@@ -139,7 +136,6 @@ export default function AdminReportingPage() {
     setSelectedObjective(item);
     setReportValue(item.objective.actualValue?.toString() || "");
     setQualitativeResult(item.objective.qualitativeResult || "");
-    setTargetValue(item.objective.targetValue?.toString() || "");
     setReportDialogOpen(true);
   };
 
@@ -152,11 +148,9 @@ export default function AdminReportingPage() {
         toast({ title: "Inserisci un valore numerico valido", variant: "destructive" });
         return;
       }
-      const targetNum = targetValue ? parseFloat(targetValue) : undefined;
       reportMutation.mutate({ 
         objectiveId: selectedObjective.objective.id, 
         actualValue: numValue,
-        targetValue: targetNum,
       });
     } else {
       if (!qualitativeResult) {
@@ -172,8 +166,8 @@ export default function AdminReportingPage() {
     if (item.objective.objectiveType === "qualitative") {
       return item.objective.qualitativeResult === "reached" ? "default" : "destructive";
     }
-    if (item.objective.targetValue && item.objective.actualValue) {
-      const target = parseFloat(String(item.objective.targetValue));
+    if (item.dictionary?.targetValue && item.objective.actualValue) {
+      const target = parseFloat(String(item.dictionary.targetValue));
       const actual = parseFloat(String(item.objective.actualValue));
       const percentage = (actual / target) * 100;
       if (percentage >= 100) return "default";
@@ -355,8 +349,8 @@ export default function AdminReportingPage() {
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
                                   {isNumeric
-                                    ? item.objective.targetValue
-                                      ? Number(item.objective.targetValue).toLocaleString()
+                                    ? item.dictionary?.targetValue
+                                      ? Number(item.dictionary.targetValue).toLocaleString()
                                       : "-"
                                     : "Raggiunto/Non raggiunto"}
                                 </TableCell>
@@ -453,20 +447,14 @@ export default function AdminReportingPage() {
                     {selectedObjective.objective.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}
                   </span>
                 </p>
+                {selectedObjective.objective.objectiveType === "numeric" && selectedObjective.dictionary?.targetValue && (
+                  <p className="text-sm text-muted-foreground">
+                    Target: <span className="font-medium text-foreground">
+                      {Number(selectedObjective.dictionary.targetValue).toLocaleString()}
+                    </span>
+                  </p>
+                )}
               </div>
-
-              {selectedObjective.objective.objectiveType === "numeric" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Valore Target</label>
-                  <Input
-                    type="number"
-                    placeholder="Inserisci il valore target"
-                    value={targetValue}
-                    onChange={(e) => setTargetValue(e.target.value)}
-                    data-testid="input-target-value"
-                  />
-                </div>
-              )}
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">

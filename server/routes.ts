@@ -468,10 +468,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Report on an objective (update target/actual values)
+  // Report on an objective (update actual values)
   app.patch("/api/objectives/:id/report", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { actualValue, qualitativeResult, targetValue } = req.body;
+      const { actualValue, qualitativeResult } = req.body;
       const objective = await storage.getObjective(req.params.id);
       
       if (!objective) {
@@ -482,17 +482,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportedAt: new Date(),
       };
 
-      if (objective.objectiveType === "numeric") {
-        if (targetValue !== undefined && targetValue !== null) {
-          updateData.targetValue = targetValue;
-        }
-        if (actualValue !== undefined) {
-          updateData.actualValue = actualValue;
-        }
-      } else if (objective.objectiveType === "qualitative") {
-        if (qualitativeResult && ["reached", "not_reached"].includes(qualitativeResult)) {
-          updateData.qualitativeResult = qualitativeResult;
-        }
+      if (actualValue !== undefined) {
+        updateData.actualValue = actualValue;
+      }
+      if (qualitativeResult && ["reached", "not_reached"].includes(qualitativeResult)) {
+        updateData.qualitativeResult = qualitativeResult;
       }
 
       const updatedObjective = await storage.updateObjective(req.params.id, updateData);
