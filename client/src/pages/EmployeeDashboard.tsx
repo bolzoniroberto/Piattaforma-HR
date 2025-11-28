@@ -32,7 +32,7 @@ interface EnrichedObjective {
   economicValue: number;
   objectiveType?: string;
   targetValue?: number | null;
-  actualValue?: string | null;
+  actualValue?: number | null;
   qualitativeResult?: string | null;
   reportedAt?: Date | null;
 }
@@ -377,13 +377,13 @@ export default function EmployeeDashboard() {
                                         <div className="space-y-1">
                                           <div className="text-xs text-muted-foreground">Target</div>
                                           <div className="text-sm font-semibold font-mono">
-                                            {objective.targetValue ? Number(objective.targetValue).toLocaleString() : "-"}
+                                            {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
                                           </div>
                                         </div>
                                         <div className="space-y-1">
                                           <div className="text-xs text-muted-foreground">Rendicontato</div>
                                           <div className="text-sm font-semibold font-mono">
-                                            {objective.actualValue ? Number(objective.actualValue).toLocaleString() : "-"}
+                                            {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
                                           </div>
                                         </div>
                                       </div>
