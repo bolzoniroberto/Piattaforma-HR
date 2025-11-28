@@ -115,7 +115,7 @@ export default function EmployeeDashboard() {
     return employee.ral * (employee.mboPercentage / 100);
   }, [employee]);
 
-  // Overall progress (weighted by objective weight)
+  // Overall progress (weighted by objective weight, based on reported status)
   const overallProgress = useMemo(() => {
     if (objectiveAssignments.length === 0) return 0;
     let totalWeight = 0;
@@ -123,7 +123,16 @@ export default function EmployeeDashboard() {
     objectiveAssignments.forEach(a => {
       const weight = a.weight || 0;
       totalWeight += weight;
-      weightedProgress += (a.progress || 0) * weight;
+      
+      const obj = a.objective as any;
+      // If reported, use 100% if reached, 0% if not reached
+      // If not reported, use current progress
+      let progressValue = a.progress || 0;
+      if (obj?.reportedAt) {
+        progressValue = obj.qualitativeResult === "reached" ? 100 : 0;
+      }
+      
+      weightedProgress += progressValue * weight;
     });
     if (totalWeight === 0) return 0;
     return Math.round(weightedProgress / totalWeight);
