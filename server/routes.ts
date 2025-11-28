@@ -67,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: "Demo",
         profileImageUrl: undefined,
         department: role === "admin" ? "Management" : "IT Development",
-        ral: undefined,
+        ral: role === "admin" ? undefined : 80000,
         mboPercentage: 25,
       });
 
@@ -153,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastName: "Demo",
             profileImageUrl: null,
             department: demoRole === "admin" ? "Management" : "IT Development",
-            ral: null,
+            ral: demoRole === "admin" ? null : 80000,
             mboPercentage: 25,
           });
         }
