@@ -145,6 +145,12 @@ export const objectives = pgTable("objectives", {
   dictionaryId: varchar("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "restrict" }),
   clusterId: varchar("cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   deadline: timestamp("deadline"),
+  // Reporting fields
+  objectiveType: varchar("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
+  targetValue: numeric("target_value", { precision: 15, scale: 2 }), // Target for numeric objectives
+  actualValue: numeric("actual_value", { precision: 15, scale: 2 }), // Reported value for numeric objectives
+  qualitativeResult: varchar("qualitative_result"), // "reached" or "not_reached" for qualitative objectives
+  reportedAt: timestamp("reported_at"), // When the reporting was done
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -153,6 +159,12 @@ export const insertObjectiveSchema = createInsertSchema(objectives).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  reportedAt: true,
+}).extend({
+  objectiveType: z.enum(["numeric", "qualitative"]).default("numeric"),
+  targetValue: z.coerce.number().nullable().optional(),
+  actualValue: z.coerce.number().nullable().optional(),
+  qualitativeResult: z.enum(["reached", "not_reached"]).nullable().optional(),
 });
 
 export type InsertObjective = z.infer<typeof insertObjectiveSchema>;
