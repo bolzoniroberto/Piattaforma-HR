@@ -126,6 +126,8 @@ export const objectivesDictionary = pgTable("objectives_dictionary", {
   description: text("description"),
   indicatorClusterId: varchar("indicator_cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   calculationTypeId: varchar("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
+  objectiveType: varchar("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
+  targetValue: numeric("target_value", { precision: 15, scale: 2 }), // Target for numeric objectives
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -134,6 +136,9 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  objectiveType: z.enum(["numeric", "qualitative"]).default("numeric"),
+  targetValue: z.coerce.number().nullable().optional(),
 });
 
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;
@@ -146,8 +151,6 @@ export const objectives = pgTable("objectives", {
   clusterId: varchar("cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
   deadline: timestamp("deadline"),
   // Reporting fields
-  objectiveType: varchar("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
-  targetValue: numeric("target_value", { precision: 15, scale: 2 }), // Target for numeric objectives
   actualValue: numeric("actual_value", { precision: 15, scale: 2 }), // Reported value for numeric objectives
   qualitativeResult: varchar("qualitative_result"), // "reached" or "not_reached" for qualitative objectives
   reportedAt: timestamp("reported_at"), // When the reporting was done
@@ -161,8 +164,6 @@ export const insertObjectiveSchema = createInsertSchema(objectives).omit({
   updatedAt: true,
   reportedAt: true,
 }).extend({
-  objectiveType: z.enum(["numeric", "qualitative"]).default("numeric"),
-  targetValue: z.coerce.number().nullable().optional(),
   actualValue: z.coerce.number().nullable().optional(),
   qualitativeResult: z.enum(["reached", "not_reached"]).nullable().optional(),
 });

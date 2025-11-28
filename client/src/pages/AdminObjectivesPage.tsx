@@ -55,6 +55,8 @@ interface ObjectiveDictionary {
   description: string;
   indicatorClusterId: string;
   calculationTypeId: string;
+  objectiveType?: string;
+  targetValue?: number | null;
   indicatorCluster?: {
     id: string;
     name: string;
@@ -97,6 +99,8 @@ export default function AdminObjectivesPage() {
     description: "",
     indicatorClusterId: "",
     calculationTypeId: "",
+    objectiveType: "numeric",
+    targetValue: "",
   });
 
   const { data: objectivesDictionary = [], isLoading: dictLoading } = useQuery<ObjectiveDictionary[]>({
@@ -121,14 +125,22 @@ export default function AdminObjectivesPage() {
 
   const createObjectiveMutation = useMutation({
     mutationFn: async (data: typeof newObjective) => {
-      const res = await apiRequest("POST", "/api/objectives-dictionary", data);
+      const payload = {
+        title: data.title,
+        description: data.description,
+        indicatorClusterId: data.indicatorClusterId,
+        calculationTypeId: data.calculationTypeId,
+        objectiveType: data.objectiveType,
+        targetValue: data.objectiveType === "numeric" && data.targetValue ? parseFloat(data.targetValue) : null,
+      };
+      const res = await apiRequest("POST", "/api/objectives-dictionary", payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
       toast({ title: "Obiettivo creato con successo" });
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "" });
+      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "" });
     },
     onError: (error) => {
       toast({
@@ -140,13 +152,16 @@ export default function AdminObjectivesPage() {
   });
 
   const updateObjectiveMutation = useMutation({
-    mutationFn: async (data: { id: string; title: string; description: string; indicatorClusterId: string; calculationTypeId: string }) => {
-      const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, {
+    mutationFn: async (data: { id: string; title: string; description: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string }) => {
+      const payload = {
         title: data.title,
         description: data.description,
         indicatorClusterId: data.indicatorClusterId,
         calculationTypeId: data.calculationTypeId,
-      });
+        objectiveType: data.objectiveType,
+        targetValue: data.objectiveType === "numeric" && data.targetValue ? parseFloat(data.targetValue) : null,
+      };
+      const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, payload);
       return res.json();
     },
     onSuccess: () => {
@@ -154,7 +169,7 @@ export default function AdminObjectivesPage() {
       toast({ title: "Obiettivo aggiornato con successo" });
       setEditingId(null);
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "" });
+      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "" });
     },
     onError: (error) => {
       toast({
@@ -227,13 +242,15 @@ export default function AdminObjectivesPage() {
       description: obj.description || "",
       indicatorClusterId: obj.indicatorClusterId,
       calculationTypeId: obj.calculationTypeId,
+      objectiveType: obj.objectiveType || "numeric",
+      targetValue: obj.targetValue?.toString() || "",
     });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setEditingId(null);
-    setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "" });
+    setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "" });
     setIsDialogOpen(false);
   };
 
@@ -336,6 +353,36 @@ export default function AdminObjectivesPage() {
                           </Select>
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="objective-type">Tipo di Obiettivo</Label>
+                          <Select
+                            value={newObjective.objectiveType}
+                            onValueChange={(value) => setNewObjective({ ...newObjective, objectiveType: value })}
+                          >
+                            <SelectTrigger id="objective-type" data-testid="select-objective-type">
+                              <SelectValue placeholder="Seleziona tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="numeric">Numerico</SelectItem>
+                              <SelectItem value="qualitative">Qualitativo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {newObjective.objectiveType === "numeric" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="target-value">Valore Target</Label>
+                            <Input
+                              id="target-value"
+                              type="number"
+                              placeholder="Es. 100"
+                              value={newObjective.targetValue}
+                              onChange={(e) => setNewObjective({ ...newObjective, targetValue: e.target.value })}
+                              data-testid="input-target-value"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button
@@ -353,7 +400,7 @@ export default function AdminObjectivesPage() {
                             createObjectiveMutation.mutate(newObjective);
                           }
                         }}
-                        disabled={!newObjective.title || !newObjective.indicatorClusterId || !newObjective.calculationTypeId || createObjectiveMutation.isPending || updateObjectiveMutation.isPending}
+                        disabled={!newObjective.title || !newObjective.indicatorClusterId || !newObjective.calculationTypeId || (newObjective.objectiveType === "numeric" && !newObjective.targetValue) || createObjectiveMutation.isPending || updateObjectiveMutation.isPending}
                         data-testid={editingId ? "button-update" : "button-create"}
                       >
                         {editingId ? (updateObjectiveMutation.isPending ? "Aggiornamento..." : "Aggiorna Obiettivo") : (createObjectiveMutation.isPending ? "Creazione..." : "Crea Obiettivo")}
