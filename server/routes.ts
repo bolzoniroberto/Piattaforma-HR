@@ -551,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
         objectiveType: objectiveType || "numeric",
-        targetValue: targetValue || null,
+        targetValue: targetValue !== undefined && targetValue !== null ? targetValue : null,
       });
 
       // Create the assignment with the new objective
@@ -623,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
         objectiveType: objectiveType || "numeric",
-        targetValue: targetValue || null,
+        targetValue: targetValue !== undefined && targetValue !== null ? targetValue : null,
       });
 
       // Create assignments for each eligible user
