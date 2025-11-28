@@ -381,44 +381,6 @@ export default function EmployeeDashboard() {
                                   </div>
                                 )}
                               </div>
-
-                              {/* Rendicontazione */}
-                              {objective.reportedAt && (
-                                <div className="border-t pt-4">
-                                  <div className="space-y-3">
-                                    {objective.objectiveType === "numeric" ? (
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                          <div className="text-xs text-muted-foreground">Target</div>
-                                          <div className="text-sm font-semibold font-mono">
-                                            {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
-                                          </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                          <div className="text-xs text-muted-foreground">Rendicontato</div>
-                                          <div className="text-sm font-semibold font-mono">
-                                            {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ) : null}
-                                    <div className="flex items-center gap-2">
-                                      <div className="text-xs text-muted-foreground">Risultato:</div>
-                                      {objective.qualitativeResult === "reached" ? (
-                                        <div className="flex items-center gap-1 text-green-600">
-                                          <CheckCircle2 className="h-4 w-4" />
-                                          <span className="text-xs font-semibold">Raggiunto</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-1 text-red-600">
-                                          <XCircle className="h-4 w-4" />
-                                          <span className="text-xs font-semibold">Non raggiunto</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
                               
                               {/* Barra progresso */}
                               <div className="pt-2">
