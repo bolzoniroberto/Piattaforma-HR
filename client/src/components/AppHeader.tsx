@@ -56,8 +56,8 @@ export default function AppHeader({
       <div className="flex items-center gap-4">
         {showSidebarTrigger && <SidebarTrigger data-testid="button-sidebar-toggle" />}
         <div className="flex items-center gap-2">
-          <img src={logoPath} alt="Gruppo 24 Ore" className="h-8" />
-          <h1 className="text-lg font-semibold text-foreground">Gruppo 24 Ore</h1>
+          <img src={logoPath} alt="Piattaforma di gestione MBO" className="h-8" />
+          <h1 className="text-lg font-semibold font-serif text-foreground">Piattaforma di gestione MBO</h1>
         </div>
       </div>
 
