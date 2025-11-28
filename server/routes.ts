@@ -60,6 +60,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create demo user in database
       const demoUserId = role === "admin" ? "demo-admin-001" : "demo-employee-001";
+      
+      // Check if user already exists to preserve RAL and mboPercentage
+      const existingUser = await storage.getUser(demoUserId);
+      const ralToUse = existingUser?.ral ?? (role === "admin" ? undefined : 80000);
+      const mboToUse = existingUser?.mboPercentage ?? 25;
+      
       await storage.upsertUser({
         id: demoUserId,
         email: `${role}@demo.local`,
@@ -67,8 +73,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: "Demo",
         profileImageUrl: undefined,
         department: role === "admin" ? "Management" : "IT Development",
-        ral: role === "admin" ? undefined : 80000,
-        mboPercentage: 25,
+        ral: ralToUse,
+        mboPercentage: mboToUse,
       });
 
       // For demo employee, assign some objectives (with weight validation)
@@ -156,6 +162,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ral: demoRole === "admin" ? null : 80000,
             mboPercentage: 25,
           });
+        } else {
+          // User exists, just ensure demo fields are set but preserve RAL and mboPercentage
+          if (!existingUser.ral && demoRole === "employee") {
+            await storage.updateUser(userId, { ral: 80000 });
+          }
         }
       }
       
