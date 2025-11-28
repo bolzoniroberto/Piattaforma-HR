@@ -521,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/assignments", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { userId, objectiveId, status, progress, weight } = req.body;
+      const { userId, objectiveId, status, progress, weight, objectiveType, targetValue } = req.body;
       
       if (!userId || !objectiveId) {
         return res.status(400).json({ message: "userId and objectiveId are required" });
@@ -545,11 +545,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Objective dictionary item not found" });
       }
 
-      // Create an objective instance from dictionary with clusterId
+      // Create an objective instance from dictionary with clusterId, type, and target
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
+        objectiveType: objectiveType || "numeric",
+        targetValue: targetValue || null,
       });
 
       // Create the assignment with the new objective
@@ -570,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk assignment - assign one objective to all users in a department
   app.post("/api/assignments/bulk", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { objectiveId, department, weight } = req.body;
+      const { objectiveId, department, weight, objectiveType, targetValue } = req.body;
       
       if (!objectiveId || !department) {
         return res.status(400).json({ message: "objectiveId and department are required" });
@@ -615,11 +617,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create an objective instance from dictionary with clusterId
+      // Create an objective instance from dictionary with clusterId, type, and target
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
+        objectiveType: objectiveType || "numeric",
+        targetValue: targetValue || null,
       });
 
       // Create assignments for each eligible user

@@ -82,6 +82,8 @@ interface SelectedObjectiveDetail {
   description: string;
   clusterId: string;
   weight: number;
+  objectiveType: "numeric" | "qualitative";
+  targetValue: number | null;
 }
 
 export default function AdminAssignmentsPage() {
@@ -93,6 +95,8 @@ export default function AdminAssignmentsPage() {
   const [assignmentDeadline, setAssignmentDeadline] = useState<string>("");
   const [configObjective, setConfigObjective] = useState<ObjectiveDictionary | null>(null);
   const [configWeight, setConfigWeight] = useState<number>(20);
+  const [configObjectiveType, setConfigObjectiveType] = useState<"numeric" | "qualitative">("numeric");
+  const [configTargetValue, setConfigTargetValue] = useState<string>("");
 
   const { data: targetUser, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
@@ -117,7 +121,15 @@ export default function AdminAssignmentsPage() {
   });
 
   const createAssignmentMutation = useMutation({
-    mutationFn: async (data: { userId: string; objectiveId: string; status: string; progress: number; weight?: number }) => {
+    mutationFn: async (data: { 
+      userId: string; 
+      objectiveId: string; 
+      status: string; 
+      progress: number; 
+      weight?: number;
+      objectiveType?: "numeric" | "qualitative";
+      targetValue?: number | null;
+    }) => {
       const res = await apiRequest("POST", "/api/assignments", data);
       if (!res.ok) {
         const errorData = await res.json();
@@ -183,6 +195,8 @@ export default function AdminAssignmentsPage() {
           status: "in_progress",
           progress: 0,
           weight: obj.weight,
+          objectiveType: obj.objectiveType,
+          targetValue: obj.targetValue,
         });
         successCount++;
       } catch (error) {
@@ -232,11 +246,15 @@ export default function AdminAssignmentsPage() {
         description: configObjective.description || "",
         clusterId: configObjective.indicatorClusterId,
         weight: configWeight,
+        objectiveType: configObjectiveType,
+        targetValue: configObjectiveType === "numeric" && configTargetValue ? parseFloat(configTargetValue) : null,
       },
     ]);
     
     setConfigObjective(null);
     setConfigWeight(20);
+    setConfigObjectiveType("numeric");
+    setConfigTargetValue("");
   };
 
   const overallProgress = useMemo(() => {
@@ -536,6 +554,47 @@ export default function AdminAssignmentsPage() {
                                 </SelectContent>
                               </Select>
                             </div>
+
+                            <div>
+                              <Label htmlFor="objectiveType">Tipo Obiettivo</Label>
+                              <Select 
+                                value={configObjectiveType} 
+                                onValueChange={(val: "numeric" | "qualitative") => setConfigObjectiveType(val)}
+                              >
+                                <SelectTrigger id="objectiveType" data-testid="select-objective-type">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="numeric">Numerico</SelectItem>
+                                  <SelectItem value="qualitative">Qualitativo</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {configObjectiveType === "numeric" && (
+                              <div>
+                                <Label htmlFor="targetValue">Valore Target</Label>
+                                <Input
+                                  id="targetValue"
+                                  type="number"
+                                  placeholder="Es. 100000"
+                                  value={configTargetValue}
+                                  onChange={(e) => setConfigTargetValue(e.target.value)}
+                                  data-testid="input-target-value"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Valore numerico da raggiungere
+                                </p>
+                              </div>
+                            )}
+
+                            {configObjectiveType === "qualitative" && (
+                              <div className="p-3 bg-muted rounded-md">
+                                <p className="text-sm text-muted-foreground">
+                                  Per obiettivi qualitativi, la rendicontazione sarà "Raggiunto" o "Non raggiunto"
+                                </p>
+                              </div>
+                            )}
 
                             <div>
                               <Label htmlFor="weight">Peso nella Scheda ({configWeight}%)</Label>
