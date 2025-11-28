@@ -323,15 +323,23 @@ export default function EmployeeDashboard() {
                                       <Calculator className="h-3 w-3 mr-1" />
                                       {objective.calculationTypeName}
                                     </Badge>
-                                    {objective.reportedAt && (
-                                      <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
-                                        <Check className="h-3 w-3 mr-1" />
-                                        Rendicontato
-                                      </Badge>
-                                    )}
                                   </div>
                                 </div>
-                                <StatusBadge status={objective.status} />
+                                {objective.reportedAt ? (
+                                  objective.qualitativeResult === "reached" ? (
+                                    <Badge className="text-xs bg-green-600 hover:bg-green-700">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Raggiunto
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="text-xs bg-red-600 hover:bg-red-700">
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Non raggiunto
+                                    </Badge>
+                                  )
+                                ) : (
+                                  <StatusBadge status={objective.status} />
+                                )}
                               </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
