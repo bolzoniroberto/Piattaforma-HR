@@ -146,11 +146,22 @@ export default function AdminAssignmentsPage() {
 
   const availableObjectives = useMemo(() => {
     const selectedIds = new Set(selectedObjectives.map((s) => s.id));
-    const assignedObjectiveIds = new Set(userAssignments.map((a) => a.objectiveId));
+    // Use dictionaryId from the objective to compare with dictionary items
+    const assignedDictionaryIds = new Set(
+      userAssignments.map((a) => (a.objective as any)?.dictionaryId).filter(Boolean)
+    );
     return objectivesDictionary.filter(
-      (obj) => !assignedObjectiveIds.has(obj.id) && !selectedIds.has(obj.id)
+      (obj) => !assignedDictionaryIds.has(obj.id) && !selectedIds.has(obj.id)
     );
   }, [objectivesDictionary, userAssignments, selectedObjectives]);
+  
+  // Calculate current total assigned weight
+  const currentTotalWeight = useMemo(() => {
+    return userAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
+  }, [userAssignments]);
+  
+  // Calculate remaining available weight
+  const availableWeight = 100 - currentTotalWeight;
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const f = firstName?.[0] || "";
@@ -352,7 +363,31 @@ export default function AdminAssignmentsPage() {
                         <span className="text-muted-foreground">Obiettivi Assegnati</span>
                         <span className="font-semibold">{userAssignments.length}</span>
                       </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Peso Totale</span>
+                        <span className={`font-semibold ${currentTotalWeight > 100 ? 'text-destructive' : currentTotalWeight === 100 ? 'text-green-600' : ''}`}>
+                          {currentTotalWeight}%
+                        </span>
+                      </div>
                       <div className="space-y-1">
+                        <Progress value={Math.min(currentTotalWeight, 100)} className="h-2" />
+                        {currentTotalWeight < 100 && (
+                          <p className="text-xs text-muted-foreground">
+                            Disponibile: {availableWeight}%
+                          </p>
+                        )}
+                        {currentTotalWeight === 100 && (
+                          <p className="text-xs text-green-600">
+                            Peso completo al 100%
+                          </p>
+                        )}
+                        {currentTotalWeight > 100 && (
+                          <p className="text-xs text-destructive">
+                            Attenzione: peso totale eccede il 100%
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-1 pt-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Progresso Medio</span>
                           <span className="font-semibold">{overallProgress}%</span>
@@ -507,15 +542,18 @@ export default function AdminAssignmentsPage() {
                               <Slider
                                 id="weight"
                                 min={5}
-                                max={100}
+                                max={Math.max(5, availableWeight - selectedObjectives.reduce((sum, o) => sum + o.weight, 0))}
                                 step={5}
                                 value={[configWeight]}
                                 onValueChange={(val) => setConfigWeight(val[0])}
                                 className="mt-2"
                               />
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Seleziona il peso in percentuale (multipli di 5%)
-                              </p>
+                              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                                <span>Multipli di 5%</span>
+                                <span className={availableWeight - selectedObjectives.reduce((sum, o) => sum + o.weight, 0) <= 0 ? 'text-destructive' : ''}>
+                                  Disponibile: {availableWeight - selectedObjectives.reduce((sum, o) => sum + o.weight, 0)}%
+                                </span>
+                              </div>
                             </div>
                           </div>
 
@@ -528,6 +566,7 @@ export default function AdminAssignmentsPage() {
                             </Button>
                             <Button
                               onClick={handleAddObjectiveWithConfig}
+                              disabled={availableWeight - selectedObjectives.reduce((sum, o) => sum + o.weight, 0) < configWeight}
                               data-testid="button-confirm-config"
                             >
                               Aggiungi
@@ -553,9 +592,14 @@ export default function AdminAssignmentsPage() {
                             data-testid={`assignment-${assignment.id}`}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">
-                                {assignment.objective?.title || "Obiettivo"}
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-sm">
+                                  {assignment.objective?.title || "Obiettivo"}
+                                </p>
+                                <Badge variant="outline" className="text-xs">
+                                  {assignment.weight || 0}%
+                                </Badge>
+                              </div>
                               <div className="flex items-center gap-3 mt-2">
                                 <Progress value={assignment.progress || 0} className="flex-1 h-2" />
                                 <span className="text-sm font-medium w-12 text-right">
