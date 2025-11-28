@@ -471,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Report on an objective (update target/actual values)
   app.patch("/api/objectives/:id/report", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { actualValue, qualitativeResult } = req.body;
+      const { actualValue, qualitativeResult, targetValue } = req.body;
       const objective = await storage.getObjective(req.params.id);
       
       if (!objective) {
@@ -483,6 +483,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       if (objective.objectiveType === "numeric") {
+        if (targetValue !== undefined && targetValue !== null) {
+          updateData.targetValue = targetValue;
+        }
         if (actualValue !== undefined) {
           updateData.actualValue = actualValue;
         }

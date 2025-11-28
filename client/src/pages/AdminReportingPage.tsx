@@ -55,6 +55,7 @@ export default function AdminReportingPage() {
   const [selectedObjective, setSelectedObjective] = useState<ObjectiveWithAssignments | null>(null);
   const [reportValue, setReportValue] = useState<string>("");
   const [qualitativeResult, setQualitativeResult] = useState<string>("");
+  const [targetValue, setTargetValue] = useState<string>("");
 
   const style = {
     "--sidebar-width": "16rem",
@@ -71,10 +72,11 @@ export default function AdminReportingPage() {
   });
 
   const reportMutation = useMutation({
-    mutationFn: async (data: { objectiveId: string; actualValue?: number; qualitativeResult?: string }) => {
+    mutationFn: async (data: { objectiveId: string; actualValue?: number; qualitativeResult?: string; targetValue?: number }) => {
       const res = await apiRequest("PATCH", `/api/objectives/${data.objectiveId}/report`, {
         actualValue: data.actualValue,
         qualitativeResult: data.qualitativeResult,
+        targetValue: data.targetValue,
       });
       return res.json();
     },
@@ -85,6 +87,7 @@ export default function AdminReportingPage() {
       setSelectedObjective(null);
       setReportValue("");
       setQualitativeResult("");
+      setTargetValue("");
     },
     onError: (error) => {
       toast({
@@ -136,6 +139,7 @@ export default function AdminReportingPage() {
     setSelectedObjective(item);
     setReportValue(item.objective.actualValue?.toString() || "");
     setQualitativeResult(item.objective.qualitativeResult || "");
+    setTargetValue(item.objective.targetValue?.toString() || "");
     setReportDialogOpen(true);
   };
 
@@ -148,7 +152,12 @@ export default function AdminReportingPage() {
         toast({ title: "Inserisci un valore numerico valido", variant: "destructive" });
         return;
       }
-      reportMutation.mutate({ objectiveId: selectedObjective.objective.id, actualValue: numValue });
+      const targetNum = targetValue ? parseFloat(targetValue) : undefined;
+      reportMutation.mutate({ 
+        objectiveId: selectedObjective.objective.id, 
+        actualValue: numValue,
+        targetValue: targetNum,
+      });
     } else {
       if (!qualitativeResult) {
         toast({ title: "Seleziona se l'obiettivo è stato raggiunto", variant: "destructive" });
@@ -444,14 +453,20 @@ export default function AdminReportingPage() {
                     {selectedObjective.objective.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}
                   </span>
                 </p>
-                {selectedObjective.objective.objectiveType === "numeric" && selectedObjective.objective.targetValue && (
-                  <p className="text-sm text-muted-foreground">
-                    Target: <span className="font-medium text-foreground">
-                      {Number(selectedObjective.objective.targetValue).toLocaleString()}
-                    </span>
-                  </p>
-                )}
               </div>
+
+              {selectedObjective.objective.objectiveType === "numeric" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Valore Target</label>
+                  <Input
+                    type="number"
+                    placeholder="Inserisci il valore target"
+                    value={targetValue}
+                    onChange={(e) => setTargetValue(e.target.value)}
+                    data-testid="input-target-value"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">
