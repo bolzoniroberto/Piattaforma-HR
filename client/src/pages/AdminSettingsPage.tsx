@@ -428,7 +428,7 @@ export default function AdminSettingsPage() {
                             <TableRow>
                               <TableHead>Nome</TableHead>
                               <TableHead>Descrizione</TableHead>
-                              <TableHead className="w-24">Azioni</TableHead>
+                              <TableHead className="w-32">Azioni</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -436,7 +436,7 @@ export default function AdminSettingsPage() {
                               <TableRow key={cluster.id} data-testid={`row-cluster-${cluster.id}`}>
                                 <TableCell className="font-medium" data-testid={`text-cluster-name-${cluster.id}`}>{cluster.name}</TableCell>
                                 <TableCell data-testid={`text-cluster-description-${cluster.id}`}>{cluster.description || "-"}</TableCell>
-                                <TableCell className="space-x-2">
+                                <TableCell className="flex flex-nowrap gap-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -541,7 +541,7 @@ export default function AdminSettingsPage() {
                               <TableHead>Nome</TableHead>
                               <TableHead>Descrizione</TableHead>
                               <TableHead>Formula</TableHead>
-                              <TableHead className="w-24">Azioni</TableHead>
+                              <TableHead className="w-32">Azioni</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -550,7 +550,7 @@ export default function AdminSettingsPage() {
                                 <TableCell className="font-medium" data-testid={`text-calc-name-${calc.id}`}>{calc.name}</TableCell>
                                 <TableCell data-testid={`text-calc-description-${calc.id}`}>{calc.description || "-"}</TableCell>
                                 <TableCell className="text-xs font-mono" data-testid={`text-calc-formula-${calc.id}`}>{calc.formula ? calc.formula.substring(0, 40) + "..." : "-"}</TableCell>
-                                <TableCell className="space-x-2">
+                                <TableCell className="flex flex-nowrap gap-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -666,7 +666,7 @@ export default function AdminSettingsPage() {
                               <TableHead>Primo Livello</TableHead>
                               <TableHead>Secondo Livello</TableHead>
                               <TableHead>Descrizione</TableHead>
-                              <TableHead className="w-24">Azioni</TableHead>
+                              <TableHead className="w-32">Azioni</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -676,7 +676,7 @@ export default function AdminSettingsPage() {
                                 <TableCell data-testid={`text-business-primo-${business.id}`}>{businessFunctions.find((b) => b.id === business.primoLivelloId)?.name || "-"}</TableCell>
                                 <TableCell data-testid={`text-business-secondo-${business.id}`}>{businessFunctions.find((b) => b.id === business.secondoLivelloId)?.name || "-"}</TableCell>
                                 <TableCell data-testid={`text-business-description-${business.id}`}>{business.description || "-"}</TableCell>
-                                <TableCell className="space-x-2">
+                                <TableCell className="flex flex-nowrap gap-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
