@@ -71,15 +71,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mboPercentage: 25,
       });
 
-      // For demo employee, assign some objectives
+      // For demo employee, assign some objectives (with weight validation)
       if (role === "employee") {
         try {
           // Get first few objectives (from objectives table, not dictionary) to assign
           const objectives = await storage.getObjectives();
           if (objectives.length > 0) {
-            // Assign first 3 objectives to demo employee
-            for (let i = 0; i < Math.min(3, objectives.length); i++) {
+            // Check existing assignments to not exceed 100%
+            const existingAssignments = await storage.getObjectiveAssignments(demoUserId);
+            let currentTotalWeight = existingAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
+            const defaultWeight = 20;
+            
+            // Assign objectives only if weight allows (max 5 objectives at 20% each = 100%)
+            for (let i = 0; i < Math.min(5, objectives.length) && currentTotalWeight + defaultWeight <= 100; i++) {
               const objective = objectives[i];
+              
+              // Check if already assigned
+              const alreadyAssigned = existingAssignments.some(a => a.objectiveId === objective.id);
+              if (alreadyAssigned) continue;
               
               try {
                 await storage.createObjectiveAssignment({
@@ -87,7 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   objectiveId: objective.id,
                   status: "in_progress",
                   progress: Math.floor(Math.random() * 80),
+                  weight: defaultWeight,
                 });
+                currentTotalWeight += defaultWeight;
               } catch (e) {
                 // Ignore if assignment already exists or other errors
               }
