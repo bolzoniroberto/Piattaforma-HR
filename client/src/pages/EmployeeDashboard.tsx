@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3 } from "lucide-react";
+import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -30,6 +30,11 @@ interface EnrichedObjective {
   progress: number;
   weight: number;
   economicValue: number;
+  objectiveType?: string;
+  targetValue?: number | null;
+  actualValue?: string | null;
+  qualitativeResult?: string | null;
+  reportedAt?: Date | null;
 }
 
 export default function EmployeeDashboard() {
@@ -133,22 +138,28 @@ export default function EmployeeDashboard() {
     return objectiveAssignments.map((assignment) => {
       const weight = assignment.weight || 0;
       const economicValue = mboTarget * (weight / 100);
+      const obj = assignment.objective as any;
       
       return {
         id: assignment.id,
-        title: assignment.objective?.title || "N/A",
-        description: assignment.objective?.description || "",
-        clusterName: (assignment.objective as any)?.indicatorCluster?.name || "N/A",
-        clusterId: (assignment.objective as any)?.indicatorCluster?.id || "",
-        calculationTypeName: (assignment.objective as any)?.calculationType?.name || "N/A",
-        calculationTypeId: (assignment.objective as any)?.calculationType?.id || "",
+        title: obj?.title || "N/A",
+        description: obj?.description || "",
+        clusterName: obj?.indicatorCluster?.name || "N/A",
+        clusterId: obj?.indicatorCluster?.id || "",
+        calculationTypeName: obj?.calculationType?.name || "N/A",
+        calculationTypeId: obj?.calculationType?.id || "",
         status: assignment.status as ObjectiveStatus,
-        deadline: assignment.objective?.deadline
-          ? new Date(assignment.objective.deadline).toLocaleDateString("it-IT")
+        deadline: obj?.deadline
+          ? new Date(obj.deadline).toLocaleDateString("it-IT")
           : undefined,
         progress: assignment.progress || 0,
         weight,
         economicValue,
+        objectiveType: obj?.objectiveType,
+        targetValue: obj?.targetValue,
+        actualValue: obj?.actualValue,
+        qualitativeResult: obj?.qualitativeResult,
+        reportedAt: obj?.reportedAt,
       };
     });
   }, [objectiveAssignments, mboTarget]);
@@ -356,6 +367,44 @@ export default function EmployeeDashboard() {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Rendicontazione */}
+                              {objective.reportedAt && (
+                                <div className="border-t pt-4">
+                                  <div className="space-y-3">
+                                    {objective.objectiveType === "numeric" ? (
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                          <div className="text-xs text-muted-foreground">Target</div>
+                                          <div className="text-sm font-semibold font-mono">
+                                            {objective.targetValue ? Number(objective.targetValue).toLocaleString() : "-"}
+                                          </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <div className="text-xs text-muted-foreground">Rendicontato</div>
+                                          <div className="text-sm font-semibold font-mono">
+                                            {objective.actualValue ? Number(objective.actualValue).toLocaleString() : "-"}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-xs text-muted-foreground">Risultato:</div>
+                                      {objective.qualitativeResult === "reached" ? (
+                                        <div className="flex items-center gap-1 text-green-600">
+                                          <CheckCircle2 className="h-4 w-4" />
+                                          <span className="text-xs font-semibold">Raggiunto</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 text-red-600">
+                                          <XCircle className="h-4 w-4" />
+                                          <span className="text-xs font-semibold">Non raggiunto</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                               
                               {/* Barra progresso */}
                               <div className="pt-2">
