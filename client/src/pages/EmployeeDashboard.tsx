@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle } from "lucide-react";
+import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -323,6 +323,12 @@ export default function EmployeeDashboard() {
                                       <Calculator className="h-3 w-3 mr-1" />
                                       {objective.calculationTypeName}
                                     </Badge>
+                                    {objective.reportedAt && (
+                                      <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Rendicontato
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                                 <StatusBadge status={objective.status} />
