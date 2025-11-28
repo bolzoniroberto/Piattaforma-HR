@@ -218,7 +218,7 @@ export default function EmployeeDashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-semibold mb-2">Il Mio Dashboard</h1>
+            <h1 className="text-3xl font-semibold font-serif mb-2">Il Mio Dashboard</h1>
             <p className="text-muted-foreground">
               Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
             </p>
@@ -249,7 +249,7 @@ export default function EmployeeDashboard() {
                     {/* Vista Complessiva MBO */}
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
+                        <CardTitle className="text-lg flex items-center gap-2 font-serif">
                           <BarChart3 className="h-5 w-5" />
                           Riepilogo MBO
                         </CardTitle>
@@ -300,7 +300,7 @@ export default function EmployeeDashboard() {
                     </Card>
 
                     {/* Titolo Obiettivi */}
-                    <h3 className="text-lg font-semibold">I Miei Obiettivi</h3>
+                    <h3 className="text-lg font-semibold font-serif">I Miei Obiettivi</h3>
 
                     {/* Lista Obiettivi Arricchita */}
                     <div className="space-y-4">
@@ -424,7 +424,7 @@ export default function EmployeeDashboard() {
                     <div className="space-y-4">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-lg">Regolamento MBO</CardTitle>
+                          <CardTitle className="text-lg font-serif">Regolamento MBO</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm text-muted-foreground mb-4">
