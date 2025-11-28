@@ -381,6 +381,26 @@ export default function EmployeeDashboard() {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Valori rendicontazione - solo per obiettivi numerici rendicontati */}
+                              {objective.reportedAt && objective.objectiveType === "numeric" && (
+                                <div className="border-t pt-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <div className="text-xs text-muted-foreground">Target</div>
+                                      <div className="text-sm font-semibold font-mono">
+                                        {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-xs text-muted-foreground">Rendicontato</div>
+                                      <div className="text-sm font-semibold font-mono">
+                                        {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                               
                               {/* Barra progresso */}
                               <div className="pt-2">
