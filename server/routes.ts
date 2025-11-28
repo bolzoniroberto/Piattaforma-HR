@@ -478,15 +478,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Objective not found" });
       }
 
+      // Get dictionary item to check objectiveType and targetValue
+      const dictionary = objective.dictionaryId 
+        ? await storage.getObjectivesDictionaryItem(objective.dictionaryId)
+        : null;
+
       const updateData: any = {
         reportedAt: new Date(),
       };
 
       if (actualValue !== undefined) {
         updateData.actualValue = actualValue;
+        
+        // For numeric objectives, auto-calculate qualitativeResult based on actualValue vs targetValue
+        if (dictionary?.objectiveType === "numeric" && dictionary?.targetValue !== null && dictionary?.targetValue !== undefined) {
+          const target = parseFloat(String(dictionary.targetValue));
+          const actual = parseFloat(String(actualValue));
+          updateData.qualitativeResult = actual >= target ? "reached" : "not_reached";
+        }
       }
+      
       if (qualitativeResult && ["reached", "not_reached"].includes(qualitativeResult)) {
-        updateData.qualitativeResult = qualitativeResult;
+        // Only set qualitativeResult for qualitative objectives
+        if (dictionary?.objectiveType === "qualitative") {
+          updateData.qualitativeResult = qualitativeResult;
+        }
       }
 
       const updatedObjective = await storage.updateObjective(req.params.id, updateData);

@@ -142,7 +142,7 @@ export default function AdminReportingPage() {
   const handleSaveReport = () => {
     if (!selectedObjective) return;
 
-    if (selectedObjective.objective.objectiveType === "numeric") {
+    if (selectedObjective.dictionary?.objectiveType === "numeric") {
       const numValue = parseFloat(reportValue);
       if (isNaN(numValue)) {
         toast({ title: "Inserisci un valore numerico valido", variant: "destructive" });
@@ -163,7 +163,7 @@ export default function AdminReportingPage() {
 
   const getProgressColor = (item: ObjectiveWithAssignments) => {
     if (!item.objective.reportedAt) return "secondary";
-    if (item.objective.objectiveType === "qualitative") {
+    if (item.dictionary?.objectiveType === "qualitative") {
       return item.objective.qualitativeResult === "reached" ? "default" : "destructive";
     }
     if (item.dictionary?.targetValue && item.objective.actualValue) {
