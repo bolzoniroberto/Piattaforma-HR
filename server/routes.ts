@@ -458,6 +458,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all objectives with their assigned users (for reporting)
+  app.get("/api/objectives-with-assignments", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const objectivesWithAssignments = await storage.getObjectivesWithAssignments();
+      res.json(objectivesWithAssignments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Report on an objective (update target/actual values)
+  app.patch("/api/objectives/:id/report", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { actualValue, qualitativeResult } = req.body;
+      const objective = await storage.getObjective(req.params.id);
+      
+      if (!objective) {
+        return res.status(404).json({ message: "Objective not found" });
+      }
+
+      const updateData: any = {
+        reportedAt: new Date(),
+      };
+
+      if (objective.objectiveType === "numeric") {
+        if (actualValue !== undefined) {
+          updateData.actualValue = actualValue;
+        }
+      } else if (objective.objectiveType === "qualitative") {
+        if (qualitativeResult && ["reached", "not_reached"].includes(qualitativeResult)) {
+          updateData.qualitativeResult = qualitativeResult;
+        }
+      }
+
+      const updatedObjective = await storage.updateObjective(req.params.id, updateData);
+      res.json(updatedObjective);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // Objective Assignment routes
   app.get("/api/my-objectives", isAuthenticated, async (req, res) => {
     try {

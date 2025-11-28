@@ -73,6 +73,13 @@ export interface IStorage {
   createObjective(objective: InsertObjective): Promise<Objective>;
   updateObjective(id: string, objective: Partial<InsertObjective>): Promise<Objective>;
   deleteObjective(id: string): Promise<void>;
+  getObjectivesWithAssignments(): Promise<{
+    objective: Objective;
+    dictionary: ObjectivesDictionary | null;
+    indicatorCluster: IndicatorCluster | null;
+    calculationType: CalculationType | null;
+    assignedUsers: { user: User; assignment: ObjectiveAssignment }[];
+  }[]>;
   
   // Objective Assignment operations
   getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string } })[]>;
@@ -313,6 +320,58 @@ export class DatabaseStorage implements IStorage {
 
   async deleteObjective(id: string): Promise<void> {
     await db.delete(objectives).where(eq(objectives.id, id));
+  }
+
+  async getObjectivesWithAssignments(): Promise<{
+    objective: Objective;
+    dictionary: ObjectivesDictionary | null;
+    indicatorCluster: IndicatorCluster | null;
+    calculationType: CalculationType | null;
+    assignedUsers: { user: User; assignment: ObjectiveAssignment }[];
+  }[]> {
+    // Get all objectives with their dictionary, cluster, and calculation type
+    const objectiveResults = await db
+      .select({
+        objective: objectives,
+        dictionary: objectivesDictionary,
+        indicatorCluster: indicatorClusters,
+        calculationType: calculationTypes,
+      })
+      .from(objectives)
+      .leftJoin(objectivesDictionary, eq(objectives.dictionaryId, objectivesDictionary.id))
+      .leftJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
+      .leftJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
+      .orderBy(desc(objectives.createdAt));
+
+    // Get all assignments with users
+    const assignmentResults = await db
+      .select({
+        assignment: objectiveAssignments,
+        user: users,
+      })
+      .from(objectiveAssignments)
+      .innerJoin(users, eq(objectiveAssignments.userId, users.id));
+
+    // Group assignments by objective
+    const assignmentsByObjective = new Map<string, { user: User; assignment: ObjectiveAssignment }[]>();
+    for (const row of assignmentResults) {
+      const objectiveId = row.assignment.objectiveId;
+      if (!assignmentsByObjective.has(objectiveId)) {
+        assignmentsByObjective.set(objectiveId, []);
+      }
+      assignmentsByObjective.get(objectiveId)!.push({
+        user: row.user,
+        assignment: row.assignment,
+      });
+    }
+
+    return objectiveResults.map((row) => ({
+      objective: row.objective,
+      dictionary: row.dictionary,
+      indicatorCluster: row.indicatorCluster,
+      calculationType: row.calculationType,
+      assignedUsers: assignmentsByObjective.get(row.objective.id) || [],
+    }));
   }
 
   // Objective Assignment operations
