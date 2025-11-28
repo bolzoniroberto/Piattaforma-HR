@@ -379,6 +379,8 @@ export class DatabaseStorage implements IStorage {
     objective: Objective & { 
       title?: string; 
       description?: string;
+      objectiveType?: string;
+      targetValue?: number | null;
       indicatorCluster?: IndicatorCluster;
       calculationType?: CalculationType;
     } 
@@ -405,6 +407,8 @@ export class DatabaseStorage implements IStorage {
         ...row.objective,
         title: row.dictionary?.title || "Obiettivo",
         description: row.dictionary?.description || "",
+        objectiveType: row.dictionary?.objectiveType,
+        targetValue: row.dictionary?.targetValue,
         indicatorCluster: row.indicatorCluster || undefined,
         calculationType: row.calculationType || undefined,
       },
