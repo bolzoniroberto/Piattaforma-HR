@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Settings, Database } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -334,14 +334,16 @@ export default function AdminSettingsPage() {
             showSidebarTrigger={true}
           />
           <main className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-6xl mx-auto">
-              <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-3xl font-bold flex items-center gap-2">
+                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
                     <Settings className="h-8 w-8" />
                     Impostazioni Strutture
                   </h1>
-                  <p className="text-muted-foreground mt-2">Configura indicatori, tipi di calcolo e funzioni aziendali</p>
+                  <p className="text-muted-foreground">
+                    Configura indicatori, tipi di calcolo e funzioni aziendali
+                  </p>
                 </div>
                 <Button
                   variant="outline"
@@ -352,6 +354,47 @@ export default function AdminSettingsPage() {
                   <Database className="h-4 w-4 mr-2" />
                   {seedMutation.isPending ? "Creazione..." : "Popola Dati Test"}
                 </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Indicatori</CardTitle>
+                    <Grid3x3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="stat-clusters">
+                      {clusters.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Cluster di indicatori</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Tipi di Calcolo</CardTitle>
+                    <Calculator className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="stat-calculation-types">
+                      {calcTypes.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Formule di valutazione</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Funzioni Aziendali</CardTitle>
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="stat-business-functions">
+                      {businessFunctions.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Dipartimenti</p>
+                  </CardContent>
+                </Card>
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
