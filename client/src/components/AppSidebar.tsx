@@ -17,6 +17,7 @@ import {
   FileText,
   Settings,
   CheckCircle,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -49,6 +50,11 @@ const goalSettingItems = [
     title: "Assegnazione Obiettivi",
     url: "/admin/assignments-bulk",
     icon: FileText,
+  },
+  {
+    title: "Cancella Obiettivi",
+    url: "/admin/clear-assignments",
+    icon: Trash2,
   },
 ];
 

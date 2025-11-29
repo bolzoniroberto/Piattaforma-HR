@@ -672,6 +672,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear all assignments for all users
+  app.delete("/api/assignments/clear-all", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allAssignments = await storage.getAllObjectiveAssignments?.() || [];
+      const deletedCount = allAssignments.length;
+      
+      // Delete all assignments
+      for (const assignment of allAssignments) {
+        try {
+          await storage.deleteObjectiveAssignment(assignment.id);
+        } catch (err) {
+          console.log(`Error deleting assignment ${assignment.id}:`, err);
+        }
+      }
+      
+      res.json({ 
+        message: "All assignments deleted successfully",
+        deletedCount
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   app.patch("/api/assignments/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
