@@ -366,8 +366,8 @@ export default function EmployeeDashboard() {
                               
                               <Separator />
                               
-                              {/* Info economiche e peso */}
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              {/* FASCIA 1: Info principali - Peso, Valore Teorico, Target */}
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-muted/30 p-4 rounded-lg">
                                 <div className="space-y-1">
                                   <div className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Target className="h-3 w-3" />
@@ -378,78 +378,57 @@ export default function EmployeeDashboard() {
                                 <div className="space-y-1">
                                   <div className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Euro className="h-3 w-3" />
-                                    {objective.reportedAt ? "Valore Teorico" : "Valore Economico"}
+                                    Valore Teorico
                                   </div>
                                   <div className="text-lg font-semibold font-mono text-primary">
                                     {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                                   </div>
                                 </div>
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <TrendingUp className="h-3 w-3" />
-                                    Progresso
-                                  </div>
-                                  <div className="text-lg font-semibold font-mono">{objective.progress}%</div>
-                                </div>
-                                {objective.deadline && (
+                                {objective.objectiveType === "numeric" && (
                                   <div className="space-y-1">
-                                    <div className="text-xs text-muted-foreground">Scadenza</div>
-                                    <div className="text-sm font-medium">{objective.deadline}</div>
+                                    <div className="text-xs text-muted-foreground">Risultato Target</div>
+                                    <div className="text-lg font-semibold font-mono">
+                                      {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
+                                    </div>
                                   </div>
                                 )}
                               </div>
 
-                              {/* Valore economico raggiunto - dopo rendicontazione */}
+                              {/* FASCIA 2: Rendicontazione - solo dopo rendicontazione */}
                               {objective.reportedAt && (
-                                <div className="pt-4 border-t">
-                                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                                    <Euro className="h-3 w-3" />
-                                    Valore Economico Raggiunto
-                                  </div>
-                                  <div className="text-lg font-semibold font-mono">
-                                    {(() => {
-                                      let multiplier = 0;
-                                      if (objective.qualitativeResult === "reached") {
-                                        multiplier = 1;
-                                      } else if (objective.qualitativeResult === "partial") {
-                                        multiplier = 0.5;
-                                      }
-                                      const reachedValue = objective.economicValue * multiplier;
-                                      return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-                                    })()}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Valori rendicontazione - solo per obiettivi numerici rendicontati */}
-                              {objective.reportedAt && objective.objectiveType === "numeric" && (
-                                <div className="border-t pt-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                      <div className="text-xs text-muted-foreground">Target</div>
-                                      <div className="text-sm font-semibold font-mono">
-                                        {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
+                                <div className="bg-primary/10 p-4 rounded-lg space-y-4 border border-primary/20">
+                                  <div className="text-sm font-semibold text-primary">Rendicontazione</div>
+                                  
+                                  {objective.objectiveType === "numeric" && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-1">
+                                        <div className="text-xs text-muted-foreground">Valore Rendicontato</div>
+                                        <div className="text-lg font-semibold font-mono">
+                                          {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                          <Euro className="h-3 w-3" />
+                                          Valore Economico Raggiunto
+                                        </div>
+                                        <div className="text-lg font-semibold font-mono">
+                                          {(() => {
+                                            let multiplier = 0;
+                                            if (objective.qualitativeResult === "reached") {
+                                              multiplier = 1;
+                                            } else if (objective.qualitativeResult === "partial") {
+                                              multiplier = 0.5;
+                                            }
+                                            const reachedValue = objective.economicValue * multiplier;
+                                            return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+                                          })()}
+                                        </div>
                                       </div>
                                     </div>
-                                    <div className="space-y-1">
-                                      <div className="text-xs text-muted-foreground">Rendicontato</div>
-                                      <div className="text-sm font-semibold font-mono">
-                                        {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
-                                      </div>
-                                    </div>
-                                  </div>
+                                  )}
                                 </div>
                               )}
-                              
-                              {/* Barra progresso */}
-                              <div className="pt-2">
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-primary rounded-full transition-all"
-                                    style={{ width: `${objective.progress}%` }}
-                                  />
-                                </div>
-                              </div>
                             </CardContent>
                           </Card>
                         ))
