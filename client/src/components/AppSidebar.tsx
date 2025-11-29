@@ -58,11 +58,6 @@ const rendicontazioneItems = [
     url: "/admin/reporting",
     icon: CheckCircle,
   },
-  {
-    title: "Impostazioni",
-    url: "/admin/settings",
-    icon: Settings,
-  },
 ];
 
 export default function AppSidebar() {
