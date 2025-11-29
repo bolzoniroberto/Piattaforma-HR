@@ -130,6 +130,7 @@ export const objectivesDictionary = pgTable("objectives_dictionary", {
   calculationTypeId: varchar("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
   objectiveType: varchar("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
   targetValue: numeric("target_value", { precision: 15, scale: 2 }), // Target for numeric objectives
+  thresholdValue: numeric("threshold_value", { precision: 15, scale: 2 }), // Threshold below which numeric objective is 0%
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -141,6 +142,7 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
 }).extend({
   objectiveType: z.enum(["numeric", "qualitative"]).default("numeric"),
   targetValue: z.coerce.number().nullable().optional(),
+  thresholdValue: z.coerce.number().nullable().optional(),
 });
 
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;

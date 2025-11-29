@@ -57,6 +57,7 @@ interface ObjectiveDictionary {
   calculationTypeId: string;
   objectiveType?: string;
   targetValue?: number | null;
+  thresholdValue?: number | null;
   indicatorCluster?: {
     id: string;
     name: string;
@@ -101,6 +102,7 @@ export default function AdminObjectivesPage() {
     calculationTypeId: "",
     objectiveType: "numeric",
     targetValue: "",
+    thresholdValue: "",
   });
 
   const { data: objectivesDictionary = [], isLoading: dictLoading } = useQuery<ObjectiveDictionary[]>({
@@ -132,6 +134,7 @@ export default function AdminObjectivesPage() {
         calculationTypeId: data.calculationTypeId,
         objectiveType: data.objectiveType,
         targetValue: data.objectiveType === "numeric" && data.targetValue ? parseFloat(data.targetValue) : null,
+        thresholdValue: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdValue) : null,
       };
       const res = await apiRequest("POST", "/api/objectives-dictionary", payload);
       return res.json();
@@ -140,7 +143,7 @@ export default function AdminObjectivesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
       toast({ title: "Obiettivo creato con successo" });
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "" });
+      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "" });
     },
     onError: (error) => {
       toast({
@@ -152,7 +155,7 @@ export default function AdminObjectivesPage() {
   });
 
   const updateObjectiveMutation = useMutation({
-    mutationFn: async (data: { id: string; title: string; description: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string }) => {
+    mutationFn: async (data: { id: string; title: string; description: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string; thresholdValue: string }) => {
       const payload = {
         title: data.title,
         description: data.description,
@@ -160,6 +163,7 @@ export default function AdminObjectivesPage() {
         calculationTypeId: data.calculationTypeId,
         objectiveType: data.objectiveType,
         targetValue: data.objectiveType === "numeric" && data.targetValue ? parseFloat(data.targetValue) : null,
+        thresholdValue: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdValue) : null,
       };
       const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, payload);
       return res.json();
@@ -169,7 +173,7 @@ export default function AdminObjectivesPage() {
       toast({ title: "Obiettivo aggiornato con successo" });
       setEditingId(null);
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "" });
+      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "" });
     },
     onError: (error) => {
       toast({
@@ -244,13 +248,14 @@ export default function AdminObjectivesPage() {
       calculationTypeId: obj.calculationTypeId,
       objectiveType: obj.objectiveType || "numeric",
       targetValue: obj.targetValue?.toString() || "",
+      thresholdValue: obj.thresholdValue?.toString() || "",
     });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setEditingId(null);
-    setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "" });
+    setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "" });
     setIsDialogOpen(false);
   };
 
@@ -386,6 +391,22 @@ export default function AdminObjectivesPage() {
                           </div>
                         )}
                       </div>
+                      {newObjective.objectiveType === "numeric" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="threshold-value">Valore Soglia (opzionale)</Label>
+                          <Input
+                            id="threshold-value"
+                            type="number"
+                            placeholder="Es. 50 - sotto questo valore l'obiettivo è 0%"
+                            value={newObjective.thresholdValue}
+                            onChange={(e) => setNewObjective({ ...newObjective, thresholdValue: e.target.value })}
+                            data-testid="input-threshold-value"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Se impostato: valori sotto la soglia = 0%, tra soglia e target = interpolazione lineare, al target = 100%
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <DialogFooter>
                       <Button

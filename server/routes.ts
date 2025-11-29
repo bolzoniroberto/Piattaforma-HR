@@ -490,11 +490,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (actualValue !== undefined) {
         updateData.actualValue = actualValue;
         
-        // For numeric objectives, auto-calculate qualitativeResult based on actualValue vs targetValue
+        // For numeric objectives, auto-calculate qualitativeResult based on actualValue vs targetValue and thresholdValue
         if (dictionary?.objectiveType === "numeric" && dictionary?.targetValue !== null && dictionary?.targetValue !== undefined) {
           const target = parseFloat(String(dictionary.targetValue));
           const actual = parseFloat(String(actualValue));
-          updateData.qualitativeResult = actual >= target ? "reached" : "not_reached";
+          const threshold = dictionary?.thresholdValue ? parseFloat(String(dictionary.thresholdValue)) : null;
+          
+          // If threshold is defined: below threshold = not_reached (0%), between threshold and target = interpolate, at/above target = reached (100%)
+          // If no threshold: simple comparison
+          if (threshold !== null) {
+            if (actual < threshold) {
+              updateData.qualitativeResult = "not_reached";
+            } else if (actual >= target) {
+              updateData.qualitativeResult = "reached";
+            } else {
+              // Between threshold and target - still consider it as "reached" if interpolation > 50%, or use a linear scale
+              const percentage = ((actual - threshold) / (target - threshold)) * 100;
+              updateData.qualitativeResult = percentage >= 50 ? "reached" : "not_reached";
+            }
+          } else {
+            // No threshold: simple comparison
+            updateData.qualitativeResult = actual >= target ? "reached" : "not_reached";
+          }
         }
       }
       
