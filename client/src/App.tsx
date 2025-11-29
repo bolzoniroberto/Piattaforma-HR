@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import RegulationPage from "@/pages/RegulationPage";
+import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
 import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
@@ -72,7 +73,7 @@ function Router() {
       )} />
       <Route path="/admin" component={() => (
         <ProtectedRoute requiredRole="admin">
-          <EmployeeDashboard />
+          <AdminDashboard />
         </ProtectedRoute>
       )} />
       <Route path="/admin/objectives" component={() => (
