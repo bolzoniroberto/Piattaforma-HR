@@ -306,10 +306,7 @@ export default function EmployeeDashboard() {
                   </TabsList>
 
                   <TabsContent value="objectives" className="space-y-3 mt-4">
-                    {/* Titolo Obiettivi */}
-                    <h3 className="text-lg font-semibold font-serif">I Miei Obiettivi</h3>
-
-                    {/* Lista Obiettivi Arricchita */}
+                    {/* Lista Obiettivi */}
                     <div className="space-y-3">
                       {objectives.length === 0 ? (
                         <Card>
