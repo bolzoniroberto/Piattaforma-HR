@@ -125,6 +125,11 @@ export default function AdminObjectivesPage() {
     enabled: !!user,
   });
 
+  const { data: objectivesWithAssignments = [] } = useQuery<any[]>({
+    queryKey: ["/api/objectives-with-assignments"],
+    enabled: !!user,
+  });
+
   const createObjectiveMutation = useMutation({
     mutationFn: async (data: typeof newObjective) => {
       const payload = {
@@ -190,7 +195,9 @@ export default function AdminObjectivesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-with-assignments"] });
       toast({ title: "Obiettivo eliminato con successo" });
+      setDeleteId(null);
     },
     onError: (error) => {
       toast({
@@ -200,6 +207,17 @@ export default function AdminObjectivesPage() {
       });
     },
   });
+
+  const selectedObjectiveForDelete = useMemo(() => {
+    if (!deleteId) return null;
+    return objectivesDictionary.find(obj => obj.id === deleteId);
+  }, [deleteId, objectivesDictionary]);
+
+  const assignmentsForDeletedObjective = useMemo(() => {
+    if (!deleteId) return [];
+    const found = objectivesWithAssignments.find(item => item.objective.dictionaryId === deleteId);
+    return found?.assignedUsers || [];
+  }, [deleteId, objectivesWithAssignments]);
 
   const filteredObjectives = useMemo(() => {
     let filtered = objectivesDictionary;
@@ -584,6 +602,21 @@ export default function AdminObjectivesPage() {
                                                 Sei sicuro di voler eliminare "{obj.title}"? Questa azione non può essere annullata.
                                               </AlertDialogDescription>
                                             </AlertDialogHeader>
+                                            {assignmentsForDeletedObjective.length > 0 && (
+                                              <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 space-y-2">
+                                                <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                                                  Attenzione: Questo obiettivo è assegnato a {assignmentsForDeletedObjective.length} {assignmentsForDeletedObjective.length === 1 ? 'dipendente' : 'dipendenti'}
+                                                </p>
+                                                <ul className="text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
+                                                  {assignmentsForDeletedObjective.slice(0, 3).map(({ user: assignedUser }) => (
+                                                    <li key={assignedUser.id}>• {assignedUser.firstName} {assignedUser.lastName}</li>
+                                                  ))}
+                                                  {assignmentsForDeletedObjective.length > 3 && (
+                                                    <li>• +{assignmentsForDeletedObjective.length - 3} altri</li>
+                                                  )}
+                                                </ul>
+                                              </div>
+                                            )}
                                             <div className="flex justify-end gap-2">
                                               <AlertDialogCancel>Annulla</AlertDialogCancel>
                                               <AlertDialogAction
