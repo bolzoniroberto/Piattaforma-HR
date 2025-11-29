@@ -83,14 +83,16 @@ export default function AdminClearAllAssignmentsPage() {
 
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-2xl mx-auto space-y-6">
-              <div>
-                <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                  <Trash2 className="h-8 w-8" />
-                  Disassocia Tutti gli Obiettivi
-                </h1>
-                <p className="text-muted-foreground">
-                  Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti
-                </p>
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
+                    <Trash2 className="h-8 w-8" />
+                    Disassocia Tutti gli Obiettivi
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti
+                  </p>
+                </div>
               </div>
 
               <Card className="border-destructive/50 bg-destructive/5">
