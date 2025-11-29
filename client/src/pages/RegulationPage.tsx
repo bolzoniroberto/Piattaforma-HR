@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,26 @@ import { Download, ArrowLeft, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RegulationPage() {
+  const { user } = useAuth();
   const [accepted, setAccepted] = useState(false);
+
+  const alreadyAccepted = useMemo(() => {
+    return !!user?.mboRegulationAcceptedAt;
+  }, [user?.mboRegulationAcceptedAt]);
+
+  const acceptanceDate = useMemo(() => {
+    if (!user?.mboRegulationAcceptedAt) return null;
+    return new Date(user.mboRegulationAcceptedAt).toLocaleDateString("it-IT", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [user?.mboRegulationAcceptedAt]);
 
   const handleAccept = () => {
     setAccepted(true);
@@ -164,31 +181,45 @@ export default function RegulationPage() {
               <Separator className="my-6" />
 
               <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 bg-muted rounded-md">
-                  <Checkbox
-                    id="accept-regulation"
-                    checked={accepted}
-                    onCheckedChange={(checked) => checked && handleAccept()}
-                    data-testid="checkbox-accept-regulation"
-                  />
-                  <div className="flex-1">
-                    <label
-                      htmlFor="accept-regulation"
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      Accetto il Regolamento MBO 2025
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Confermo di aver letto e compreso il regolamento MBO aziendale e mi impegno
-                      a rispettarne le disposizioni.
-                    </p>
+                {alreadyAccepted ? (
+                  <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md">
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-green-900 dark:text-green-100">
+                        Hai già accettato il Regolamento MBO 2025
+                      </label>
+                      <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                        Accettato il {acceptanceDate}
+                      </p>
+                    </div>
                   </div>
-                  {accepted && (
-                    <CheckCircle className="h-5 w-5 text-chart-2 flex-shrink-0" />
-                  )}
-                </div>
+                ) : (
+                  <div className="flex items-start gap-3 p-4 bg-muted rounded-md">
+                    <Checkbox
+                      id="accept-regulation"
+                      checked={accepted}
+                      onCheckedChange={(checked) => checked && handleAccept()}
+                      data-testid="checkbox-accept-regulation"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="accept-regulation"
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        Accetto il Regolamento MBO 2025
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Confermo di aver letto e compreso il regolamento MBO aziendale e mi impegno
+                        a rispettarne le disposizioni.
+                      </p>
+                    </div>
+                    {accepted && (
+                      <CheckCircle className="h-5 w-5 text-chart-2 flex-shrink-0" />
+                    )}
+                  </div>
+                )}
 
-                {accepted && (
+                {(accepted || alreadyAccepted) && (
                   <div className="flex justify-end">
                     <Link href="/">
                       <Button data-testid="button-continue">
