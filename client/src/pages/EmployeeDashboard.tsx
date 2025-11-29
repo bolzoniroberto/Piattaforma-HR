@@ -112,12 +112,8 @@ export default function EmployeeDashboard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return typeof key === "string" && key.includes("/api/my-");
-        }
-      });
+      // Invalidate user query to refetch user with updated mboRegulationAcceptedAt
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setShowRegulationModal(false);
       toast({ 
         title: "Regolamento accettato",
