@@ -378,7 +378,7 @@ export default function EmployeeDashboard() {
                                 <div className="space-y-1">
                                   <div className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Euro className="h-3 w-3" />
-                                    Valore Economico
+                                    {objective.reportedAt ? "Valore Teorico" : "Valore Economico"}
                                   </div>
                                   <div className="text-lg font-semibold font-mono text-primary">
                                     {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
@@ -398,6 +398,28 @@ export default function EmployeeDashboard() {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Valore economico raggiunto - dopo rendicontazione */}
+                              {objective.reportedAt && (
+                                <div className="pt-4 border-t">
+                                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                                    <Euro className="h-3 w-3" />
+                                    Valore Economico Raggiunto
+                                  </div>
+                                  <div className="text-lg font-semibold font-mono">
+                                    {(() => {
+                                      let multiplier = 0;
+                                      if (objective.qualitativeResult === "reached") {
+                                        multiplier = 1;
+                                      } else if (objective.qualitativeResult === "partial") {
+                                        multiplier = 0.5;
+                                      }
+                                      const reachedValue = objective.economicValue * multiplier;
+                                      return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Valori rendicontazione - solo per obiettivi numerici rendicontati */}
                               {objective.reportedAt && objective.objectiveType === "numeric" && (
