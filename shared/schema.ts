@@ -32,6 +32,7 @@ export const users = pgTable("users", {
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  codiceFiscale: varchar("codice_fiscale"), // Tax ID
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("employee"), // employee or admin
   department: varchar("department"),
@@ -47,6 +48,7 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   email: true,
   firstName: true,
   lastName: true,
+  codiceFiscale: true,
   profileImageUrl: true,
   department: true,
   managerId: true,

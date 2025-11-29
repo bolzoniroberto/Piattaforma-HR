@@ -60,6 +60,7 @@ export default function AdminUsersPage() {
     firstName: "",
     lastName: "",
     email: "",
+    codiceFiscale: "",
     department: "",
     managerId: "",
     ral: "",
@@ -132,6 +133,7 @@ export default function AdminUsersPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        codiceFiscale: formData.codiceFiscale || null,
         department: formData.department,
         ral: formData.ral ? parseFloat(formData.ral) : null,
         mboPercentage: parseInt(formData.mboPercentage),
@@ -161,6 +163,7 @@ export default function AdminUsersPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        codiceFiscale: formData.codiceFiscale || null,
         department: formData.department,
         ral: formData.ral ? parseFloat(formData.ral) : null,
         mboPercentage: parseInt(formData.mboPercentage),
@@ -207,6 +210,7 @@ export default function AdminUsersPage() {
       firstName: "",
       lastName: "",
       email: "",
+      codiceFiscale: "",
       department: "",
       managerId: "",
       ral: "",
@@ -227,6 +231,7 @@ export default function AdminUsersPage() {
       firstName: u.firstName || "",
       lastName: u.lastName || "",
       email: u.email || "",
+      codiceFiscale: u.codiceFiscale || "",
       department: u.department || "",
       managerId: u.managerId || "",
       ral: u.ral ? u.ral.toString() : "",
@@ -425,6 +430,16 @@ export default function AdminUsersPage() {
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 data-testid="input-email"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="codiceFiscale">Codice Fiscale</Label>
+                              <Input
+                                id="codiceFiscale"
+                                value={formData.codiceFiscale}
+                                onChange={(e) => setFormData({ ...formData, codiceFiscale: e.target.value })}
+                                placeholder="Es: BNCRSS80A01F205O"
+                                data-testid="input-codice-fiscale"
                               />
                             </div>
                             <div>
