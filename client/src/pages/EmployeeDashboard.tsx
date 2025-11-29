@@ -127,11 +127,17 @@ export default function EmployeeDashboard() {
       totalWeight += weight;
       
       const obj = a.objective as any;
-      // If reported, use 100% if reached, 0% if not reached
+      // If reported, use 100% if reached, 50% if partial, 0% if not reached
       // If not reported, use current progress
       let progressValue = a.progress || 0;
       if (obj?.reportedAt) {
-        progressValue = obj.qualitativeResult === "reached" ? 100 : 0;
+        if (obj.qualitativeResult === "reached") {
+          progressValue = 100;
+        } else if (obj.qualitativeResult === "partial") {
+          progressValue = 50;
+        } else {
+          progressValue = 0;
+        }
       }
       
       weightedProgress += progressValue * weight;
@@ -336,6 +342,11 @@ export default function EmployeeDashboard() {
                                     <Badge className="text-xs bg-green-600 hover:bg-green-700">
                                       <Check className="h-3 w-3 mr-1" />
                                       Raggiunto
+                                    </Badge>
+                                  ) : objective.qualitativeResult === "partial" ? (
+                                    <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Raggiunto parzialmente
                                     </Badge>
                                   ) : (
                                     <Badge className="text-xs bg-red-600 hover:bg-red-700">
