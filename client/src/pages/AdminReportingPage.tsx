@@ -352,10 +352,8 @@ export default function AdminReportingPage() {
                                     <span className="text-muted-foreground text-sm">-</span>
                                   )}
                                 </TableCell>
-                                <TableCell>
-                                  <Badge variant={isNumeric ? "default" : "secondary"}>
-                                    {isNumeric ? "Numerico" : "Qualitativo"}
-                                  </Badge>
+                                <TableCell className="text-sm">
+                                  {isNumeric ? "Numerico" : "Qualitativo"}
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
                                   {isNumeric
@@ -389,27 +387,8 @@ export default function AdminReportingPage() {
                                     <span className="text-muted-foreground">Da rendicontare</span>
                                   )}
                                 </TableCell>
-                                <TableCell>
-                                  <div className="flex -space-x-2">
-                                    {item.assignedUsers.slice(0, 3).map(({ user: assignedUser }) => (
-                                      <Avatar key={assignedUser.id} className="h-6 w-6 border-2 border-background">
-                                        {assignedUser.profileImageUrl && (
-                                          <AvatarImage src={assignedUser.profileImageUrl} />
-                                        )}
-                                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                                          {getInitials(assignedUser.firstName, assignedUser.lastName)}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    ))}
-                                    {item.assignedUsers.length > 3 && (
-                                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
-                                        +{item.assignedUsers.length - 3}
-                                      </div>
-                                    )}
-                                    {item.assignedUsers.length === 0 && (
-                                      <span className="text-muted-foreground text-sm">Nessuno</span>
-                                    )}
-                                  </div>
+                                <TableCell className="text-sm">
+                                  {item.assignedUsers.length} {item.assignedUsers.length === 1 ? "utente" : "utenti"}
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={getProgressColor(item)}>
