@@ -255,9 +255,135 @@ export default function EmployeeDashboard() {
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="objectives" className="space-y-6 mt-6">
-                    {/* Vista Complessiva MBO */}
-                    <Card>
+                  <TabsContent value="objectives" className="space-y-4 mt-6">
+                    {/* Titolo Obiettivi */}
+                    <h3 className="text-lg font-semibold font-serif">I Miei Obiettivi</h3>
+
+                    {/* Lista Obiettivi Arricchita */}
+                    <div className="space-y-4">
+                      {objectives.length === 0 ? (
+                        <Card>
+                          <CardContent className="pt-6 text-center text-muted-foreground">
+                            Nessun obiettivo assegnato al momento
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        objectives.map((objective) => (
+                          <Card key={objective.id} className="hover-elevate" data-testid={`card-objective-${objective.id}`}>
+                            <CardHeader className="pb-2 pt-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 space-y-1">
+                                  <h3 className="font-semibold text-base leading-tight">{objective.title}</h3>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="outline" className="text-xs">
+                                      {objective.clusterName}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Calculator className="h-3 w-3 mr-1" />
+                                      {objective.calculationTypeName}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                {objective.reportedAt ? (
+                                  objective.qualitativeResult === "reached" ? (
+                                    <Badge className="text-xs bg-green-600 hover:bg-green-700">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Raggiunto
+                                    </Badge>
+                                  ) : objective.qualitativeResult === "partial" ? (
+                                    <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Raggiunto parzialmente
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="text-xs bg-red-600 hover:bg-red-700">
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Non raggiunto
+                                    </Badge>
+                                  )
+                                ) : (
+                                  <StatusBadge status={objective.status} />
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3 pb-4">
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {objective.description}
+                              </p>
+                              
+                              <Separator className="my-2" />
+                              
+                              {/* FASCIA 1: Info principali - Peso, Valore Teorico, Target */}
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-muted/30 p-3 rounded-lg">
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Target className="h-3 w-3" />
+                                    Peso
+                                  </div>
+                                  <div className="text-base font-semibold font-mono">{objective.weight}%</div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Euro className="h-3 w-3" />
+                                    Valore Teorico
+                                  </div>
+                                  <div className="text-base font-semibold font-mono text-primary">
+                                    {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                                  </div>
+                                </div>
+                                {objective.objectiveType === "numeric" && (
+                                  <div className="space-y-1">
+                                    <div className="text-xs text-muted-foreground">Risultato Target</div>
+                                    <div className="text-base font-semibold font-mono">
+                                      {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* FASCIA 2: Rendicontazione - solo dopo rendicontazione */}
+                              {objective.reportedAt && (
+                                <div className="bg-primary/10 p-3 rounded-lg space-y-3 border border-primary/20">
+                                  <div className="text-xs font-semibold text-primary">Rendicontazione</div>
+                                  
+                                  {objective.objectiveType === "numeric" && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <div className="text-xs text-muted-foreground">Valore Rendicontato</div>
+                                        <div className="text-base font-semibold font-mono">
+                                          {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                          <Euro className="h-3 w-3" />
+                                          Valore Economico Raggiunto
+                                        </div>
+                                        <div className="text-base font-semibold font-mono">
+                                          {(() => {
+                                            let multiplier = 0;
+                                            if (objective.qualitativeResult === "reached") {
+                                              multiplier = 1;
+                                            } else if (objective.qualitativeResult === "partial") {
+                                              multiplier = 0.5;
+                                            }
+                                            const reachedValue = objective.economicValue * multiplier;
+                                            return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+                                          })()}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Riepilogo MBO - Spostato in fondo */}
+                    <Card className="mt-8">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg flex items-center gap-2 font-serif">
                           <BarChart3 className="h-5 w-5" />
@@ -268,7 +394,7 @@ export default function EmployeeDashboard() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="bg-muted/50 rounded-lg p-4">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                               <Euro className="h-4 w-4" />
@@ -308,132 +434,6 @@ export default function EmployeeDashboard() {
                         </div>
                       </CardContent>
                     </Card>
-
-                    {/* Titolo Obiettivi */}
-                    <h3 className="text-lg font-semibold font-serif">I Miei Obiettivi</h3>
-
-                    {/* Lista Obiettivi Arricchita */}
-                    <div className="space-y-4">
-                      {objectives.length === 0 ? (
-                        <Card>
-                          <CardContent className="pt-6 text-center text-muted-foreground">
-                            Nessun obiettivo assegnato al momento
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        objectives.map((objective) => (
-                          <Card key={objective.id} className="hover-elevate" data-testid={`card-objective-${objective.id}`}>
-                            <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 space-y-1">
-                                  <h3 className="font-semibold text-base leading-tight">{objective.title}</h3>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="outline" className="text-xs">
-                                      {objective.clusterName}
-                                    </Badge>
-                                    <Badge variant="secondary" className="text-xs">
-                                      <Calculator className="h-3 w-3 mr-1" />
-                                      {objective.calculationTypeName}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                {objective.reportedAt ? (
-                                  objective.qualitativeResult === "reached" ? (
-                                    <Badge className="text-xs bg-green-600 hover:bg-green-700">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Raggiunto
-                                    </Badge>
-                                  ) : objective.qualitativeResult === "partial" ? (
-                                    <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Raggiunto parzialmente
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="text-xs bg-red-600 hover:bg-red-700">
-                                      <XCircle className="h-3 w-3 mr-1" />
-                                      Non raggiunto
-                                    </Badge>
-                                  )
-                                ) : (
-                                  <StatusBadge status={objective.status} />
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {objective.description}
-                              </p>
-                              
-                              <Separator />
-                              
-                              {/* FASCIA 1: Info principali - Peso, Valore Teorico, Target */}
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-muted/30 p-4 rounded-lg">
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Target className="h-3 w-3" />
-                                    Peso
-                                  </div>
-                                  <div className="text-lg font-semibold font-mono">{objective.weight}%</div>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Euro className="h-3 w-3" />
-                                    Valore Teorico
-                                  </div>
-                                  <div className="text-lg font-semibold font-mono text-primary">
-                                    {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
-                                  </div>
-                                </div>
-                                {objective.objectiveType === "numeric" && (
-                                  <div className="space-y-1">
-                                    <div className="text-xs text-muted-foreground">Risultato Target</div>
-                                    <div className="text-lg font-semibold font-mono">
-                                      {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* FASCIA 2: Rendicontazione - solo dopo rendicontazione */}
-                              {objective.reportedAt && (
-                                <div className="bg-primary/10 p-4 rounded-lg space-y-4 border border-primary/20">
-                                  <div className="text-sm font-semibold text-primary">Rendicontazione</div>
-                                  
-                                  {objective.objectiveType === "numeric" && (
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div className="space-y-1">
-                                        <div className="text-xs text-muted-foreground">Valore Rendicontato</div>
-                                        <div className="text-lg font-semibold font-mono">
-                                          {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
-                                        </div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                          <Euro className="h-3 w-3" />
-                                          Valore Economico Raggiunto
-                                        </div>
-                                        <div className="text-lg font-semibold font-mono">
-                                          {(() => {
-                                            let multiplier = 0;
-                                            if (objective.qualitativeResult === "reached") {
-                                              multiplier = 1;
-                                            } else if (objective.qualitativeResult === "partial") {
-                                              multiplier = 0.5;
-                                            }
-                                            const reachedValue = objective.economicValue * multiplier;
-                                            return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-                                          })()}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </div>
                   </TabsContent>
 
                   <TabsContent value="documents" className="mt-6">
