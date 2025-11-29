@@ -455,37 +455,21 @@ export default function AdminReportingPage() {
 
           {selectedObjective && (
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Tipo: <span className="font-medium text-foreground">
-                    {selectedObjective.dictionary?.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}
-                  </span>
-                </p>
-                {selectedObjective.dictionary?.objectiveType === "numeric" && selectedObjective.dictionary?.targetValue && (
-                  <p className="text-sm text-muted-foreground">
-                    Target: <span className="font-medium text-foreground">
-                      {Number(selectedObjective.dictionary.targetValue).toLocaleString()}
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">
-                  Utenti assegnati ({selectedObjective.assignedUsers.length})
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedObjective.assignedUsers.map(({ user: assignedUser }) => (
-                    <Badge key={assignedUser.id} variant="outline" className="flex items-center gap-1">
-                      <Avatar className="h-4 w-4">
-                        <AvatarFallback className="text-[8px]">
-                          {getInitials(assignedUser.firstName, assignedUser.lastName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      {assignedUser.firstName} {assignedUser.lastName}
-                    </Badge>
-                  ))}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Tipo</p>
+                  <p className="font-medium">{selectedObjective.dictionary?.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Assegnato a</p>
+                  <p className="font-medium">{selectedObjective.assignedUsers.length} {selectedObjective.assignedUsers.length === 1 ? "utente" : "utenti"}</p>
+                </div>
+                {selectedObjective.dictionary?.objectiveType === "numeric" && selectedObjective.dictionary?.targetValue && (
+                  <div>
+                    <p className="text-muted-foreground">Target</p>
+                    <p className="font-medium">{Number(selectedObjective.dictionary.targetValue).toLocaleString()}</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
