@@ -44,8 +44,16 @@ export default function AdminClearAllAssignmentsPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      // Invalidate all assignment-related queries using predicate to match all patterns
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.includes("/api/assignments");
+        }
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-objectives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-with-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
       
       toast({
         title: "Deassociazione completata",
