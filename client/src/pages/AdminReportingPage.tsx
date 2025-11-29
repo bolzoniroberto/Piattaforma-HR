@@ -139,6 +139,16 @@ export default function AdminReportingPage() {
     setReportDialogOpen(true);
   };
 
+  const handleCloseReportDialog = (open: boolean) => {
+    if (!open) {
+      // Reset values when dialog is closed
+      setReportValue("");
+      setQualitativeResult("");
+      setSelectedObjective(null);
+    }
+    setReportDialogOpen(open);
+  };
+
   const handleSaveReport = () => {
     if (!selectedObjective) return;
 
@@ -433,7 +443,7 @@ export default function AdminReportingPage() {
         </SidebarInset>
       </div>
 
-      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+      <Dialog open={reportDialogOpen} onOpenChange={handleCloseReportDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rendicontazione Obiettivo</DialogTitle>
