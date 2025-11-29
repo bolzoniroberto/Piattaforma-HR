@@ -43,6 +43,7 @@ interface EnrichedObjective {
   economicValue: number;
   objectiveType?: string;
   targetValue?: number | null;
+  thresholdValue?: number | null;
   actualValue?: number | null;
   qualitativeResult?: string | null;
   reportedAt?: Date | null;
@@ -208,6 +209,7 @@ export default function EmployeeDashboard() {
         economicValue,
         objectiveType: obj?.objectiveType,
         targetValue: obj?.targetValue,
+        thresholdValue: obj?.thresholdValue,
         actualValue: obj?.actualValue,
         qualitativeResult: obj?.qualitativeResult,
         reportedAt: obj?.reportedAt,
@@ -452,10 +454,24 @@ export default function EmployeeDashboard() {
                                         <div className="text-sm font-semibold font-mono">
                                           {(() => {
                                             let multiplier = 0;
-                                            if (objective.qualitativeResult === "reached") {
-                                              multiplier = 1;
-                                            } else if (objective.qualitativeResult === "partial") {
-                                              multiplier = 0.5;
+                                            if (objective.objectiveType === "numeric") {
+                                              const actual = parseFloat(String(objective.actualValue || 0));
+                                              const target = parseFloat(String(objective.targetValue || 0));
+                                              const threshold = parseFloat(String(objective.thresholdValue || 0));
+                                              if (target > threshold && actual >= threshold) {
+                                                multiplier = (actual - threshold) / (target - threshold);
+                                                multiplier = Math.min(1, Math.max(0, multiplier));
+                                              } else if (actual >= target) {
+                                                multiplier = 1;
+                                              } else if (actual < threshold) {
+                                                multiplier = 0;
+                                              }
+                                            } else {
+                                              if (objective.qualitativeResult === "reached") {
+                                                multiplier = 1;
+                                              } else if (objective.qualitativeResult === "partial") {
+                                                multiplier = 0.5;
+                                              }
                                             }
                                             const reachedValue = objective.economicValue * multiplier;
                                             return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
