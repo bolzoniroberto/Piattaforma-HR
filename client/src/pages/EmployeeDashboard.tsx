@@ -389,9 +389,6 @@ export default function EmployeeDashboard() {
                           <BarChart3 className="h-5 w-5" />
                           Riepilogo MBO
                         </CardTitle>
-                        <CardDescription>
-                          Il tuo obiettivo MBO annuale e il progresso complessivo
-                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
