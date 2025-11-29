@@ -10,6 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +51,7 @@ interface EnrichedObjective {
 export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
   const { toast } = useToast();
+  const [showRegulationModal, setShowRegulationModal] = useState(false);
 
   // Fetch user's objectives
   const { data: objectiveAssignments = [], isLoading: assignmentsLoading } = useQuery<
@@ -90,6 +100,34 @@ export default function EmployeeDashboard() {
       toast({
         title: "Errore",
         description: error instanceof Error ? error.message : "Impossibile aggiornare l'obiettivo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for accepting MBO regulation
+  const acceptRegulationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/accept-mbo-regulation", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.includes("/api/my-");
+        }
+      });
+      setShowRegulationModal(false);
+      toast({ 
+        title: "Regolamento accettato",
+        description: "Hai accettato il regolamento MBO con successo"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile accettare il regolamento",
         variant: "destructive",
       });
     },
@@ -196,6 +234,7 @@ export default function EmployeeDashboard() {
 
   const isLoading = userLoading || assignmentsLoading || documentsLoading;
   const isAdmin = user?.role === "admin";
+  const regulationNotAccepted = user && !user.mboRegulationAcceptedAt;
 
   if (!employee) {
     return (
@@ -218,6 +257,11 @@ export default function EmployeeDashboard() {
         </Card>
       </div>
     );
+  }
+
+  // Show modal if regulation not accepted
+  if (regulationNotAccepted && !showRegulationModal) {
+    setShowRegulationModal(true);
   }
 
   // Content to render (same for both admin and employee)
@@ -493,10 +537,88 @@ export default function EmployeeDashboard() {
     );
   }
 
+  // Regulation acceptance modal
+  const regulationModal = (
+    <AlertDialog open={showRegulationModal} onOpenChange={setShowRegulationModal}>
+      <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-regulation-required">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-xl font-serif">
+            Accettazione Regolamento MBO
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            È necessario leggere e accettare il regolamento MBO prima di proseguire
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        
+        <div className="space-y-4 my-4 text-sm text-muted-foreground max-h-[40vh] overflow-y-auto">
+          <p>
+            <strong>Regolamento della Piattaforma di Gestione MBO</strong>
+          </p>
+          
+          <p>
+            La presente piattaforma di gestione degli Obiettivi di Management by Objectives (MBO) è uno strumento aziendale dedicato alla gestione, monitoraggio e valutazione degli obiettivi lavorativi. Tutti gli utenti della piattaforma sono tenuti a leggere e accettare le seguenti condizioni di utilizzo:
+          </p>
+
+          <p>
+            <strong>1. Scopo e Utilizzo</strong><br />
+            La piattaforma è destinata alla gestione degli obiettivi MBO per i dipendenti dell'azienda. Gli utenti si impegnano a utilizzare la piattaforma in conformità alle politiche aziendali e alle normative vigenti.
+          </p>
+
+          <p>
+            <strong>2. Riservatezza e Protezione dei Dati</strong><br />
+            Tutti i dati personali e le informazioni sensibili contenute nella piattaforma sono soggetti alla normativa sulla privacy aziendale e alle normative sulla protezione dei dati (GDPR). Gli utenti si impegnano a mantenere la riservatezza delle informazioni.
+          </p>
+
+          <p>
+            <strong>3. Integrità dei Dati</strong><br />
+            Gli utenti sono responsabili dell'accuratezza e della completezza dei dati che inseriscono nella piattaforma. È vietato modificare, eliminare o alterare i dati di altri utenti.
+          </p>
+
+          <p>
+            <strong>4. Obiettivi e Rendicontazione</strong><br />
+            Gli obiettivi assegnati devono essere rendicontati con accuratezza. La falsificazione dei dati di rendicontazione può comportare conseguenze disciplinari.
+          </p>
+
+          <p>
+            <strong>5. Accesso e Autorizzazione</strong><br />
+            L'accesso alla piattaforma è limitato al personale autorizzato. Ogni utente è responsabile della confidenzialità delle proprie credenziali di accesso.
+          </p>
+
+          <p>
+            <strong>6. Conformità Normativa</strong><br />
+            L'utilizzo della piattaforma è soggetto alle leggi e ai regolamenti applicabili. Qualsiasi utilizzo non autorizzato è vietato.
+          </p>
+
+          <p className="pt-2 border-t">
+            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della piattaforma di gestione MBO e ti impegni a rispettarle.
+          </p>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <AlertDialogCancel 
+            data-testid="button-reject-regulation"
+            disabled={acceptRegulationMutation.isPending}
+          >
+            Non accetto
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => acceptRegulationMutation.mutate()}
+            disabled={acceptRegulationMutation.isPending}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            data-testid="button-accept-regulation"
+          >
+            {acceptRegulationMutation.isPending ? "Registrazione in corso..." : "Accetto"}
+          </AlertDialogAction>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // Regular employee layout
   return (
     <div className="min-h-screen bg-background">
       <AppHeader userName={employee.name} userRole={employee.role} notificationCount={0} />
+      {regulationModal}
       {dashboardContent}
     </div>
   );

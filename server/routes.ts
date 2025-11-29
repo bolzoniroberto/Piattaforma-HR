@@ -890,6 +890,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // MBO Regulation acceptance endpoint
+  app.post("/api/accept-mbo-regulation", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user with acceptance timestamp
+      const updatedUser = await storage.updateUser(userId, {
+        mboRegulationAcceptedAt: new Date(),
+      });
+
+      res.json({ 
+        message: "MBO regulation accepted", 
+        acceptedAt: updatedUser.mboRegulationAcceptedAt 
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // Seed dummy data endpoint (admin only)
   app.post("/api/seed", isAuthenticated, isAdmin, async (req, res) => {
     try {

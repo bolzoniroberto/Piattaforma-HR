@@ -39,6 +39,7 @@ export const users = pgTable("users", {
   managerId: varchar("manager_id").references(() => users.id, { onDelete: "set null" }), // Manager/responsabile
   ral: numeric("ral", { precision: 12, scale: 2 }), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
+  mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"), // When user accepted MBO regulation
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
