@@ -174,17 +174,14 @@ export default function AdminReportingPage() {
   const getProgressColor = (item: ObjectiveWithAssignments) => {
     if (!item.objective.reportedAt) return "secondary";
     if (item.dictionary?.objectiveType === "qualitative") {
-      return item.objective.qualitativeResult === "reached" ? "default" : "destructive";
-    }
-    if (item.dictionary?.targetValue && item.objective.actualValue) {
-      const target = parseFloat(String(item.dictionary.targetValue));
-      const actual = parseFloat(String(item.objective.actualValue));
-      const percentage = (actual / target) * 100;
-      if (percentage >= 100) return "default";
-      if (percentage >= 75) return "secondary";
+      if (item.objective.qualitativeResult === "reached") return "default";
+      if (item.objective.qualitativeResult === "partial") return "secondary"; // Yellow/neutral for partial
       return "destructive";
     }
-    return "secondary";
+    // For numeric objectives, check the qualitative result set by backend
+    if (item.objective.qualitativeResult === "reached") return "default"; // Green
+    if (item.objective.qualitativeResult === "partial") return "secondary"; // Yellow for partial
+    return "destructive"; // Red for not_reached
   };
 
   return (
@@ -416,7 +413,11 @@ export default function AdminReportingPage() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={getProgressColor(item)}>
-                                    {isReported ? "Rendicontato" : "In attesa"}
+                                    {isReported ? (
+                                      item.objective.qualitativeResult === "reached" ? "Raggiunto" : 
+                                      item.objective.qualitativeResult === "partial" ? "Raggiunto parzialmente" :
+                                      "Non raggiunto"
+                                    ) : "In attesa"}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
