@@ -599,14 +599,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Objective dictionary item not found" });
       }
 
-      // Get all users in the department
+      // Get all users in the department (or all users if department === "all")
       const allUsers = await storage.getAllUsers();
-      const departmentUsers = allUsers.filter(
-        (u: any) => u.department === department && u.role === "employee"
-      );
+      const departmentUsers = department === "all"
+        ? allUsers.filter((u: any) => u.role === "employee")
+        : allUsers.filter(
+            (u: any) => u.department === department && u.role === "employee"
+          );
 
       if (departmentUsers.length === 0) {
-        return res.status(400).json({ message: "No employees found in this department" });
+        return res.status(400).json({ message: "No employees found" });
       }
 
       // Check weight limits for each user before creating assignments

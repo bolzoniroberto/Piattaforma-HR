@@ -94,6 +94,9 @@ export default function AdminAssignmentsBulkPage() {
 
   const usersInDepartment = useMemo(() => {
     if (!selectedDepartment) return [];
+    if (selectedDepartment === "all") {
+      return allUsers.filter((u) => u.role === "employee");
+    }
     return allUsers.filter((u) => u.department === selectedDepartment && u.role === "employee");
   }, [allUsers, selectedDepartment]);
 
@@ -286,6 +289,9 @@ export default function AdminAssignmentsBulkPage() {
                           <SelectValue placeholder="Seleziona dipartimento" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="all">
+                            Tutti gli utenti
+                          </SelectItem>
                           {departments.map((dept) => (
                             <SelectItem key={dept} value={dept}>
                               {dept}
@@ -317,7 +323,7 @@ export default function AdminAssignmentsBulkPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium text-sm">
-                            {usersInDepartment.length} dipendenti in {selectedDepartment}
+                            {usersInDepartment.length} dipendenti{selectedDepartment !== "all" && ` in ${selectedDepartment}`}
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -374,8 +380,8 @@ export default function AdminAssignmentsBulkPage() {
                         )}
                       </div>
                       <div className="p-4 border rounded-md">
-                        <p className="text-xs text-muted-foreground mb-1">Dipartimento</p>
-                        <p className="font-medium">{selectedDepartment}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Destinatari</p>
+                        <p className="font-medium">{selectedDepartment === "all" ? "Tutti gli utenti" : selectedDepartment}</p>
                         <p className="text-sm text-muted-foreground mt-1">
                           {usersInDepartment.length} dipendenti
                         </p>
