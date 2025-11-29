@@ -86,6 +86,7 @@ export interface IStorage {
   
   // Objective Assignment operations
   getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string } })[]>;
+  getAllObjectiveAssignments(): Promise<ObjectiveAssignment[]>;
   getObjectiveAssignment(id: string): Promise<ObjectiveAssignment | undefined>;
   createObjectiveAssignment(assignment: InsertObjectiveAssignment): Promise<ObjectiveAssignment>;
   updateObjectiveAssignment(id: string, assignment: Partial<InsertObjectiveAssignment>): Promise<ObjectiveAssignment>;
@@ -422,6 +423,10 @@ export class DatabaseStorage implements IStorage {
         calculationType: row.calculationType || undefined,
       },
     }));
+  }
+
+  async getAllObjectiveAssignments(): Promise<ObjectiveAssignment[]> {
+    return await db.select().from(objectiveAssignments);
   }
 
   async getObjectiveAssignment(id: string): Promise<ObjectiveAssignment | undefined> {
