@@ -851,6 +851,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Seed dummy data endpoint (admin only)
   app.post("/api/seed", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      // Get existing data to avoid duplicates
+      const existingClusters = await storage.getIndicatorClusters();
+      
       // Create indicator clusters
       const indicatorClusters = [
         { name: "Obiettivi di Gruppo", description: "Obiettivi legati alle performance del gruppo aziendale" },
@@ -861,11 +864,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const createdClusters = [];
       for (const cluster of indicatorClusters) {
-        const created = await storage.createIndicatorCluster(cluster);
-        createdClusters.push(created);
+        const exists = existingClusters.some(c => c.name === cluster.name);
+        if (!exists) {
+          const created = await storage.createIndicatorCluster(cluster);
+          createdClusters.push(created);
+        } else {
+          createdClusters.push(existingClusters.find(c => c.name === cluster.name)!);
+        }
       }
       
       // Create calculation types
+      const existingCalcTypes = await storage.getCalculationTypes();
       const calculationTypes = [
         { name: "Interpolazione Lineare", description: "Calcolo lineare tra soglia e target", formula: "(valore - soglia) / (target - soglia) * 100" },
         { name: "100% al Target", description: "100% solo se raggiunto il target esatto", formula: "valore >= target ? 100 : 0" },
@@ -875,11 +884,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const createdCalcTypes = [];
       for (const calcType of calculationTypes) {
-        const created = await storage.createCalculationType(calcType);
-        createdCalcTypes.push(created);
+        const exists = existingCalcTypes.some(c => c.name === calcType.name);
+        if (!exists) {
+          const created = await storage.createCalculationType(calcType);
+          createdCalcTypes.push(created);
+        } else {
+          createdCalcTypes.push(existingCalcTypes.find(c => c.name === calcType.name)!);
+        }
       }
       
       // Create business functions
+      const existingBF = await storage.getBusinessFunctions();
       const businessFunctions = [
         { name: "IT Development", description: "Sviluppo software e sistemi", primoLivelloId: null, secondoLivelloId: null },
         { name: "Marketing", description: "Marketing e comunicazione", primoLivelloId: null, secondoLivelloId: null },
@@ -889,8 +904,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { name: "Operations", description: "Operazioni e logistica", primoLivelloId: null, secondoLivelloId: null },
       ];
       
+      let newBFCount = 0;
       for (const bf of businessFunctions) {
-        await storage.createBusinessFunction(bf);
+        const exists = existingBF.some(b => b.name === bf.name);
+        if (!exists) {
+          await storage.createBusinessFunction(bf);
+          newBFCount++;
+        }
       }
       
       // Create objectives dictionary
@@ -930,9 +950,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         created: {
           indicatorClusters: createdClusters.length,
           calculationTypes: createdCalcTypes.length,
-          businessFunctions: businessFunctions.length,
+          businessFunctions: newBFCount,
           objectives: objectivesDict.length,
           users: dummyUsers.length,
+        },
+        skipped: {
+          indicatorClusters: existingClusters.length,
+          calculationTypes: existingCalcTypes.length,
+          businessFunctions: existingBF.length - newBFCount,
         }
       });
     } catch (error) {
