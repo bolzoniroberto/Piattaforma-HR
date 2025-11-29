@@ -496,11 +496,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const actual = parseFloat(String(actualValue));
           const threshold = dictionary?.thresholdValue ? parseFloat(String(dictionary.thresholdValue)) : null;
           
-          // If threshold is defined: below threshold = not_reached, at/above threshold = reached (even partial)
+          // If threshold is defined: below threshold = not_reached, between threshold and target = partial, at/above target = reached
           // If no threshold: simple comparison
           if (threshold !== null) {
-            // Any value >= threshold is considered "reached" (partial or full)
-            updateData.qualitativeResult = actual >= threshold ? "reached" : "not_reached";
+            if (actual < threshold) {
+              updateData.qualitativeResult = "not_reached";
+            } else if (actual >= target) {
+              updateData.qualitativeResult = "reached";
+            } else {
+              // Between threshold and target = partial
+              updateData.qualitativeResult = "partial";
+            }
           } else {
             // No threshold: simple comparison
             updateData.qualitativeResult = actual >= target ? "reached" : "not_reached";
