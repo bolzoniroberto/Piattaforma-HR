@@ -592,10 +592,10 @@ export default function EmployeeDashboard() {
 
         <div className="flex gap-3 mt-6">
           <AlertDialogCancel 
-            data-testid="button-reject-regulation"
+            data-testid="button-skip-regulation"
             disabled={acceptRegulationMutation.isPending}
           >
-            Non accetto
+            Accetta in seguito
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => acceptRegulationMutation.mutate()}
