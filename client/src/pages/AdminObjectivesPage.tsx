@@ -273,7 +273,10 @@ export default function AdminObjectivesPage() {
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-3xl font-semibold mb-2">Database Obiettivi</h1>
+                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
+                    <Target className="h-8 w-8" />
+                    Database Obiettivi
+                  </h1>
                   <p className="text-muted-foreground">
                     Gestisci il dizionario completo degli obiettivi MBO
                   </p>

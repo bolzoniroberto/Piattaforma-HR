@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft } from "lucide-react";
+import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, BarChart3 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -191,7 +191,10 @@ export default function AdminReportingPage() {
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               <div>
-                <h1 className="text-3xl font-semibold mb-1">Rendicontazione Obiettivi</h1>
+                <h1 className="text-3xl font-semibold mb-1 flex items-center gap-2">
+                  <BarChart3 className="h-8 w-8" />
+                  Rendicontazione Obiettivi
+                </h1>
                 <p className="text-muted-foreground">
                   Gestisci la rendicontazione degli obiettivi assegnati
                 </p>

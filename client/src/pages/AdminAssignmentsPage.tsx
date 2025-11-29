@@ -327,7 +327,10 @@ export default function AdminAssignmentsPage() {
                   </Button>
                 </Link>
                 <div className="flex-1">
-                  <h1 className="text-3xl font-semibold mb-1">Assegnazione Obiettivi</h1>
+                  <h1 className="text-3xl font-semibold mb-1 flex items-center gap-2">
+                    <Target className="h-8 w-8" />
+                    Assegnazione Obiettivi
+                  </h1>
                   <p className="text-muted-foreground">
                     Gestisci gli obiettivi assegnati a questo dipendente
                   </p>

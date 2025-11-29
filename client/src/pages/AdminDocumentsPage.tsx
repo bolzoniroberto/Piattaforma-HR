@@ -136,7 +136,10 @@ export default function AdminDocumentsPage() {
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-6xl mx-auto space-y-6">
               <div>
-                <h1 className="text-3xl font-semibold mb-2">Gestione Documenti</h1>
+                <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
+                  <FileText className="h-8 w-8" />
+                  Gestione Documenti
+                </h1>
                 <p className="text-muted-foreground">
                   Visualizza e modifica i documenti aziendali
                 </p>

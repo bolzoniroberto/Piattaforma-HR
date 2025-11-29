@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check } from "lucide-react";
+import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -219,7 +219,10 @@ export default function EmployeeDashboard() {
     <main className="flex-1 overflow-auto p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
-          <h1 className="text-3xl font-semibold font-serif mb-2">Il Mio Dashboard</h1>
+          <h1 className="text-3xl font-semibold font-serif mb-2 flex items-center gap-2">
+            <LayoutDashboard className="h-8 w-8" />
+            Il Mio Dashboard
+          </h1>
           <p className="text-muted-foreground">
             Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
           </p>

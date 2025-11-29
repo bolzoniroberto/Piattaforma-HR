@@ -4,7 +4,7 @@ import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Target } from "lucide-react";
+import { Users, Target, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -126,7 +126,10 @@ export default function AdminDashboard() {
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               <div>
-                <h1 className="text-3xl font-semibold mb-2">Dashboard Amministrativa</h1>
+                <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
+                  <LayoutDashboard className="h-8 w-8" />
+                  Dashboard Amministrativa
+                </h1>
                 <p className="text-muted-foreground">
                   Gestione dipendenti e obiettivi
                 </p>
