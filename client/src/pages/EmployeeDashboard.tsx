@@ -240,52 +240,52 @@ export default function EmployeeDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-1 space-y-4">
               <EmployeeCard employee={employee} />
               
               {/* Riepilogo MBO */}
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2 font-serif">
-                    <BarChart3 className="h-5 w-5" />
+                <CardHeader className="pb-2 pt-3">
+                  <CardTitle className="text-sm flex items-center gap-1 font-serif">
+                    <BarChart3 className="h-4 w-4" />
                     Riepilogo MBO
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <Euro className="h-4 w-4" />
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+                        <Euro className="h-3 w-3" />
                         MBO Target
                       </div>
-                      <div className="text-2xl font-semibold font-mono">
+                      <div className="text-lg font-semibold font-mono">
                         {mboTarget.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground">
                         {employee.mboPercentage}% della RAL
                       </div>
                     </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <Target className="h-4 w-4" />
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+                        <Target className="h-3 w-3" />
                         Peso Assegnato
                       </div>
-                      <div className="text-2xl font-semibold font-mono">
+                      <div className="text-lg font-semibold font-mono">
                         {totalWeight}%
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground">
                         {objectives.length} obiettivi
                       </div>
                     </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <TrendingUp className="h-4 w-4" />
-                        Percentuale Raggiungimento MBO
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+                        <TrendingUp className="h-3 w-3" />
+                        Percentuale Raggiungimento
                       </div>
-                      <div className="text-2xl font-semibold font-mono">
+                      <div className="text-lg font-semibold font-mono">
                         {overallProgress}%
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground">
                         Obiettivi raggiunti
                       </div>
                     </div>
@@ -305,12 +305,12 @@ export default function EmployeeDashboard() {
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="objectives" className="space-y-4 mt-6">
+                  <TabsContent value="objectives" className="space-y-3 mt-4">
                     {/* Titolo Obiettivi */}
                     <h3 className="text-lg font-semibold font-serif">I Miei Obiettivi</h3>
 
                     {/* Lista Obiettivi Arricchita */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {objectives.length === 0 ? (
                         <Card>
                           <CardContent className="pt-6 text-center text-muted-foreground">
@@ -320,10 +320,10 @@ export default function EmployeeDashboard() {
                       ) : (
                         objectives.map((objective) => (
                           <Card key={objective.id} className="hover-elevate" data-testid={`card-objective-${objective.id}`}>
-                            <CardHeader className="pb-2 pt-4">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 space-y-1">
-                                  <h3 className="font-semibold text-base leading-tight">{objective.title}</h3>
+                            <CardHeader className="pb-1 pt-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 space-y-0.5">
+                                  <h3 className="font-semibold text-sm leading-tight">{objective.title}</h3>
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <Badge variant="outline" className="text-xs">
                                       {objective.clusterName}
@@ -356,35 +356,35 @@ export default function EmployeeDashboard() {
                                 )}
                               </div>
                             </CardHeader>
-                            <CardContent className="space-y-3 pb-4">
-                              <p className="text-sm text-muted-foreground leading-relaxed">
+                            <CardContent className="space-y-2 pb-3 pt-2">
+                              <p className="text-xs text-muted-foreground leading-relaxed">
                                 {objective.description}
                               </p>
                               
-                              <Separator className="my-2" />
+                              <Separator className="my-1" />
                               
                               {/* FASCIA 1: Info principali - Peso, Valore Teorico, Target */}
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-muted/30 p-3 rounded-lg">
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-muted/30 p-2 rounded-lg">
+                                <div className="space-y-0.5">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-0.5">
                                     <Target className="h-3 w-3" />
                                     Peso
                                   </div>
-                                  <div className="text-base font-semibold font-mono">{objective.weight}%</div>
+                                  <div className="text-sm font-semibold font-mono">{objective.weight}%</div>
                                 </div>
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                <div className="space-y-0.5">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-0.5">
                                     <Euro className="h-3 w-3" />
                                     Valore Teorico
                                   </div>
-                                  <div className="text-base font-semibold font-mono text-primary">
+                                  <div className="text-sm font-semibold font-mono text-primary">
                                     {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                                   </div>
                                 </div>
                                 {objective.objectiveType === "numeric" && (
-                                  <div className="space-y-1">
+                                  <div className="space-y-0.5">
                                     <div className="text-xs text-muted-foreground">Risultato Target</div>
-                                    <div className="text-base font-semibold font-mono">
+                                    <div className="text-sm font-semibold font-mono">
                                       {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
                                     </div>
                                   </div>
@@ -393,23 +393,23 @@ export default function EmployeeDashboard() {
 
                               {/* FASCIA 2: Rendicontazione - solo dopo rendicontazione */}
                               {objective.reportedAt && (
-                                <div className="bg-primary/10 p-3 rounded-lg space-y-3 border border-primary/20">
+                                <div className="bg-primary/10 p-2 rounded-lg space-y-2 border border-primary/20">
                                   <div className="text-xs font-semibold text-primary">Rendicontazione</div>
                                   
                                   {objective.objectiveType === "numeric" && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div className="space-y-1">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="space-y-0.5">
                                         <div className="text-xs text-muted-foreground">Valore Rendicontato</div>
-                                        <div className="text-base font-semibold font-mono">
+                                        <div className="text-sm font-semibold font-mono">
                                           {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
                                         </div>
                                       </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <div className="space-y-0.5">
+                                        <div className="text-xs text-muted-foreground flex items-center gap-0.5">
                                           <Euro className="h-3 w-3" />
                                           Valore Economico Raggiunto
                                         </div>
-                                        <div className="text-base font-semibold font-mono">
+                                        <div className="text-sm font-semibold font-mono">
                                           {(() => {
                                             let multiplier = 0;
                                             if (objective.qualitativeResult === "reached") {
