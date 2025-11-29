@@ -240,8 +240,58 @@ export default function EmployeeDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-6">
               <EmployeeCard employee={employee} />
+              
+              {/* Riepilogo MBO */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2 font-serif">
+                    <BarChart3 className="h-5 w-5" />
+                    Riepilogo MBO
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                        <Euro className="h-4 w-4" />
+                        MBO Target
+                      </div>
+                      <div className="text-2xl font-semibold font-mono">
+                        {mboTarget.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {employee.mboPercentage}% della RAL
+                      </div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                        <Target className="h-4 w-4" />
+                        Peso Assegnato
+                      </div>
+                      <div className="text-2xl font-semibold font-mono">
+                        {totalWeight}%
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {objectives.length} obiettivi
+                      </div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                        <TrendingUp className="h-4 w-4" />
+                        Percentuale Raggiungimento MBO
+                      </div>
+                      <div className="text-2xl font-semibold font-mono">
+                        {overallProgress}%
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Obiettivi raggiunti
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="lg:col-span-2">
@@ -381,56 +431,6 @@ export default function EmployeeDashboard() {
                         ))
                       )}
                     </div>
-
-                    {/* Riepilogo MBO - Spostato in fondo */}
-                    <Card className="mt-8">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2 font-serif">
-                          <BarChart3 className="h-5 w-5" />
-                          Riepilogo MBO
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-muted/50 rounded-lg p-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                              <Euro className="h-4 w-4" />
-                              MBO Target
-                            </div>
-                            <div className="text-2xl font-semibold font-mono">
-                              {mboTarget.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {employee.mboPercentage}% della RAL
-                            </div>
-                          </div>
-                          <div className="bg-muted/50 rounded-lg p-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                              <Target className="h-4 w-4" />
-                              Peso Assegnato
-                            </div>
-                            <div className="text-2xl font-semibold font-mono">
-                              {totalWeight}%
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {objectives.length} obiettivi
-                            </div>
-                          </div>
-                          <div className="bg-muted/50 rounded-lg p-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                              <TrendingUp className="h-4 w-4" />
-                              Percentuale Raggiungimento MBO
-                            </div>
-                            <div className="text-2xl font-semibold font-mono">
-                              {overallProgress}%
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Obiettivi raggiunti
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
                   </TabsContent>
 
                   <TabsContent value="documents" className="mt-6">
