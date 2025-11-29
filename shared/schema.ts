@@ -40,6 +40,7 @@ export const users = pgTable("users", {
   ral: numeric("ral", { precision: 12, scale: 2 }), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
   mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"), // When user accepted MBO regulation
+  isActive: boolean("is_active").notNull().default(true), // Whether user is active
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -55,11 +56,13 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   managerId: true,
   ral: true,
   mboPercentage: true,
+  isActive: true,
 }).extend({
   ral: z.coerce.number().nullable().optional(),
   mboPercentage: z.number().int().min(0).max(100).refine((val) => val % 5 === 0, {
     message: "MBO percentage must be a multiple of 5%",
   }).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;

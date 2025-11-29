@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Users, UserPlus, Target, Building, ChevronRight, Trash2, Edit2 } from "lucide-react";
+import { Search, Users, UserPlus, Target, Building, ChevronRight, Trash2, Edit2, Power, PowerOff } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -200,6 +200,29 @@ export default function AdminUsersPage() {
       toast({
         title: "Errore",
         description: error instanceof Error ? error.message : "Impossibile eliminare l'utente",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleUserActiveMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) throw new Error("User not found");
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, {
+        isActive: !user.isActive,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      const action = data.isActive ? "attivato" : "disattivato";
+      toast({ title: `Utente ${action} con successo` });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Impossibile cambiare lo stato dell'utente",
         variant: "destructive",
       });
     },
@@ -559,9 +582,16 @@ export default function AdminUsersPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                                {u.role === "admin" ? "Admin" : "Dipendente"}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                                  {u.role === "admin" ? "Admin" : "Dipendente"}
+                                </Badge>
+                                {!u.isActive && (
+                                  <Badge variant="outline" className="bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800">
+                                    Disattivato
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right flex items-center justify-end gap-2">
                               <Button 
@@ -571,6 +601,20 @@ export default function AdminUsersPage() {
                                 data-testid={`button-edit-user-${u.id}`}
                               >
                                 <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => toggleUserActiveMutation.mutate(u.id)}
+                                disabled={toggleUserActiveMutation.isPending}
+                                title={u.isActive ? "Disattiva" : "Attiva"}
+                                data-testid={`button-toggle-user-${u.id}`}
+                              >
+                                {u.isActive ? (
+                                  <Power className="h-4 w-4 text-amber-600" />
+                                ) : (
+                                  <PowerOff className="h-4 w-4 text-gray-400" />
+                                )}
                               </Button>
                               <Button 
                                 variant="ghost" 
