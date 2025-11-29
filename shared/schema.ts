@@ -242,10 +242,28 @@ export const insertDocumentAcceptanceSchema = createInsertSchema(documentAccepta
 export type InsertDocumentAcceptance = z.infer<typeof insertDocumentAcceptanceSchema>;
 export type DocumentAcceptance = typeof documentAcceptances.$inferSelect;
 
+// MBO Regulation Acceptances
+export const mboRegulationAcceptances = pgTable("mbo_regulation_acceptances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  acceptedAt: timestamp("accepted_at").defaultNow(),
+}, (table) => ({
+  uniqueUserAcceptance: uniqueIndex("unique_mbo_user_acceptance").on(table.userId),
+}));
+
+export const insertMboRegulationAcceptanceSchema = createInsertSchema(mboRegulationAcceptances).omit({
+  id: true,
+  acceptedAt: true,
+});
+
+export type InsertMboRegulationAcceptance = z.infer<typeof insertMboRegulationAcceptanceSchema>;
+export type MboRegulationAcceptance = typeof mboRegulationAcceptances.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   objectiveAssignments: many(objectiveAssignments),
   documentAcceptances: many(documentAcceptances),
+  mboRegulationAcceptances: many(mboRegulationAcceptances),
 }));
 
 export const indicatorClustersRelations = relations(indicatorClusters, ({ many }) => ({
@@ -299,5 +317,12 @@ export const documentAcceptancesRelations = relations(documentAcceptances, ({ on
   document: one(documents, {
     fields: [documentAcceptances.documentId],
     references: [documents.id],
+  }),
+}));
+
+export const mboRegulationAcceptancesRelations = relations(mboRegulationAcceptances, ({ one }) => ({
+  user: one(users, {
+    fields: [mboRegulationAcceptances.userId],
+    references: [users.id],
   }),
 }));

@@ -900,9 +900,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Record acceptance in database
+      const acceptance = await storage.acceptMboRegulation({ userId });
+
       // Update user with acceptance timestamp
       const updatedUser = await storage.updateUser(userId, {
-        mboRegulationAcceptedAt: new Date(),
+        mboRegulationAcceptedAt: acceptance.acceptedAt,
       });
 
       res.json({ 

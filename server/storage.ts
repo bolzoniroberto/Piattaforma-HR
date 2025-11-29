@@ -9,6 +9,7 @@ import {
   objectiveAssignments,
   documents,
   documentAcceptances,
+  mboRegulationAcceptances,
   type User,
   type UpsertUser,
   type IndicatorCluster,
@@ -27,6 +28,8 @@ import {
   type InsertDocument,
   type DocumentAcceptance,
   type InsertDocumentAcceptance,
+  type MboRegulationAcceptance,
+  type InsertMboRegulationAcceptance,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -99,6 +102,10 @@ export interface IStorage {
   getUserDocumentAcceptances(userId: string): Promise<DocumentAcceptance[]>;
   acceptDocument(acceptance: InsertDocumentAcceptance): Promise<DocumentAcceptance>;
   isDocumentAccepted(userId: string, documentId: string): Promise<boolean>;
+  
+  // MBO Regulation Acceptance operations
+  getMboRegulationAcceptances(): Promise<MboRegulationAcceptance[]>;
+  acceptMboRegulation(acceptance: InsertMboRegulationAcceptance): Promise<MboRegulationAcceptance>;
   
   // Statistics
   getUserStats(userId: string): Promise<{ totalObjectives: number; completedObjectives: number }>;
@@ -483,6 +490,25 @@ export class DatabaseStorage implements IStorage {
       .from(documentAcceptances)
       .where(and(eq(documentAcceptances.userId, userId), eq(documentAcceptances.documentId, documentId)));
     return !!acceptance;
+  }
+
+  // MBO Regulation Acceptance operations
+  async getMboRegulationAcceptances(): Promise<MboRegulationAcceptance[]> {
+    return await db.select().from(mboRegulationAcceptances).orderBy(desc(mboRegulationAcceptances.acceptedAt));
+  }
+
+  async acceptMboRegulation(acceptanceData: InsertMboRegulationAcceptance): Promise<MboRegulationAcceptance> {
+    const [acceptance] = await db
+      .insert(mboRegulationAcceptances)
+      .values(acceptanceData)
+      .onConflictDoUpdate({
+        target: mboRegulationAcceptances.userId,
+        set: {
+          acceptedAt: new Date(),
+        },
+      })
+      .returning();
+    return acceptance;
   }
 
   // Statistics
