@@ -12,6 +12,7 @@ import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
 import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
 import AdminAssignmentsBulkPage from "@/pages/AdminAssignmentsBulkPage";
+import AdminClearAllAssignmentsPage from "@/pages/AdminClearAllAssignmentsPage";
 import AdminReportingPage from "@/pages/AdminReportingPage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
@@ -88,6 +89,11 @@ function Router() {
       <Route path="/admin/assignments-bulk" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminAssignmentsBulkPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/clear-assignments" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminClearAllAssignmentsPage />
         </ProtectedRoute>
       )} />
       <Route path="/admin/reporting" component={() => (
