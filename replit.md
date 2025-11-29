@@ -10,6 +10,21 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (Latest Session)
 
+## MBO Regulation Acceptance System
+- **Database Schema**: Added `mboRegulationAcceptedAt` timestamp field to users table
+  - Tracks when each user accepted the MBO regulation
+  - New users/admins MUST accept before using the system
+  
+- **Backend**: New endpoint POST `/api/accept-mbo-regulation`
+  - Sets user.mboRegulationAcceptedAt to current timestamp
+  - Invalidates user-related queries after acceptance
+  
+- **Frontend**: Mandatory regulation acceptance modal in EmployeeDashboard
+  - Modal displays detailed regulation text covering: purpose, confidentiality, data integrity, reporting accuracy, access authorization, regulatory compliance
+  - Cannot dismiss without accepting or rejecting
+  - Upon acceptance, closes modal and shows success toast
+  - Regular employees and admins both must accept before accessing dashboard
+
 ## Admin Dashboard Unified with Employee Dashboard
 - **App.tsx**: Removed automatic redirect of admin users to /admin
 - **EmployeeDashboard.tsx**: Now serves as primary dashboard for both employees and admins
@@ -24,6 +39,13 @@ Preferred communication style: Simple, everyday language.
 
 - **AppHeader.tsx**: Branding text changed to "Piattaforma di gestione MBO" with serif font
   - Updated alt text and logo descriptions
+
+## Admin Page: Clear Assignments Updated
+- **AdminClearAllAssignmentsPage.tsx**: All Italian text updated for clarity
+  - Title: "Disassocia Tutti gli Obiettivi" (not "Cancella")
+  - Description clarifies objectives remain in system, only removed from assignments
+  - Dialog confirms disassociation, not cancellation
+  - Explains historical data remains available for reporting
 
 ## Admin Features (Preserved)
 - Full admin access to: Users, Settings, Objectives, Assignments, Reporting, Documents
