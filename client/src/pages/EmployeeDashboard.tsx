@@ -300,6 +300,9 @@ export default function EmployeeDashboard() {
                     <TabsTrigger value="objectives" data-testid="tab-objectives">
                       I Miei Obiettivi
                     </TabsTrigger>
+                    <TabsTrigger value="regulation" data-testid="tab-regulation">
+                      Regolamento MBO
+                    </TabsTrigger>
                     <TabsTrigger value="documents" data-testid="tab-documents">
                       Documenti
                     </TabsTrigger>
@@ -430,7 +433,7 @@ export default function EmployeeDashboard() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="documents" className="mt-6">
+                  <TabsContent value="regulation" className="mt-6">
                     <div className="space-y-4">
                       <Card>
                         <CardHeader>
@@ -449,7 +452,11 @@ export default function EmployeeDashboard() {
                           </Link>
                         </CardContent>
                       </Card>
+                    </div>
+                  </TabsContent>
 
+                  <TabsContent value="documents" className="mt-6">
+                    <div className="space-y-4">
                       <DocumentList
                         documents={documents}
                         onAccept={(id) => console.log("Document accepted:", id)}
