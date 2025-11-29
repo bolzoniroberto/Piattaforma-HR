@@ -37,8 +37,6 @@ function RootPage() {
   useEffect(() => {
     if (!isLoading && !user) {
       navigate("/login");
-    } else if (!isLoading && user?.role === "admin") {
-      navigate("/admin");
     }
   }, [user, isLoading, navigate]);
 
@@ -48,10 +46,6 @@ function RootPage() {
 
   if (!user) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento al login...</p></div>;
-  }
-
-  if (user.role === "admin") {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento al dashboard admin...</p></div>;
   }
 
   return (

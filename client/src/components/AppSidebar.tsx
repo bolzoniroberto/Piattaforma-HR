@@ -18,6 +18,7 @@ import {
   Settings,
   CheckCircle,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const dashboardItem = {
   title: "Dashboard",
@@ -66,6 +67,7 @@ const rendicontazioneItems = [
 
 export default function AppSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
 
   const renderMenuGroup = (items: Array<{ title: string; url: string; icon: any }>) => (
     <SidebarMenu>
@@ -85,6 +87,8 @@ export default function AppSidebar() {
     </SidebarMenu>
   );
 
+  const isAdmin = user?.role === "admin";
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -93,10 +97,10 @@ export default function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === dashboardItem.url}>
-                  <Link href={dashboardItem.url} data-testid="link-sidebar-dashboard">
-                    <dashboardItem.icon className="h-4 w-4" />
-                    <span>{dashboardItem.title}</span>
+                <SidebarMenuButton asChild isActive={location === "/"}>
+                  <Link href="/" data-testid="link-sidebar-miei-obiettivi">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Miei Obiettivi</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -104,29 +108,34 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* 1. Impostazioni Strutture */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Impostazioni Strutture</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderMenuGroup(impostazioniStruttureItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Admin Section - only if user is admin */}
+        {isAdmin && (
+          <>
+            {/* 1. Impostazioni Strutture */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Impostazioni Strutture</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {renderMenuGroup(impostazioniStruttureItems)}
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-        {/* 2. Goal Setting */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Goal Setting</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderMenuGroup(goalSettingItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
+            {/* 2. Goal Setting */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Goal Setting</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {renderMenuGroup(goalSettingItems)}
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-        {/* 3. Rendicontazione */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Rendicontazione</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderMenuGroup(rendicontazioneItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
+            {/* 3. Rendicontazione */}
+            <SidebarGroup>
+              <SidebarGroupLabel>Rendicontazione</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {renderMenuGroup(rendicontazioneItems)}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
     </Sidebar>
   );

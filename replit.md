@@ -10,29 +10,25 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (Latest Session)
 
-## Test Data Seeding Feature
-- **POST /api/seed**: Admin-only endpoint for populating comprehensive test data
-  - Creates 3 indicator clusters (Gruppo, Performance/Direzione, ESG)
-  - Creates 3+ calculation types (Lineare Crescente, Target Secco, Lineare Decrescente, etc.)
-  - Creates 4+ business functions with hierarchical structure (primoLivello/secondoLivello)
-  - Creates sample objectives dictionary entries linked to clusters and calculation types
-  - Creates demo users with various roles and departments
-  
-- **AdminSettingsPage.tsx**: Added "Popola Dati Test" button
-  - Calls /api/seed endpoint
-  - Shows success/error toast with counts of created entities
-  - Invalidates all relevant queries after seeding
+## Admin Dashboard Unified with Employee Dashboard
+- **App.tsx**: Removed automatic redirect of admin users to /admin
+- **EmployeeDashboard.tsx**: Now serves as primary dashboard for both employees and admins
+  - Admin users see their own objectives like regular employees
+  - Layout adapts: admin gets sidebar with management sections, employees get simple layout
+  - SidebarProvider wraps content when user is admin
 
-## Assignment Workflow Fixes
-- Fixed 500 error in POST /api/assignments and /api/assignments/bulk
-- Assignment endpoints now fetch indicatorClusterId from objectives_dictionary before creating objective instance
-- Ensures clusterId (NOT NULL constraint) is always populated correctly
+- **AppSidebar.tsx**: Sidebar now shows admin sections only to admin users
+  - "Miei Obiettivi" link at top for all users
+  - Admin-only sections: Impostazioni Strutture, Goal Setting, Rendicontazione
+  - Conditional rendering based on user role
 
-## User Management Enhancement
-- **AdminUsersPage.tsx**: Department field now uses Select component
-  - Options populated from /api/business-functions
-  - Displays as "primoLivello › secondoLivello" format
-  - Complete CRUD functionality preserved
+- **AppHeader.tsx**: Branding text changed to "Piattaforma di gestione MBO" with serif font
+  - Updated alt text and logo descriptions
+
+## Admin Features (Preserved)
+- Full admin access to: Users, Settings, Objectives, Assignments, Reporting, Documents
+- Sidebar navigation with all management tools
+- Admin can view and manage all employees' objectives
 
 # System Architecture
 

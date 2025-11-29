@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
+import AppSidebar from "@/components/AppSidebar";
 import EmployeeCard from "@/components/EmployeeCard";
 import DocumentList, { type Document } from "@/components/DocumentList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +17,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ObjectiveAssignment, Document as DocumentType, IndicatorCluster, CalculationType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge, { type ObjectiveStatus } from "@/components/StatusBadge";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 interface EnrichedObjective {
   id: string;
@@ -187,6 +189,7 @@ export default function EmployeeDashboard() {
   }, [allDocuments, acceptedDocs]);
 
   const isLoading = userLoading || assignmentsLoading || documentsLoading;
+  const isAdmin = user?.role === "admin";
 
   if (!employee) {
     return (
@@ -211,30 +214,28 @@ export default function EmployeeDashboard() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <AppHeader userName={employee.name} userRole={employee.role} notificationCount={0} />
-      
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="space-y-8">
-          <div>
-            <h1 className="text-3xl font-semibold font-serif mb-2">Il Mio Dashboard</h1>
-            <p className="text-muted-foreground">
-              Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
-            </p>
+  // Content to render (same for both admin and employee)
+  const dashboardContent = (
+    <main className="flex-1 overflow-auto p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-semibold font-serif mb-2">Il Mio Dashboard</h1>
+          <p className="text-muted-foreground">
+            Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Caricamento dati...</p>
           </div>
-
-          {isLoading ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Caricamento dati...</p>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <EmployeeCard employee={employee} />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <EmployeeCard employee={employee} />
-              </div>
 
-              <div className="lg:col-span-2">
+            <div className="lg:col-span-2">
                 <Tabs defaultValue="objectives" className="w-full">
                   <TabsList className="w-full justify-start">
                     <TabsTrigger value="objectives" data-testid="tab-objectives">
@@ -449,11 +450,38 @@ export default function EmployeeDashboard() {
                     </div>
                   </TabsContent>
                 </Tabs>
-              </div>
             </div>
-          )}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+
+  // If admin, wrap with sidebar
+  if (isAdmin) {
+    const style = {
+      "--sidebar-width": "16rem",
+      "--sidebar-width-icon": "3rem",
+    };
+
+    return (
+      <SidebarProvider style={style as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <SidebarInset className="flex flex-col flex-1 overflow-hidden">
+            <AppHeader userName={employee.name} userRole="Amministratore" notificationCount={0} showSidebarTrigger={true} />
+            {dashboardContent}
+          </SidebarInset>
         </div>
-      </main>
+      </SidebarProvider>
+    );
+  }
+
+  // Regular employee layout
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader userName={employee.name} userRole={employee.role} notificationCount={0} />
+      {dashboardContent}
     </div>
   );
 }
