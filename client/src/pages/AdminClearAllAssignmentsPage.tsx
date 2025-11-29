@@ -86,10 +86,10 @@ export default function AdminClearAllAssignmentsPage() {
               <div>
                 <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
                   <Trash2 className="h-8 w-8" />
-                  Cancella tutti gli Obiettivi
+                  Disassocia Tutti gli Obiettivi
                 </h1>
                 <p className="text-muted-foreground">
-                  Deassociate tutti gli obiettivi da tutti gli utenti
+                  Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti
                 </p>
               </div>
 
@@ -97,10 +97,10 @@ export default function AdminClearAllAssignmentsPage() {
                 <CardHeader>
                   <CardTitle className="text-destructive flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
-                    Operazione Irreversibile
+                    Attenzione: Operazione Importante
                   </CardTitle>
                   <CardDescription>
-                    Questa azione cancellerà tutti gli obiettivi assegnati a tutti i dipendenti del sistema. Non potrà essere annullata.
+                    Questa azione disassocerà tutti gli obiettivi da tutti i dipendenti. Gli obiettivi rimangono nel sistema, ma verranno rimossi dalle assegnazioni dei dipendenti.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -108,10 +108,10 @@ export default function AdminClearAllAssignmentsPage() {
                     <div className="p-4 bg-background border border-destructive/20 rounded-md">
                       <p className="text-sm font-medium mb-2">Cosa succederà:</p>
                       <ul className="text-sm space-y-1 text-muted-foreground list-disc list-inside">
-                        <li>Tutti gli obiettivi verranno rimossi da {allUsers.filter(u => u.role === "employee").length} dipendenti</li>
-                        <li>I progressi registrati non verranno persi dal database</li>
-                        <li>I dati storici rimarranno disponibili nel reporting</li>
-                        <li>Potrai riassegnare gli obiettivi in seguito</li>
+                        <li>Gli obiettivi verranno disassociati da {allUsers.filter(u => u.role === "employee").length} dipendenti</li>
+                        <li>I dati degli obiettivi non verranno eliminati dal database</li>
+                        <li>I progressi e la rendicontazione storica rimarranno disponibili nel reporting</li>
+                        <li>Potrai riassegnare gli obiettivi agli utenti in seguito</li>
                       </ul>
                     </div>
 
@@ -124,7 +124,7 @@ export default function AdminClearAllAssignmentsPage() {
                       data-testid="button-clear-all"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      {clearMutation.isPending ? "Deassociazione in corso..." : "Deassociate Tutti gli Obiettivi"}
+                      {clearMutation.isPending ? "Disassociazione in corso..." : "Disassocia Tutti gli Obiettivi"}
                     </Button>
                   </div>
                 </CardContent>
@@ -133,9 +133,9 @@ export default function AdminClearAllAssignmentsPage() {
               <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
                 <AlertDialogContent data-testid="dialog-confirm-clear">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Confermare l'operazione?</AlertDialogTitle>
+                    <AlertDialogTitle>Confermare la disassociazione?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Stai per deassociare TUTTI gli obiettivi da TUTTI gli utenti. Questa azione non può essere annullata.
+                      Stai per disassociare TUTTI gli obiettivi da TUTTI gli utenti. Gli obiettivi rimarranno nel sistema ma non saranno più assegnati ai dipendenti. I dati storici resteranno disponibili.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogAction
@@ -144,7 +144,7 @@ export default function AdminClearAllAssignmentsPage() {
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     data-testid="button-confirm-clear"
                   >
-                    {clearMutation.isPending ? "Elaborazione..." : "Deassociate Tutti"}
+                    {clearMutation.isPending ? "Disassociazione in corso..." : "Disassocia Tutti"}
                   </AlertDialogAction>
                   <AlertDialogCancel data-testid="button-cancel-clear">Annulla</AlertDialogCancel>
                 </AlertDialogContent>
