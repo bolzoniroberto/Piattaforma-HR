@@ -297,6 +297,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteObjectivesDictionaryItem(id: string): Promise<void> {
+    await db.delete(objectives).where(eq(objectives.dictionaryId, id));
     await db.delete(objectivesDictionary).where(eq(objectivesDictionary.id, id));
   }
 
