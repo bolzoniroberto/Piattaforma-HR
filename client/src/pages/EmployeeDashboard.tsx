@@ -19,6 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard, HelpCircle, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +60,7 @@ export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
   const { toast } = useToast();
   const [showRegulationModal, setShowRegulationModal] = useState(false);
+  const [showRegulationDialog, setShowRegulationDialog] = useState(false);
 
   // Fetch user's objectives
   const { data: objectiveAssignments = [], isLoading: assignmentsLoading } = useQuery<
@@ -504,12 +512,14 @@ export default function EmployeeDashboard() {
                             Consulta il regolamento completo del sistema MBO aziendale per
                             comprendere i criteri di valutazione e le linee guida.
                           </p>
-                          <Link href="/regulation">
-                            <Button variant="outline" data-testid="button-view-regulation">
-                              <FileText className="mr-2 h-4 w-4" />
-                              Visualizza Regolamento
-                            </Button>
-                          </Link>
+                          <Button 
+                            variant="outline" 
+                            data-testid="button-view-regulation"
+                            onClick={() => setShowRegulationDialog(true)}
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Visualizza Regolamento
+                          </Button>
                         </CardContent>
                       </Card>
                     </div>
@@ -659,6 +669,66 @@ export default function EmployeeDashboard() {
     );
   }
 
+  // Regulation view modal (dialog)
+  const regulationViewDialog = (
+    <Dialog open={showRegulationDialog} onOpenChange={setShowRegulationDialog}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-view-regulation">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-serif">
+            Regolamento della Piattaforma MBO
+          </DialogTitle>
+          <DialogDescription>
+            Consulta il regolamento completo
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 text-sm text-muted-foreground">
+          <p>
+            <strong>Regolamento della Piattaforma di Gestione MBO</strong>
+          </p>
+          
+          <p>
+            La presente piattaforma di gestione degli Obiettivi di Management by Objectives (MBO) è uno strumento aziendale dedicato alla gestione, monitoraggio e valutazione degli obiettivi lavorativi. Tutti gli utenti della piattaforma sono tenuti a leggere e accettare le seguenti condizioni di utilizzo:
+          </p>
+
+          <p>
+            <strong>1. Scopo e Utilizzo</strong><br />
+            La piattaforma è destinata alla gestione degli obiettivi MBO per i dipendenti dell'azienda. Gli utenti si impegnano a utilizzare la piattaforma in conformità alle politiche aziendali e alle normative vigenti.
+          </p>
+
+          <p>
+            <strong>2. Riservatezza e Protezione dei Dati</strong><br />
+            Tutti i dati personali e le informazioni sensibili contenute nella piattaforma sono soggetti alla normativa sulla privacy aziendale e alle normative sulla protezione dei dati (GDPR). Gli utenti si impegnano a mantenere la riservatezza delle informazioni.
+          </p>
+
+          <p>
+            <strong>3. Integrità dei Dati</strong><br />
+            Gli utenti sono responsabili dell'accuratezza e della completezza dei dati che inseriscono nella piattaforma. È vietato modificare, eliminare o alterare i dati di altri utenti.
+          </p>
+
+          <p>
+            <strong>4. Obiettivi e Rendicontazione</strong><br />
+            Gli obiettivi assegnati devono essere rendicontati con accuratezza. La falsificazione dei dati di rendicontazione può comportare conseguenze disciplinari.
+          </p>
+
+          <p>
+            <strong>5. Accesso e Autorizzazione</strong><br />
+            L'accesso alla piattaforma è limitato al personale autorizzato. Ogni utente è responsabile della confidenzialità delle proprie credenziali di accesso.
+          </p>
+
+          <p>
+            <strong>6. Conformità Normativa</strong><br />
+            L'utilizzo della piattaforma è soggetto alle leggi e ai regolamenti applicabili. Qualsiasi utilizzo non autorizzato è vietato.
+          </p>
+
+          <p className="pt-2 border-t">
+            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della piattaforma di gestione MBO e ti impegni a rispettarle.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   // Regulation acceptance modal
   const regulationModal = (
     <AlertDialog open={showRegulationModal} onOpenChange={setShowRegulationModal}>
@@ -741,6 +811,7 @@ export default function EmployeeDashboard() {
     <div className="min-h-screen bg-background">
       <AppHeader userName={employee.name} userRole={employee.role} notificationCount={0} />
       {regulationModal}
+      {regulationViewDialog}
       {dashboardContent}
     </div>
   );
