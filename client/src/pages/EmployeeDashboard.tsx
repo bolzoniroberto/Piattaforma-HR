@@ -649,26 +649,6 @@ export default function EmployeeDashboard() {
     </main>
   );
 
-  // If admin, wrap with sidebar
-  if (isAdmin) {
-    const style = {
-      "--sidebar-width": "16rem",
-      "--sidebar-width-icon": "3rem",
-    };
-
-    return (
-      <SidebarProvider style={style as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-            <AppHeader userName={employee.name} userRole="Amministratore" notificationCount={0} showSidebarTrigger={true} />
-            {dashboardContent}
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-    );
-  }
-
   // Regulation view modal (dialog)
   const regulationViewDialog = (
     <Dialog open={showRegulationDialog} onOpenChange={setShowRegulationDialog}>
@@ -728,6 +708,27 @@ export default function EmployeeDashboard() {
       </DialogContent>
     </Dialog>
   );
+
+  // If admin, wrap with sidebar
+  if (isAdmin) {
+    const style = {
+      "--sidebar-width": "16rem",
+      "--sidebar-width-icon": "3rem",
+    };
+
+    return (
+      <SidebarProvider style={style as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <SidebarInset className="flex flex-col flex-1 overflow-hidden">
+            <AppHeader userName={employee.name} userRole="Amministratore" notificationCount={0} showSidebarTrigger={true} />
+            {regulationViewDialog}
+            {dashboardContent}
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   // Regulation acceptance modal
   const regulationModal = (
