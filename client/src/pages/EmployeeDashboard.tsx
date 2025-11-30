@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard } from "lucide-react";
+import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard, HelpCircle, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -348,6 +348,10 @@ export default function EmployeeDashboard() {
                     <TabsTrigger value="documents" data-testid="tab-documents">
                       Documenti
                     </TabsTrigger>
+                    <TabsTrigger value="support" data-testid="tab-support">
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Supporto
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="objectives" className="space-y-3 mt-4">
@@ -519,6 +523,112 @@ export default function EmployeeDashboard() {
                         onView={(id) => console.log("View document:", id)}
                         onDownload={(id) => console.log("Download document:", id)}
                       />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="support" className="mt-6">
+                    <div className="space-y-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg font-serif flex items-center gap-2">
+                            <HelpCircle className="h-5 w-5" />
+                            Domande Frequenti (FAQ)
+                          </CardTitle>
+                          <CardDescription>
+                            Trova risposte alle domande più comuni sul sistema MBO
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+
+                      <div className="space-y-3">
+                        <Card className="hover-elevate cursor-default" data-testid="faq-what-is-mbo">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Cos'è un MBO?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              MBO (Management by Objectives) è un approccio gestionale che definisce obiettivi specifici, misurabili e raggiungibili. Ogni dipendente ha obiettivi chiari allineati con le strategie aziendali.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-how-scoring">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Come si calcolano i punteggi?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              I punteggi sono calcolati in base al raggiungimento degli obiettivi rispetto ai target stabiliti. Per obiettivi numerici, viene utilizzata l'interpolazione lineare tra il valore di soglia (threshold) e il valore target. Per obiettivi qualitativi, il risultato è categorizzato in: Raggiunto, Raggiunto parzialmente, o Non raggiunto.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-weight">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Che cosa significa "Peso"?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              Il peso è la percentuale di importanza di un obiettivo rispetto al totale. La somma di tutti i pesi deve essere del 100%. Un obiettivo con peso 20% contribuisce il 20% al risultato complessivo.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-economic-value">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Che cos'è il "Valore Teorico"?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              Il valore teorico è la parte del tuo MBO target corrispondente al peso dell'obiettivo. Ad esempio, se il tuo MBO target è €10.000 e un obiettivo ha peso del 20%, il valore teorico sarà €2.000.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-reporting">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Come si effettua la rendicontazione?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              La rendicontazione è il processo di comunicazione dei risultati raggiunti per ciascun obiettivo. Gli amministratori inseriscono i valori effettivi raggiungiti, e il sistema calcola automaticamente se gli obiettivi sono stati raggiunti, parzialmente raggiunti, o non raggiunti.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-threshold-target">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Differenza tra Soglia (Threshold) e Target?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              La <strong>soglia (threshold)</strong> è il valore minimo accettabile per considerare parzialmente raggiunto l'obiettivo. Il <strong>target</strong> è il valore ottimale che rappresenta il pieno raggiungimento. I valori tra soglia e target sono considerati parzialmente raggiunti.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-regulation">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Dove trovo il regolamento completo?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              Puoi consultare il regolamento completo nella tab "Regolamento MBO" di questo dashboard. Contiene informazioni dettagliate sulle condizioni di utilizzo della piattaforma MBO.
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="hover-elevate cursor-default" data-testid="faq-support">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Come posso contattare il supporto?</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-muted-foreground space-y-2">
+                            <p>
+                              Per domande o problemi tecnici, contatta l'amministrazione dell'azienda o il team HR. Se hai domande specifiche su questa piattaforma, fai riferimento agli amministratori del sistema MBO.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
