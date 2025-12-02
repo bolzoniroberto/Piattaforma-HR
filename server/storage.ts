@@ -85,7 +85,7 @@ export interface IStorage {
   }[]>;
   
   // Objective Assignment operations
-  getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Objective & { title?: string; description?: string } })[]>;
+  getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { objective: Omit<Objective, 'actualValue' | 'targetValue'> & { title?: string; description?: string; objectiveType?: string; targetValue?: number | null; actualValue?: number | null } })[]>;
   getAllObjectiveAssignments(): Promise<ObjectiveAssignment[]>;
   getObjectiveAssignment(id: string): Promise<ObjectiveAssignment | undefined>;
   createObjectiveAssignment(assignment: InsertObjectiveAssignment): Promise<ObjectiveAssignment>;
@@ -120,13 +120,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // Convert ral from number to string for database storage
+    const dbData = {
+      ...userData,
+      ral: userData.ral !== undefined && userData.ral !== null ? String(userData.ral) : undefined,
+    } as any;
+
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(dbData)
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          ...dbData,
           updatedAt: new Date(),
         },
       })
@@ -139,9 +145,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
+    // Convert ral from number to string for database storage
+    const dbData = {
+      ...userData,
+      ral: userData.ral !== undefined && userData.ral !== null ? String(userData.ral) : undefined,
+      updatedAt: new Date(),
+    } as any;
+
     const [user] = await db
       .update(users)
-      .set({ ...userData, updatedAt: new Date() })
+      .set(dbData)
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -314,14 +327,27 @@ export class DatabaseStorage implements IStorage {
 
 
   async createObjective(objectiveData: InsertObjective): Promise<Objective> {
-    const [objective] = await db.insert(objectives).values(objectiveData).returning();
+    // Convert actualValue from number to string for database storage
+    const dbData = {
+      ...objectiveData,
+      actualValue: objectiveData.actualValue !== undefined && objectiveData.actualValue !== null ? String(objectiveData.actualValue) : undefined,
+    } as any;
+
+    const [objective] = await db.insert(objectives).values(dbData).returning();
     return objective;
   }
 
   async updateObjective(id: string, objectiveData: Partial<InsertObjective>): Promise<Objective> {
+    // Convert actualValue from number to string for database storage
+    const dbData = {
+      ...objectiveData,
+      actualValue: objectiveData.actualValue !== undefined && objectiveData.actualValue !== null ? String(objectiveData.actualValue) : undefined,
+      updatedAt: new Date(),
+    } as any;
+
     const [objective] = await db
       .update(objectives)
-      .set({ ...objectiveData, updatedAt: new Date() })
+      .set(dbData)
       .where(eq(objectives.id, id))
       .returning();
     return objective;
@@ -384,15 +410,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Objective Assignment operations
-  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & { 
-    objective: Objective & { 
-      title?: string; 
+  async getObjectiveAssignments(userId: string): Promise<(ObjectiveAssignment & {
+    objective: Omit<Objective, 'actualValue' | 'targetValue'> & {
+      title?: string;
       description?: string;
       objectiveType?: string;
       targetValue?: number | null;
+      actualValue?: number | null;
       indicatorCluster?: IndicatorCluster;
       calculationType?: CalculationType;
-    } 
+    }
   })[]> {
     const results = await db
       .select({

@@ -608,7 +608,7 @@ export default function AdminObjectivesPage() {
                                                   Attenzione: Questo obiettivo è assegnato a {assignmentsForDeletedObjective.length} {assignmentsForDeletedObjective.length === 1 ? 'dipendente' : 'dipendenti'}
                                                 </p>
                                                 <ul className="text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
-                                                  {assignmentsForDeletedObjective.slice(0, 3).map(({ user: assignedUser }) => (
+                                                  {assignmentsForDeletedObjective.slice(0, 3).map(({ user: assignedUser }: { user: any }) => (
                                                     <li key={assignedUser.id}>• {assignedUser.firstName} {assignedUser.lastName}</li>
                                                   ))}
                                                   {assignmentsForDeletedObjective.length > 3 && (
