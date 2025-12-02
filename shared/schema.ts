@@ -36,6 +36,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("employee"), // employee or admin
   department: varchar("department"),
+  cdc: varchar("cdc"), // Centro di Costo (Cost Center)
   managerId: varchar("manager_id").references(() => users.id, { onDelete: "set null" }), // Manager/responsabile
   ral: numeric("ral", { precision: 12, scale: 2 }), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
@@ -53,6 +54,7 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   codiceFiscale: true,
   profileImageUrl: true,
   department: true,
+  cdc: true,
   managerId: true,
   ral: true,
   mboPercentage: true,

@@ -55,6 +55,7 @@ export default function AdminUsersPage() {
     email: "",
     codiceFiscale: "",
     department: "",
+    cdc: "",
     managerId: "",
     ral: "",
     mboPercentage: "25",
@@ -128,6 +129,7 @@ export default function AdminUsersPage() {
         email: formData.email,
         codiceFiscale: formData.codiceFiscale || null,
         department: formData.department,
+        cdc: formData.cdc || null,
         ral: formData.ral ? parseFloat(formData.ral) : null,
         mboPercentage: parseInt(formData.mboPercentage),
         role: formData.role,
@@ -158,6 +160,7 @@ export default function AdminUsersPage() {
         email: formData.email,
         codiceFiscale: formData.codiceFiscale || null,
         department: formData.department,
+        cdc: formData.cdc || null,
         ral: formData.ral ? parseFloat(formData.ral) : null,
         mboPercentage: parseInt(formData.mboPercentage),
         role: formData.role,
@@ -228,6 +231,7 @@ export default function AdminUsersPage() {
       email: "",
       codiceFiscale: "",
       department: "",
+      cdc: "",
       managerId: "",
       ral: "",
       mboPercentage: "25",
@@ -251,6 +255,7 @@ export default function AdminUsersPage() {
       email: u.email || "",
       codiceFiscale: u.codiceFiscale || "",
       department: u.department || "",
+      cdc: u.cdc || "",
       managerId: u.managerId || "",
       ral: u.ral ? u.ral.toString() : "",
       mboPercentage: u.mboPercentage?.toString() || "25",
@@ -486,6 +491,16 @@ export default function AdminUsersPage() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="cdc">CDC (Centro di Costo)</Label>
+                          <Input
+                            id="cdc"
+                            value={formData.cdc}
+                            onChange={(e) => setFormData({ ...formData, cdc: e.target.value })}
+                            placeholder="Es: CDC001"
+                            data-testid="input-cdc"
+                          />
                         </div>
                         <div>
                           <Label htmlFor="ral">RAL (€)</Label>
