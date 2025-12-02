@@ -37,7 +37,7 @@ export const users = pgTable("users", {
   role: varchar("role").notNull().default("employee"), // employee or admin
   department: varchar("department"),
   cdc: varchar("cdc"), // Centro di Costo (Cost Center)
-  managerId: varchar("manager_id").references(() => users.id, { onDelete: "set null" }), // Manager/responsabile
+  managerId: varchar("manager_id").references((): any => users.id, { onDelete: "set null" }), // Manager/responsabile
   ral: numeric("ral", { precision: 12, scale: 2 }), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
   mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"), // When user accepted MBO regulation
@@ -46,7 +46,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const upsertUserSchema = createInsertSchema(users).pick({
+const baseUpsertUserSchema = createInsertSchema(users).pick({
   id: true,
   email: true,
   firstName: true,
@@ -56,6 +56,13 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   department: true,
   cdc: true,
   managerId: true,
+  ral: true,
+  mboPercentage: true,
+  mboRegulationAcceptedAt: true,
+  isActive: true,
+});
+
+export const upsertUserSchema = baseUpsertUserSchema.omit({
   ral: true,
   mboPercentage: true,
   isActive: true,

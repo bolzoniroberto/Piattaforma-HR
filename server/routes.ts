@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if user already exists to preserve RAL and mboPercentage
       const existingUser = await storage.getUser(demoUserId);
-      const ralToUse = existingUser?.ral ?? (role === "admin" ? undefined : 80000);
+      const ralToUse = existingUser?.ral ? parseFloat(String(existingUser.ral)) : (role === "admin" ? undefined : 80000);
       const mboToUse = existingUser?.mboPercentage ?? 25;
       
       await storage.upsertUser({
@@ -574,13 +574,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Objective dictionary item not found" });
       }
 
-      // Create an objective instance from dictionary with clusterId, type, and target
+      // Create an objective instance from dictionary with clusterId
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
-        objectiveType: objectiveType || "numeric",
-        targetValue: targetValue !== undefined && targetValue !== null ? targetValue : null,
       });
 
       // Create the assignment with the new objective
@@ -648,13 +646,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create an objective instance from dictionary with clusterId, type, and target
+      // Create an objective instance from dictionary with clusterId
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: null,
-        objectiveType: objectiveType || "numeric",
-        targetValue: targetValue !== undefined && targetValue !== null ? targetValue : null,
       });
 
       // Create assignments for each eligible user
@@ -984,14 +980,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create objectives dictionary
       const objectivesDict = [
-        { title: "Incremento fatturato gruppo +10%", description: "Raggiungere un incremento del fatturato consolidato del 10% rispetto all'anno precedente", indicatorClusterId: createdClusters[0].id, calculationTypeId: createdCalcTypes[0].id },
-        { title: "Margine operativo lordo >15%", description: "Mantenere il MOL sopra il 15% del fatturato", indicatorClusterId: createdClusters[0].id, calculationTypeId: createdCalcTypes[1].id },
-        { title: "Customer satisfaction >4.5", description: "Raggiungere un punteggio NPS medio superiore a 4.5", indicatorClusterId: createdClusters[1].id, calculationTypeId: createdCalcTypes[0].id },
-        { title: "Riduzione time-to-market -20%", description: "Ridurre i tempi di rilascio prodotti del 20%", indicatorClusterId: createdClusters[1].id, calculationTypeId: createdCalcTypes[2].id },
-        { title: "Riduzione emissioni CO2 -15%", description: "Ridurre le emissioni di CO2 del 15% rispetto all'anno base", indicatorClusterId: createdClusters[2].id, calculationTypeId: createdCalcTypes[2].id },
-        { title: "Gender diversity >40%", description: "Raggiungere almeno il 40% di rappresentanza femminile in ruoli manageriali", indicatorClusterId: createdClusters[2].id, calculationTypeId: createdCalcTypes[0].id },
-        { title: "Completamento certificazioni", description: "Ottenere almeno 2 certificazioni professionali nell'anno", indicatorClusterId: createdClusters[3].id, calculationTypeId: createdCalcTypes[3].id },
-        { title: "Progetti completati on-time", description: "Completare almeno l'80% dei progetti entro le deadline", indicatorClusterId: createdClusters[3].id, calculationTypeId: createdCalcTypes[0].id },
+        { title: "Incremento fatturato gruppo +10%", description: "Raggiungere un incremento del fatturato consolidato del 10% rispetto all'anno precedente", indicatorClusterId: createdClusters[0].id, calculationTypeId: createdCalcTypes[0].id, objectiveType: "numeric" as const },
+        { title: "Margine operativo lordo >15%", description: "Mantenere il MOL sopra il 15% del fatturato", indicatorClusterId: createdClusters[0].id, calculationTypeId: createdCalcTypes[1].id, objectiveType: "numeric" as const },
+        { title: "Customer satisfaction >4.5", description: "Raggiungere un punteggio NPS medio superiore a 4.5", indicatorClusterId: createdClusters[1].id, calculationTypeId: createdCalcTypes[0].id, objectiveType: "numeric" as const },
+        { title: "Riduzione time-to-market -20%", description: "Ridurre i tempi di rilascio prodotti del 20%", indicatorClusterId: createdClusters[1].id, calculationTypeId: createdCalcTypes[2].id, objectiveType: "numeric" as const },
+        { title: "Riduzione emissioni CO2 -15%", description: "Ridurre le emissioni di CO2 del 15% rispetto all'anno base", indicatorClusterId: createdClusters[2].id, calculationTypeId: createdCalcTypes[2].id, objectiveType: "numeric" as const },
+        { title: "Gender diversity >40%", description: "Raggiungere almeno il 40% di rappresentanza femminile in ruoli manageriali", indicatorClusterId: createdClusters[2].id, calculationTypeId: createdCalcTypes[0].id, objectiveType: "numeric" as const },
+        { title: "Completamento certificazioni", description: "Ottenere almeno 2 certificazioni professionali nell'anno", indicatorClusterId: createdClusters[3].id, calculationTypeId: createdCalcTypes[3].id, objectiveType: "qualitative" as const },
+        { title: "Progetti completati on-time", description: "Completare almeno l'80% dei progetti entro le deadline", indicatorClusterId: createdClusters[3].id, calculationTypeId: createdCalcTypes[0].id, objectiveType: "numeric" as const },
       ];
       
       for (const obj of objectivesDict) {
