@@ -53,9 +53,9 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  const [openDialog, setOpenDialog] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -144,7 +144,7 @@ export default function AdminUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Utente creato con successo" });
-      setOpenDialog(false);
+      setIsCreatingNew(false);
       resetForm();
     },
     onError: (error) => {
@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Utente aggiornato con successo" });
-      setOpenDialog(false);
+      setEditingUser(null);
       resetForm();
     },
     onError: (error) => {
@@ -245,11 +245,13 @@ export default function AdminUsersPage() {
 
   const handleAddUser = () => {
     resetForm();
-    setOpenDialog(true);
+    setIsCreatingNew(true);
+    setEditingUser(null);
   };
 
   const handleEditUser = (u: User) => {
     setEditingUser(u);
+    setIsCreatingNew(false);
     setFormData({
       firstName: u.firstName || "",
       lastName: u.lastName || "",
@@ -261,7 +263,12 @@ export default function AdminUsersPage() {
       mboPercentage: u.mboPercentage?.toString() || "25",
       role: (u.role as "employee" | "admin") || "employee",
     });
-    setOpenDialog(true);
+  };
+
+  const handleCancelEdit = () => {
+    resetForm();
+    setEditingUser(null);
+    setIsCreatingNew(false);
   };
 
   const handleSaveUser = () => {
@@ -413,125 +420,136 @@ export default function AdminUsersPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-                        <DialogTrigger asChild>
-                          <Button onClick={handleAddUser} data-testid="button-add-user">
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Aggiungi Utente
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent data-testid="dialog-user-form">
-                          <DialogHeader>
-                            <DialogTitle>
-                              {editingUser ? "Modifica Utente" : "Aggiungi Nuovo Utente"}
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="firstName">Nome</Label>
-                              <Input
-                                id="firstName"
-                                value={formData.firstName}
-                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                data-testid="input-first-name"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="lastName">Cognome</Label>
-                              <Input
-                                id="lastName"
-                                value={formData.lastName}
-                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                data-testid="input-last-name"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="email">Email</Label>
-                              <Input
-                                id="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                data-testid="input-email"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="codiceFiscale">Codice Fiscale</Label>
-                              <Input
-                                id="codiceFiscale"
-                                value={formData.codiceFiscale}
-                                onChange={(e) => setFormData({ ...formData, codiceFiscale: e.target.value })}
-                                placeholder="Es: BNCRSS80A01F205O"
-                                data-testid="input-codice-fiscale"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="department">Dipartimento</Label>
-                              <Select 
-                                value={formData.department} 
-                                onValueChange={(value) => setFormData({ ...formData, department: value })}
-                              >
-                                <SelectTrigger id="department" data-testid="select-department">
-                                  <SelectValue placeholder="Seleziona dipartimento" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {departments.map((dept) => (
-                                    <SelectItem key={dept} value={dept}>
-                                      {dept}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="ral">RAL (€)</Label>
-                              <Input
-                                id="ral"
-                                type="number"
-                                value={formData.ral}
-                                onChange={(e) => setFormData({ ...formData, ral: e.target.value })}
-                                data-testid="input-ral"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="mboPercentage">MBO % (multiplo di 5)</Label>
-                              <Input
-                                id="mboPercentage"
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="5"
-                                value={formData.mboPercentage}
-                                onChange={(e) => setFormData({ ...formData, mboPercentage: e.target.value })}
-                                data-testid="input-mbo-percentage"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="role">Ruolo</Label>
-                              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as "employee" | "admin" })}>
-                                <SelectTrigger id="role" data-testid="select-role">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="employee">Dipendente</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button
-                              onClick={handleSaveUser}
-                              disabled={createUserMutation.isPending || updateUserMutation.isPending}
-                              data-testid="button-save-user"
-                              className="w-full"
-                            >
-                              {createUserMutation.isPending || updateUserMutation.isPending ? "Salvataggio..." : "Salva"}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button onClick={handleAddUser} data-testid="button-add-user">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Aggiungi Utente
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
+                
+                {/* In-page form for creating/editing user */}
+                {(isCreatingNew || editingUser) && (
+                  <Card className="mb-6 border-primary/30">
+                    <CardHeader>
+                      <CardTitle>
+                        {editingUser ? "Modifica Utente" : "Aggiungi Nuovo Utente"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="firstName">Nome</Label>
+                          <Input
+                            id="firstName"
+                            value={formData.firstName}
+                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            data-testid="input-first-name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="lastName">Cognome</Label>
+                          <Input
+                            id="lastName"
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            data-testid="input-last-name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            data-testid="input-email"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="codiceFiscale">Codice Fiscale</Label>
+                          <Input
+                            id="codiceFiscale"
+                            value={formData.codiceFiscale}
+                            onChange={(e) => setFormData({ ...formData, codiceFiscale: e.target.value })}
+                            placeholder="Es: BNCRSS80A01F205O"
+                            data-testid="input-codice-fiscale"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="department">Dipartimento</Label>
+                          <Select 
+                            value={formData.department} 
+                            onValueChange={(value) => setFormData({ ...formData, department: value })}
+                          >
+                            <SelectTrigger id="department" data-testid="select-department">
+                              <SelectValue placeholder="Seleziona dipartimento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departments.map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="ral">RAL (€)</Label>
+                          <Input
+                            id="ral"
+                            type="number"
+                            value={formData.ral}
+                            onChange={(e) => setFormData({ ...formData, ral: e.target.value })}
+                            data-testid="input-ral"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="mboPercentage">MBO % (multiplo di 5)</Label>
+                          <Input
+                            id="mboPercentage"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={formData.mboPercentage}
+                            onChange={(e) => setFormData({ ...formData, mboPercentage: e.target.value })}
+                            data-testid="input-mbo-percentage"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="role">Ruolo</Label>
+                          <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as "employee" | "admin" })}>
+                            <SelectTrigger id="role" data-testid="select-role">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="employee">Dipendente</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 mt-6">
+                        <Button
+                          onClick={handleSaveUser}
+                          disabled={createUserMutation.isPending || updateUserMutation.isPending}
+                          data-testid="button-save-user"
+                        >
+                          {createUserMutation.isPending || updateUserMutation.isPending ? "Salvataggio..." : "Salva"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                          data-testid="button-cancel-edit"
+                        >
+                          Annulla
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <CardContent>
                   {isLoading ? (
                     <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
