@@ -144,6 +144,9 @@ export const objectivesDictionary = pgTable("objectives_dictionary", {
   objectiveType: varchar("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
   targetValue: numeric("target_value", { precision: 15, scale: 2 }), // Target for numeric objectives
   thresholdValue: numeric("threshold_value", { precision: 15, scale: 2 }), // Threshold below which numeric objective is 0%
+  actualValue: numeric("actual_value", { precision: 15, scale: 2 }), // Actual value reported (for numeric objectives)
+  qualitativeResult: varchar("qualitative_result"), // "reached", "partial", "not_reached"
+  reportedAt: timestamp("reported_at"), // When the objective was reported
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

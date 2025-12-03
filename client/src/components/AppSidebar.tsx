@@ -18,6 +18,7 @@ import {
   Settings,
   CheckCircle,
   Trash2,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -64,6 +65,11 @@ const rendicontazioneItems = [
     url: "/admin/reporting",
     icon: CheckCircle,
   },
+  {
+    title: "Analytics",
+    url: "/admin/analytics",
+    icon: BarChart3,
+  },
 ];
 
 export default function AppSidebar() {
@@ -101,7 +107,7 @@ export default function AppSidebar() {
                 <SidebarMenuButton asChild isActive={location === "/"}>
                   <Link href="/" data-testid="link-sidebar-miei-obiettivi">
                     <LayoutDashboard className="h-4 w-4" />
-                    <span>Miei Obiettivi</span>
+                    <span>La mia dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

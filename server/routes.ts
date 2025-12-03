@@ -2,8 +2,15 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import { seed } from "./seed";
+
+// Use local auth in development, Replit auth in production
+const isLocalDev = process.env.NODE_ENV === "development" && !process.env.REPLIT_DB_URL;
+const authModule = isLocalDev
+  ? await import("./localAuth")
+  : await import("./replitAuth");
+
+const { setupAuth, isAuthenticated, isAdmin } = authModule;
 import {
   insertIndicatorClusterSchema,
   insertCalculationTypeSchema,
@@ -23,7 +30,9 @@ function getUserId(req: Request): string {
   if (req.headers["x-demo-user-id"]) {
     return req.headers["x-demo-user-id"] as string;
   }
-  return (req.user as any)?.claims?.sub;
+  // For local auth, user ID is directly in req.user.id
+  // For Replit auth, it's in req.user.claims.sub
+  return (req.user as any)?.id || (req.user as any)?.claims?.sub;
 }
 
 // Helper for error handling
@@ -468,61 +477,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Report on an objective (update actual values)
-  app.patch("/api/objectives/:id/report", isAuthenticated, isAdmin, async (req, res) => {
+  // Report on a dictionary (updates all related objectives and assignments)
+  app.patch("/api/dictionary/:id/report", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { actualValue, qualitativeResult } = req.body;
-      const objective = await storage.getObjective(req.params.id);
-      
-      if (!objective) {
-        return res.status(404).json({ message: "Objective not found" });
+      const dictionary = await storage.getObjectivesDictionaryItem(req.params.id);
+
+      if (!dictionary) {
+        return res.status(404).json({ message: "Dictionary item not found" });
       }
 
-      // Get dictionary item to check objectiveType and targetValue
-      const dictionary = objective.dictionaryId 
-        ? await storage.getObjectivesDictionaryItem(objective.dictionaryId)
-        : null;
-
-      const updateData: any = {
-        reportedAt: new Date(),
-      };
+      let calculatedProgress = 0;
+      let finalActualValue: number | undefined = undefined;
+      let finalQualitativeResult: string | undefined = undefined;
 
       if (actualValue !== undefined) {
-        updateData.actualValue = actualValue;
-        
+        finalActualValue = actualValue;
+
         // For numeric objectives, auto-calculate qualitativeResult based on actualValue vs targetValue and thresholdValue
-        if (dictionary?.objectiveType === "numeric" && dictionary?.targetValue !== null && dictionary?.targetValue !== undefined) {
+        if (dictionary.objectiveType === "numeric" && dictionary.targetValue !== null && dictionary.targetValue !== undefined) {
           const target = parseFloat(String(dictionary.targetValue));
           const actual = parseFloat(String(actualValue));
-          const threshold = dictionary?.thresholdValue ? parseFloat(String(dictionary.thresholdValue)) : null;
-          
+          const threshold = dictionary.thresholdValue ? parseFloat(String(dictionary.thresholdValue)) : null;
+
           // If threshold is defined: below threshold = not_reached, between threshold and target = partial, at/above target = reached
           // If no threshold: simple comparison
           if (threshold !== null) {
             if (actual < threshold) {
-              updateData.qualitativeResult = "not_reached";
+              finalQualitativeResult = "not_reached";
+              calculatedProgress = 0;
             } else if (actual >= target) {
-              updateData.qualitativeResult = "reached";
+              finalQualitativeResult = "reached";
+              calculatedProgress = 100;
             } else {
-              // Between threshold and target = partial
-              updateData.qualitativeResult = "partial";
+              // Between threshold and target = partial (proportional)
+              finalQualitativeResult = "partial";
+              // Calculate proportional progress between threshold and target
+              calculatedProgress = Math.round(((actual - threshold) / (target - threshold)) * 100);
             }
           } else {
-            // No threshold: simple comparison
-            updateData.qualitativeResult = actual >= target ? "reached" : "not_reached";
+            // No threshold: simple comparison or proportional if actual < target
+            if (actual >= target) {
+              finalQualitativeResult = "reached";
+              calculatedProgress = 100;
+            } else {
+              finalQualitativeResult = "not_reached";
+              // Proportional progress
+              calculatedProgress = Math.round((actual / target) * 100);
+            }
           }
         }
       }
-      
-      if (qualitativeResult && ["reached", "not_reached"].includes(qualitativeResult)) {
+
+      if (qualitativeResult && ["reached", "not_reached", "partial"].includes(qualitativeResult)) {
         // Only set qualitativeResult for qualitative objectives
-        if (dictionary?.objectiveType === "qualitative") {
-          updateData.qualitativeResult = qualitativeResult;
+        if (dictionary.objectiveType === "qualitative") {
+          finalQualitativeResult = qualitativeResult;
+          // Map qualitative result to progress
+          if (qualitativeResult === "reached") {
+            calculatedProgress = 100;
+          } else if (qualitativeResult === "partial") {
+            calculatedProgress = 50;
+          } else {
+            calculatedProgress = 0;
+          }
         }
       }
 
-      const updatedObjective = await storage.updateObjective(req.params.id, updateData);
-      res.json(updatedObjective);
+      // Update dictionary and propagate to all objectives and assignments
+      await storage.reportOnDictionary(req.params.id, {
+        actualValue: finalActualValue,
+        qualitativeResult: finalQualitativeResult,
+        progress: calculatedProgress,
+      });
+
+      const updatedDictionary = await storage.getObjectivesDictionaryItem(req.params.id);
+      res.json(updatedDictionary);
     } catch (error) {
       handleError(res, error);
     }
@@ -1024,6 +1054,283 @@ export async function registerRoutes(app: Express): Promise<Server> {
           calculationTypes: existingCalcTypes.length,
           businessFunctions: existingBF.length - newBFCount,
         }
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Diagnostic endpoint to check assignment/objective counts
+  app.get("/api/admin/diagnostic", isAdmin, async (req, res) => {
+    try {
+      const rawAssignments = await storage.getAllObjectiveAssignments();
+      const rawObjectives = await storage.getObjectives();
+      const users = await storage.getAllUsers();
+
+      // Check each assignment to see if its objective exists
+      const assignmentDiagnostics = [];
+      for (const assignment of rawAssignments) {
+        const objectiveExists = rawObjectives.some(obj => obj.id === assignment.objectiveId);
+        const user = users.find(u => u.id === assignment.userId);
+        assignmentDiagnostics.push({
+          assignmentId: assignment.id,
+          userId: assignment.userId,
+          userEmail: user?.email || 'unknown',
+          objectiveId: assignment.objectiveId,
+          objectiveExists,
+          weight: assignment.weight,
+          status: assignment.status
+        });
+      }
+
+      res.json({
+        totalAssignments: rawAssignments.length,
+        totalObjectives: rawObjectives.length,
+        assignmentsWithMissingObjectives: assignmentDiagnostics.filter(a => !a.objectiveExists).length,
+        details: assignmentDiagnostics
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Analytics endpoints
+  app.get("/api/admin/analytics/overview", isAdmin, async (req, res) => {
+    try {
+      // Get all users and all assignments directly (like getObjectivesWithAssignments does)
+      const users = await storage.getAllUsers();
+      const allAssignments = await storage.getAllObjectiveAssignments();
+
+      console.log('[Analytics] Total users found:', users.length);
+      console.log('[Analytics] Total assignments in DB:', allAssignments.length);
+
+      // Calculate statistics
+      const totalObjectives = allAssignments.length;
+      const completedObjectives = allAssignments.filter(a => a.progress === 100).length;
+      const inProgressObjectives = allAssignments.filter(a => (a.progress || 0) > 0 && a.progress !== 100).length;
+      const notStartedObjectives = allAssignments.filter(a => !a.progress || a.progress === 0).length;
+
+      // Calculate average completion
+      const totalCompletion = allAssignments.reduce((sum, a) => sum + (a.progress || 0), 0);
+      const averageCompletion = totalObjectives > 0 ? Math.round(totalCompletion / totalObjectives) : 0;
+
+      // Count employees
+      const totalEmployees = users.filter(u => u.role === 'employee').length;
+      const activeEmployees = users.filter(u => u.isActive && u.role === 'employee').length;
+
+      res.json({
+        totalObjectives,
+        completedObjectives,
+        inProgressObjectives,
+        notStartedObjectives,
+        averageCompletion,
+        totalEmployees,
+        activeEmployees,
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/analytics/by-department", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const allAssignments = await storage.getAllObjectiveAssignments();
+
+      const departments = new Map<string, {
+        name: string;
+        completed: number;
+        inProgress: number;
+        total: number;
+        totalCompletion: number;
+      }>();
+
+      // Group assignments by user department
+      for (const assignment of allAssignments) {
+        const user = users.find(u => u.id === assignment.userId);
+        if (!user || user.role !== 'employee') continue;
+
+        const dept = user.department || 'Unassigned';
+        if (!departments.has(dept)) {
+          departments.set(dept, { name: dept, completed: 0, inProgress: 0, total: 0, totalCompletion: 0 });
+        }
+
+        const deptData = departments.get(dept)!;
+        deptData.total++;
+        deptData.totalCompletion += (assignment.progress || 0);
+
+        if (assignment.progress === 100) {
+          deptData.completed++;
+        } else if ((assignment.progress || 0) > 0) {
+          deptData.inProgress++;
+        }
+      }
+
+      const result = Array.from(departments.values()).map(dept => ({
+        name: dept.name,
+        completed: dept.completed,
+        inProgress: dept.inProgress,
+        total: dept.total,
+        avgCompletion: dept.total > 0 ? Math.round(dept.totalCompletion / dept.total) : 0,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/analytics/by-cluster", isAdmin, async (req, res) => {
+    try {
+      // Get all indicator clusters
+      const clusters = await storage.getIndicatorClusters();
+
+      // Get all objectives with their assignments
+      const objectivesWithAssignments = await storage.getObjectivesWithAssignments();
+
+      // Count objectives per cluster
+      const clusterCounts = new Map<string, { name: string; count: number }>();
+
+      for (const cluster of clusters) {
+        clusterCounts.set(cluster.id, { name: cluster.name, count: 0 });
+      }
+
+      // Count assignments grouped by cluster
+      for (const objData of objectivesWithAssignments) {
+        if (objData.indicatorCluster) {
+          const clusterId = objData.indicatorCluster.id;
+          const clusterData = clusterCounts.get(clusterId);
+          if (clusterData) {
+            clusterData.count += objData.assignedUsers.length;
+          }
+        }
+      }
+
+      const result = Array.from(clusterCounts.values());
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/analytics/eligibles", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const departmentMap = new Map<string, { eligibles: number; total: number }>();
+
+      for (const user of users) {
+        if (user.role !== 'employee') continue;
+
+        const dept = user.department || 'Unassigned';
+        if (!departmentMap.has(dept)) {
+          departmentMap.set(dept, { eligibles: 0, total: 0 });
+        }
+
+        const deptData = departmentMap.get(dept)!;
+        deptData.total++;
+
+        // Check if user has MBO percentage set (is eligible)
+        if (user.mboPercentage && user.mboPercentage > 0) {
+          deptData.eligibles++;
+        }
+      }
+
+      const result = Array.from(departmentMap.entries()).map(([name, data]) => ({
+        name,
+        eligibles: data.eligibles,
+        total: data.total,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/analytics/financial", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const allAssignments = await storage.getAllObjectiveAssignments();
+
+      let theoreticalTargetPayout = 0;
+      let actualProjectedPayout = 0;
+      const employeePayouts = [];
+      const departmentPayoutsMap = new Map<string, { theoretical: number; actual: number; count: number; totalCompletion: number }>();
+
+      // Group assignments by user
+      const assignmentsByUser = new Map<string, typeof allAssignments>();
+      for (const assignment of allAssignments) {
+        if (!assignmentsByUser.has(assignment.userId)) {
+          assignmentsByUser.set(assignment.userId, []);
+        }
+        assignmentsByUser.get(assignment.userId)!.push(assignment);
+      }
+
+      for (const user of users) {
+        if (user.role !== 'employee' || !user.ral || user.ral === 0) continue;
+
+        const ral = parseFloat(String(user.ral));
+        const mboPercentage = user.mboPercentage || 0;
+        const theoreticalMbo = (ral * mboPercentage) / 100;
+
+        // Get assignments and calculate average completion
+        const assignments = assignmentsByUser.get(user.id) || [];
+        const totalCompletion = assignments.reduce((sum, a) => sum + (a.progress || 0), 0);
+        const avgCompletion = assignments.length > 0 ? totalCompletion / assignments.length : 0;
+
+        // Actual MBO based on completion percentage
+        const actualMbo = (theoreticalMbo * avgCompletion) / 100;
+
+        theoreticalTargetPayout += theoreticalMbo;
+        actualProjectedPayout += actualMbo;
+
+        employeePayouts.push({
+          name: `${user.firstName} ${user.lastName}`,
+          ral,
+          mboPercentage,
+          theoreticalMbo: Math.round(theoreticalMbo),
+          actualMbo: Math.round(actualMbo),
+          completion: Math.round(avgCompletion),
+        });
+
+        // Department aggregation
+        const dept = user.department || 'Unassigned';
+        if (!departmentPayoutsMap.has(dept)) {
+          departmentPayoutsMap.set(dept, { theoretical: 0, actual: 0, count: 0, totalCompletion: 0 });
+        }
+        const deptData = departmentPayoutsMap.get(dept)!;
+        deptData.theoretical += theoreticalMbo;
+        deptData.actual += actualMbo;
+        deptData.count++;
+        deptData.totalCompletion += avgCompletion;
+      }
+
+      const departmentPayouts = Array.from(departmentPayoutsMap.entries()).map(([name, data]) => ({
+        name,
+        theoretical: Math.round(data.theoretical),
+        actual: Math.round(data.actual),
+        completion: data.count > 0 ? Math.round(data.totalCompletion / data.count) : 0,
+      }));
+
+      const savings = theoreticalTargetPayout - actualProjectedPayout;
+      const savingsPercentage = theoreticalTargetPayout > 0
+        ? Math.round((savings / theoreticalTargetPayout) * 100)
+        : 0;
+
+      // Calculate average theoretical MBO per employee
+      const eligibleEmployees = employeePayouts.length;
+      const averageTheoreticalMBO = eligibleEmployees > 0
+        ? Math.round(theoreticalTargetPayout / eligibleEmployees)
+        : 0;
+
+      res.json({
+        theoreticalTargetPayout: Math.round(theoreticalTargetPayout),
+        actualProjectedPayout: Math.round(actualProjectedPayout),
+        savings: Math.round(savings),
+        savingsPercentage,
+        averageTheoreticalMBO,
+        employeePayouts: employeePayouts.slice(0, 10), // Top 10 employees
+        departmentPayouts,
       });
     } catch (error) {
       handleError(res, error);
