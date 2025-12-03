@@ -6,8 +6,18 @@
 
 @layer base {
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
+
+  /* Modern compact typography */
+  h1 { @apply text-2xl; }
+  h2 { @apply text-xl; }
+  h3 { @apply text-lg; }
+  h4 { @apply text-base; }
+  h5 { @apply text-sm; }
+  h6 { @apply text-xs; }
 }
 
 /* LIGHT MODE */
@@ -54,15 +64,32 @@
   --font-sans: Inter, sans-serif;
   --font-serif: "Sole Serif", Georgia, serif;
   --font-mono: IBM Plex Mono, monospace;
-  --radius: .5rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(220 13% 15% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(220 13% 15% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(220 13% 15% / 0.00), 0px 1px 2px -1px hsl(220 13% 15% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(220 13% 15% / 0.00), 0px 1px 2px -1px hsl(220 13% 15% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(220 13% 15% / 0.00), 0px 2px 4px -1px hsl(220 13% 15% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(220 13% 15% / 0.00), 0px 4px 6px -1px hsl(220 13% 15% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(220 13% 15% / 0.00), 0px 8px 10px -1px hsl(220 13% 15% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(220 13% 15% / 0.00);
+
+  /* Material Design 3 - Border Radius */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-full: 9999px;
+
+  /* Material Design 3 - Elevation Shadows */
+  --shadow-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+  --shadow-2: 0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
+  --shadow-3: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-4: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-5: 0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* Backward compatibility */
+  --shadow-2xs: var(--shadow-1);
+  --shadow-xs: var(--shadow-1);
+  --shadow-sm: var(--shadow-2);
+  --shadow: var(--shadow-2);
+  --shadow-md: var(--shadow-3);
+  --shadow-lg: var(--shadow-4);
+  --shadow-xl: var(--shadow-5);
+  --shadow-2xl: var(--shadow-5);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -135,14 +162,23 @@
   --chart-3: 262 83% 65%;
   --chart-4: 27 87% 60%;
   --chart-5: 340 82% 60%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(220 13% 5% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(220 13% 5% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(220 13% 5% / 0.00), 0px 1px 2px -1px hsl(220 13% 5% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(220 13% 5% / 0.00), 0px 1px 2px -1px hsl(220 13% 5% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(220 13% 5% / 0.00), 0px 2px 4px -1px hsl(220 13% 5% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(220 13% 5% / 0.00), 0px 4px 6px -1px hsl(220 13% 5% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(220 13% 5% / 0.00), 0px 8px 10px -1px hsl(220 13% 5% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(220 13% 5% / 0.00);
+
+  /* Material Design 3 - Elevation Shadows (Dark Mode) */
+  --shadow-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+  --shadow-3: 0px 4px 6px -1px rgba(0, 0, 0, 0.4), 0px 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-4: 0px 10px 15px -3px rgba(0, 0, 0, 0.4), 0px 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-5: 0px 20px 25px -5px rgba(0, 0, 0, 0.4), 0px 10px 10px -5px rgba(0, 0, 0, 0.3);
+
+  /* Backward compatibility */
+  --shadow-2xs: var(--shadow-1);
+  --shadow-xs: var(--shadow-1);
+  --shadow-sm: var(--shadow-2);
+  --shadow: var(--shadow-2);
+  --shadow-md: var(--shadow-3);
+  --shadow-lg: var(--shadow-4);
+  --shadow-xl: var(--shadow-5);
+  --shadow-2xl: var(--shadow-5);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -203,6 +239,125 @@
  * Even without handling focused or not, this is six possible combinations that
  * need to be distinguished from eachother visually.
  */
+@layer components {
+  /* Material Design 3 - Surface Containers */
+  .md3-surface {
+    @apply bg-card rounded-xl border-0;
+    box-shadow: var(--shadow-1);
+  }
+
+  .md3-surface-variant {
+    @apply bg-card/60 rounded-xl border border-border/30;
+    box-shadow: var(--shadow-1);
+  }
+
+  .md3-elevated {
+    @apply bg-card rounded-2xl border-0;
+    box-shadow: var(--shadow-3);
+    transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md3-elevated:hover {
+    box-shadow: var(--shadow-4);
+  }
+
+  .md3-filled {
+    @apply bg-secondary/10 rounded-xl border-0;
+  }
+
+  /* Material Design 3 - State Layers */
+  .md3-state-layer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .md3-state-layer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .md3-state-layer:hover::before {
+    opacity: 0.08;
+  }
+
+  .md3-state-layer:active::before {
+    opacity: 0.12;
+  }
+
+  /* Material Design 3 - Typography */
+  .md3-headline-large {
+    @apply text-3xl font-normal tracking-tight;
+    line-height: 2.5rem;
+  }
+
+  .md3-headline-medium {
+    @apply text-2xl font-normal tracking-tight;
+    line-height: 2rem;
+  }
+
+  .md3-headline-small {
+    @apply text-xl font-normal tracking-tight;
+    line-height: 1.75rem;
+  }
+
+  .md3-title-large {
+    @apply text-lg font-medium tracking-tight;
+    line-height: 1.75rem;
+  }
+
+  .md3-title-medium {
+    @apply text-base font-medium tracking-tight;
+    line-height: 1.5rem;
+  }
+
+  .md3-title-small {
+    @apply text-sm font-medium tracking-tight;
+    line-height: 1.25rem;
+  }
+
+  .md3-label-large {
+    @apply text-sm font-medium tracking-wide;
+    line-height: 1.25rem;
+  }
+
+  .md3-body-large {
+    @apply text-base font-normal;
+    line-height: 1.5rem;
+  }
+
+  .md3-body-medium {
+    @apply text-sm font-normal;
+    line-height: 1.25rem;
+  }
+
+  /* Material Design 3 - Motion */
+  .md3-motion-emphasized {
+    transition: all 500ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .md3-motion-standard {
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .md3-motion-decelerate {
+    transition: all 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  /* Compact spacing utilities */
+  .compact-section {
+    @apply space-y-3;
+  }
+
+  .compact-grid {
+    @apply grid gap-3;
+  }
+}
+
 @layer utilities {
 
   /* Hide ugly search cancel button in Chrome until we can style it properly */

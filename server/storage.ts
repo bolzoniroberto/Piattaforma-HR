@@ -34,11 +34,28 @@ import {
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
 
+// Pagination types
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface IStorage {
   // User operations - Required for Replit Auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  getAllUsersPaginated(params?: PaginationParams): Promise<PaginatedResponse<User>>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
   deleteUser(id: string): Promise<void>;
   
@@ -140,6 +157,34 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(users.lastName, users.firstName);
+  }
+
+  async getAllUsersPaginated(params: PaginationParams = {}): Promise<PaginatedResponse<User>> {
+    const page = params.page || 1;
+    const limit = params.limit || 50;
+    const offset = (page - 1) * limit;
+
+    // Fetch data and count in parallel
+    const [data, countResult] = await Promise.all([
+      db.select()
+        .from(users)
+        .orderBy(users.lastName, users.firstName)
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: sql<number>`count(*)::int` }).from(users)
+    ]);
+
+    const total = Number(countResult[0].count);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {

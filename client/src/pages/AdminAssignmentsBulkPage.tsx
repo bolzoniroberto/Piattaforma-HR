@@ -163,15 +163,17 @@ export default function AdminAssignmentsBulkPage() {
           />
 
           <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-5xl mx-auto space-y-6">
-              <div>
-                <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                  <Target className="h-8 w-8" />
-                  Assegnazione Obiettivi in Bulk
-                </h1>
-                <p className="text-muted-foreground">
-                  Assegna un obiettivo a tutti i dipendenti di un dipartimento
-                </p>
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
+                    <Target className="h-8 w-8" />
+                    Assegnazione Obiettivi in Bulk
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Assegna un obiettivo a tutti i dipendenti di un dipartimento
+                  </p>
+                </div>
               </div>
 
               {/* Progress Steps */}

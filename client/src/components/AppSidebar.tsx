@@ -21,6 +21,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const dashboardItem = {
   title: "Dashboard",
@@ -75,6 +76,7 @@ const rendicontazioneItems = [
 export default function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const renderMenuGroup = (items: Array<{ title: string; url: string; icon: any }>) => (
     <SidebarMenu>
@@ -97,7 +99,7 @@ export default function AppSidebar() {
   const isAdmin = user?.role === "admin";
 
   return (
-    <Sidebar>
+    <Sidebar collapsible={isMobile ? "offcanvas" : "icon"}>
       <SidebarContent>
         {/* Dashboard */}
         <SidebarGroup>

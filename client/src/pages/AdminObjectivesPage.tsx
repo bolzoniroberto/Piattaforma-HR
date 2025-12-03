@@ -292,15 +292,17 @@ export default function AdminObjectivesPage() {
             showSidebarTrigger={true}
           />
           
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-4 md:p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                    <Target className="h-8 w-8" />
+                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-primary/10">
+                      <Target className="h-6 w-6 text-primary" />
+                    </div>
                     Database Obiettivi
                   </h1>
-                  <p className="text-muted-foreground">
+                  <p className="md3-body-large text-muted-foreground">
                     Gestisci il dizionario completo degli obiettivi MBO
                   </p>
                 </div>
@@ -453,52 +455,58 @@ export default function AdminObjectivesPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Obiettivi nel Database</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Obiettivi nel Database</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Target className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-total-objectives">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-total-objectives">
                       {objectivesDictionary.length}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Totale obiettivi disponibili</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Totale obiettivi disponibili</p>
                   </CardContent>
                 </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Cluster Obiettivi</CardTitle>
-                    <Layers className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Cluster Obiettivi</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Layers className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-total-clusters">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-total-clusters">
                       {objectiveClusters.length}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Cluster di assegnazione</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Cluster di assegnazione</p>
                   </CardContent>
                 </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Tipi di Calcolo</CardTitle>
-                    <Calculator className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Tipi di Calcolo</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Calculator className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-calculation-types">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-calculation-types">
                       {calculationTypes.length}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Formule di valutazione</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Formule di valutazione</p>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
-                <CardHeader>
+              <Card className="md3-surface md3-motion-standard">
+                <CardHeader className="pb-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <CardTitle>Dizionario Obiettivi</CardTitle>
-                      <CardDescription>
+                      <CardTitle className="md3-title-large">Dizionario Obiettivi</CardTitle>
+                      <CardDescription className="md3-body-medium mt-1">
                         Tutti gli obiettivi disponibili organizzati per categoria
                       </CardDescription>
                     </div>
@@ -639,38 +647,6 @@ export default function AdminObjectivesPage() {
                       })}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cluster di Assegnazione</CardTitle>
-                  <CardDescription>
-                    I cluster utilizzati per assegnare gli obiettivi ai dipendenti
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {objectiveClusters.map((cluster) => {
-                      const Icon = getClusterIcon(cluster.name);
-                      return (
-                        <Card key={cluster.id} className="hover-elevate" data-testid={`card-cluster-${cluster.id}`}>
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
-                                <Icon className="h-5 w-5 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm">{cluster.name}</h4>
-                                <p className="text-xs text-muted-foreground">Peso: {cluster.weight}%</p>
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{cluster.description}</p>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
                 </CardContent>
               </Card>
             </div>

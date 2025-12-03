@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import logoPath from "@assets/image_1764169863444.png";
 
 interface AppHeaderProps {
@@ -21,14 +22,15 @@ interface AppHeaderProps {
   showSidebarTrigger?: boolean;
 }
 
-export default function AppHeader({ 
+export default function AppHeader({
   userName = "Mario Rossi",
   userRole = "Dipendente",
   notificationCount = 0,
   showSidebarTrigger = false
 }: AppHeaderProps) {
   const { user } = useAuth();
-  
+  const isMobile = useIsMobile();
+
   const handleLogout = async () => {
     // Clear demo mode
     if (typeof window !== "undefined") {
@@ -52,38 +54,46 @@ export default function AppHeader({
     .toUpperCase();
 
   return (
-    <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-50">
-      <div className="flex items-center gap-4">
+    <header className="h-16 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50" style={{boxShadow: 'var(--shadow-2)'}}>
+      <div className="flex items-center gap-3 md:gap-4">
         {showSidebarTrigger && <SidebarTrigger data-testid="button-sidebar-toggle" />}
-        <div className="flex items-center gap-2">
-          <img src={logoPath} alt="Piattaforma di gestione MBO" className="h-8" />
-          <h1 className="text-lg font-semibold font-serif text-foreground">Piattaforma di gestione MBO</h1>
+        <div className="flex items-center gap-3">
+          <img src={logoPath} alt="Piattaforma di gestione MBO" className="h-6 md:h-7" />
+          <h1 className="md3-title-large text-foreground hidden sm:block">
+            Piattaforma MBO
+          </h1>
+          <h1 className="md3-title-medium text-foreground sm:hidden">
+            MBO
+          </h1>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          data-testid="button-notifications"
-        >
-          <Bell className="h-5 w-5" />
-          {notificationCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-            >
-              {notificationCount}
-            </Badge>
-          )}
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-10 w-10 md3-state-layer rounded-full"
+            data-testid="button-notifications"
+            aria-label="Notifiche"
+          >
+            <Bell className="h-5 w-5" />
+            {notificationCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] rounded-full"
+              >
+                {notificationCount}
+              </Badge>
+            )}
+          </Button>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 h-10 md3-state-layer rounded-full"
               data-testid="button-user-menu"
             >
               <Avatar className="h-8 w-8">
@@ -91,10 +101,12 @@ export default function AppHeader({
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">{userName}</span>
-                <span className="text-xs text-muted-foreground">{userRole}</span>
-              </div>
+              {!isMobile && (
+                <div className="flex flex-col items-start mr-2">
+                  <span className="md3-label-large">{userName}</span>
+                  <span className="text-[11px] text-muted-foreground">{userRole}</span>
+                </div>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

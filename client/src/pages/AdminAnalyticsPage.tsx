@@ -7,7 +7,7 @@ import AppSidebar from "@/components/AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AppHeader from "@/components/AppHeader";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+const COLORS = ['#DC2626', '#6B7280', '#9CA3AF', '#D1D5DB', '#EF4444', '#991B1B'];
 
 export default function AdminAnalyticsPage() {
   // Fetch aggregated statistics
@@ -57,9 +57,9 @@ export default function AdminAnalyticsPage() {
   };
 
   const completionData = [
-    { name: 'Completed', value: overviewStats.completedObjectives, color: '#00C49F' },
-    { name: 'In Progress', value: overviewStats.inProgressObjectives, color: '#FFBB28' },
-    { name: 'Not Started', value: overviewStats.notStartedObjectives, color: '#FF8042' },
+    { name: 'Completed', value: overviewStats.completedObjectives, color: '#6B7280' },
+    { name: 'In Progress', value: overviewStats.inProgressObjectives, color: '#9CA3AF' },
+    { name: 'Not Started', value: overviewStats.notStartedObjectives, color: '#DC2626' },
   ];
 
   // Department statistics - from API
@@ -206,8 +206,8 @@ export default function AdminAnalyticsPage() {
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="eligibles" fill="#00C49F" name="Eligibles" />
-                        <Bar dataKey="total" fill="#8884d8" name="Totali" />
+                        <Bar dataKey="eligibles" fill="#DC2626" name="Eligibles" />
+                        <Bar dataKey="total" fill="#6B7280" name="Totali" />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -252,7 +252,7 @@ export default function AdminAnalyticsPage() {
                       <YAxis dataKey="name" type="category" />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="avgCompletion" fill="#8884d8" name="Completion %">
+                      <Bar dataKey="avgCompletion" fill="#DC2626" name="Completion %">
                         {departmentStats.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -278,9 +278,9 @@ export default function AdminAnalyticsPage() {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="completed" fill="#00C49F" name="Completed" />
-                      <Bar dataKey="inProgress" fill="#FFBB28" name="In Progress" />
-                      <Bar dataKey="total" fill="#0088FE" name="Total" />
+                      <Bar dataKey="completed" fill="#6B7280" name="Completed" />
+                      <Bar dataKey="inProgress" fill="#9CA3AF" name="In Progress" />
+                      <Bar dataKey="total" fill="#DC2626" name="Total" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -298,7 +298,7 @@ export default function AdminAnalyticsPage() {
                       <XAxis type="number" domain={[0, 100]} />
                       <YAxis dataKey="name" type="category" />
                       <Tooltip />
-                      <Bar dataKey="avgCompletion" fill="#8884d8" name="Completion %">
+                      <Bar dataKey="avgCompletion" fill="#DC2626" name="Completion %">
                         {departmentStats.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -383,8 +383,8 @@ export default function AdminAnalyticsPage() {
                       <YAxis />
                       <Tooltip formatter={(value) => `€${value.toLocaleString()}`} />
                       <Legend />
-                      <Bar dataKey="theoretical" fill="#8884d8" name="Target Teorico €" />
-                      <Bar dataKey="actual" fill="#82ca9d" name="Payout Effettivo €" />
+                      <Bar dataKey="theoretical" fill="#DC2626" name="Target Teorico €" />
+                      <Bar dataKey="actual" fill="#6B7280" name="Payout Effettivo €" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>

@@ -10,6 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Users, UserPlus, Target, Building, ChevronRight, Trash2, Edit2, Power, PowerOff } from "lucide-react";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
   Table,
   TableBody,
   TableCell,
@@ -49,6 +58,8 @@ export default function AdminUsersPage() {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [page, setPage] = useState(1);
+  const limit = 5; // Ridotto a 5 per testare la paginazione con dataset piccoli
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -62,10 +73,47 @@ export default function AdminUsersPage() {
     role: "employee" as "employee" | "admin",
   });
 
-  const { data: allUsers = [], isLoading } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+  // Paginated query with fallback
+  const { data: paginatedData, isLoading } = useQuery<{ data: User[]; pagination: { page: number; limit: number; total: number; totalPages: number } } | User[]>({
+    queryKey: ["/api/users", { page, limit }],
+    queryFn: async () => {
+      const response = await fetch(`/api/users?page=${page}&limit=${limit}`, {
+        credentials: 'include',
+      });
+      return response.json();
+    },
     enabled: !!user,
   });
+
+  // Separate query for all users (for statistics)
+  const { data: allUsersForStats = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch(`/api/users`, {
+        credentials: 'include',
+      });
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Handle both paginated and non-paginated responses
+  const allUsers = useMemo(() => {
+    if (!paginatedData) return [];
+    // Check if it's paginated response
+    if ('data' in paginatedData && Array.isArray(paginatedData.data)) {
+      return paginatedData.data;
+    }
+    // Fallback for non-paginated (array response)
+    return paginatedData as User[];
+  }, [paginatedData]);
+
+  const pagination = useMemo(() => {
+    if (paginatedData && 'pagination' in paginatedData) {
+      return paginatedData.pagination;
+    }
+    return null;
+  }, [paginatedData]);
 
   const { data: businessFunctions = [] } = useQuery<{ id: string; name: string }[]>({
     queryKey: ["/api/business-functions"],
@@ -78,11 +126,11 @@ export default function AdminUsersPage() {
     businessFunctions.forEach((bf) => {
       if (bf.name) depts.add(bf.name);
     });
-    allUsers.forEach((u) => {
+    allUsersForStats.forEach((u) => {
       if (u.department) depts.add(u.department);
     });
     return Array.from(depts).sort();
-  }, [allUsers, businessFunctions]);
+  }, [allUsersForStats, businessFunctions]);
 
   const filteredUsers = useMemo(() => {
     let filtered = allUsers;
@@ -110,15 +158,15 @@ export default function AdminUsersPage() {
   }, [allUsers, searchQuery, roleFilter, departmentFilter]);
 
   const stats = useMemo(() => {
-    const employees = allUsers.filter((u) => u.role === "employee");
-    const admins = allUsers.filter((u) => u.role === "admin");
+    const employees = allUsersForStats.filter((u) => u.role === "employee");
+    const admins = allUsersForStats.filter((u) => u.role === "admin");
     return {
-      total: allUsers.length,
+      total: allUsersForStats.length,
       employees: employees.length,
       admins: admins.length,
       departments: departments.length,
     };
-  }, [allUsers, departments]);
+  }, [allUsersForStats, departments]);
 
   const createUserMutation = useMutation({
     mutationFn: async () => {
@@ -307,80 +355,90 @@ export default function AdminUsersPage() {
             showSidebarTrigger={true}
           />
           
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-4 md:p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                    <Users className="h-8 w-8" />
+                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-primary/10">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
                     Gestione Utenti
                   </h1>
-                  <p className="text-muted-foreground">
+                  <p className="md3-body-large text-muted-foreground">
                     Visualizza e gestisci tutti gli utenti del sistema MBO
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Utenti Totali</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Utenti Totali</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Users className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-total-users">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-total-users">
                       {stats.total}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Registrati nel sistema</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Registrati nel sistema</p>
                   </CardContent>
                 </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Dipendenti</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Dipendenti</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Target className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-employees">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-employees">
                       {stats.employees}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Utenti con ruolo employee</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Utenti con ruolo employee</p>
                   </CardContent>
                 </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Amministratori</CardTitle>
-                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Amministratori</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <UserPlus className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-admins">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-admins">
                       {stats.admins}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Utenti con ruolo admin</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Utenti con ruolo admin</p>
                   </CardContent>
                 </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Dipartimenti</CardTitle>
-                    <Building className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="md3-elevated md3-motion-standard">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="md3-title-small text-muted-foreground">Dipartimenti</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Building className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-departments">
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium" data-testid="stat-departments">
                       {stats.departments}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Aree aziendali</p>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Aree aziendali</p>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
-                <CardHeader>
+              <Card className="md3-surface md3-motion-standard">
+                <CardHeader className="pb-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <CardTitle>Elenco Utenti</CardTitle>
-                      <CardDescription>
+                      <CardTitle className="md3-title-large">Elenco Utenti</CardTitle>
+                      <CardDescription className="md3-body-medium mt-1">
                         Gestisci tutti gli utenti del sistema
                       </CardDescription>
                     </div>
@@ -661,6 +719,88 @@ export default function AdminUsersPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {pagination && (
+                    <div className="flex flex-col md:flex-row items-center justify-between py-4 gap-4">
+                      <div className="text-sm text-muted-foreground">
+                        Mostrando {((page - 1) * limit) + 1}-{Math.min(page * limit, pagination.total)} di {pagination.total} utenti
+                      </div>
+
+                      {pagination.totalPages > 1 && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setPage(p => Math.max(1, p - 1))}
+                              className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+
+                          {/* First page */}
+                          {page > 2 && (
+                            <>
+                              <PaginationItem>
+                                <PaginationLink onClick={() => setPage(1)} className="cursor-pointer">
+                                  1
+                                </PaginationLink>
+                              </PaginationItem>
+                              {page > 3 && <PaginationEllipsis />}
+                            </>
+                          )}
+
+                          {/* Previous page */}
+                          {page > 1 && (
+                            <PaginationItem>
+                              <PaginationLink onClick={() => setPage(page - 1)} className="cursor-pointer">
+                                {page - 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )}
+
+                          {/* Current page */}
+                          <PaginationItem>
+                            <PaginationLink isActive className="cursor-default">
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+
+                          {/* Next page */}
+                          {page < pagination.totalPages && (
+                            <PaginationItem>
+                              <PaginationLink onClick={() => setPage(page + 1)} className="cursor-pointer">
+                                {page + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )}
+
+                          {/* Last page */}
+                          {page < pagination.totalPages - 1 && (
+                            <>
+                              {page < pagination.totalPages - 2 && <PaginationEllipsis />}
+                              <PaginationItem>
+                                <PaginationLink onClick={() => setPage(pagination.totalPages)} className="cursor-pointer">
+                                  {pagination.totalPages}
+                                </PaginationLink>
+                              </PaginationItem>
+                            </>
+                          )}
+
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                              className={page >= pagination.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                      )}
+
+                      <div className="text-sm text-muted-foreground">
+                        Pagina {page} di {pagination.totalPages}
+                      </div>
                     </div>
                   )}
                 </CardContent>
