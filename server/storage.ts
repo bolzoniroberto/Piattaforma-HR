@@ -120,10 +120,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // Convert ral from number to string for database storage
     const dbData = {
       ...userData,
-      ral: userData.ral !== undefined && userData.ral !== null ? String(userData.ral) : undefined,
     } as any;
 
     const [user] = await db
@@ -145,12 +143,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
-    // Convert ral from number to string for database storage
-    const dbData = {
+    const dbData: any = {
       ...userData,
-      ral: userData.ral !== undefined && userData.ral !== null ? String(userData.ral) : undefined,
       updatedAt: new Date(),
-    } as any;
+    };
+
+    // Remove undefined fields to prevent Drizzle from ignoring updates
+    Object.keys(dbData).forEach(key => {
+      if (dbData[key] === undefined) {
+        delete dbData[key];
+      }
+    });
 
     const [user] = await db
       .update(users)
@@ -358,55 +361,62 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getObjectivesWithAssignments(): Promise<{
-    objective: Objective;
-    dictionary: ObjectivesDictionary | null;
+    dictionary: ObjectivesDictionary;
     indicatorCluster: IndicatorCluster | null;
     calculationType: CalculationType | null;
-    assignedUsers: { user: User; assignment: ObjectiveAssignment }[];
+    assignedUsers: { user: User; assignment: ObjectiveAssignment; objective: Objective }[];
   }[]> {
-    // Get all objectives with their dictionary, cluster, and calculation type
-    const objectiveResults = await db
+    // Get all dictionaries with their assignments in a single query using LEFT JOINs
+    const results = await db
       .select({
-        objective: objectives,
         dictionary: objectivesDictionary,
         indicatorCluster: indicatorClusters,
         calculationType: calculationTypes,
-      })
-      .from(objectives)
-      .leftJoin(objectivesDictionary, eq(objectives.dictionaryId, objectivesDictionary.id))
-      .leftJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
-      .leftJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
-      .orderBy(desc(objectives.createdAt));
-
-    // Get all assignments with users
-    const assignmentResults = await db
-      .select({
         assignment: objectiveAssignments,
         user: users,
+        objective: objectives,
       })
-      .from(objectiveAssignments)
-      .innerJoin(users, eq(objectiveAssignments.userId, users.id));
+      .from(objectivesDictionary)
+      .leftJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
+      .leftJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
+      .leftJoin(objectives, eq(objectives.dictionaryId, objectivesDictionary.id))
+      .leftJoin(objectiveAssignments, eq(objectiveAssignments.objectiveId, objectives.id))
+      .leftJoin(users, eq(objectiveAssignments.userId, users.id))
+      .orderBy(desc(objectivesDictionary.createdAt));
 
-    // Group assignments by objective
-    const assignmentsByObjective = new Map<string, { user: User; assignment: ObjectiveAssignment }[]>();
-    for (const row of assignmentResults) {
-      const objectiveId = row.assignment.objectiveId;
-      if (!assignmentsByObjective.has(objectiveId)) {
-        assignmentsByObjective.set(objectiveId, []);
+    // Group by dictionary
+    const groupedByDictionary = new Map<string, {
+      dictionary: ObjectivesDictionary;
+      indicatorCluster: IndicatorCluster | null;
+      calculationType: CalculationType | null;
+      assignedUsers: { user: User; assignment: ObjectiveAssignment; objective: Objective }[];
+    }>();
+
+    for (const row of results) {
+      const dictionaryId = row.dictionary.id;
+
+      if (!groupedByDictionary.has(dictionaryId)) {
+        groupedByDictionary.set(dictionaryId, {
+          dictionary: row.dictionary,
+          indicatorCluster: row.indicatorCluster,
+          calculationType: row.calculationType,
+          assignedUsers: [],
+        });
       }
-      assignmentsByObjective.get(objectiveId)!.push({
-        user: row.user,
-        assignment: row.assignment,
-      });
+
+      // Only add to assignedUsers if there's a valid assignment
+      if (row.assignment && row.user && row.objective) {
+        groupedByDictionary.get(dictionaryId)!.assignedUsers.push({
+          user: row.user,
+          assignment: row.assignment,
+          objective: row.objective,
+        });
+      }
     }
 
-    return objectiveResults.map((row) => ({
-      objective: row.objective,
-      dictionary: row.dictionary,
-      indicatorCluster: row.indicatorCluster,
-      calculationType: row.calculationType,
-      assignedUsers: assignmentsByObjective.get(row.objective.id) || [],
-    }));
+    // Return all dictionaries that have at least one assignment
+    return Array.from(groupedByDictionary.values())
+      .filter(item => item.assignedUsers.length > 0);
   }
 
   // Objective Assignment operations
@@ -430,7 +440,7 @@ export class DatabaseStorage implements IStorage {
         calculationType: calculationTypes,
       })
       .from(objectiveAssignments)
-      .innerJoin(objectives, eq(objectiveAssignments.objectiveId, objectives.id))
+      .leftJoin(objectives, eq(objectiveAssignments.objectiveId, objectives.id))
       .leftJoin(objectivesDictionary, eq(objectives.dictionaryId, objectivesDictionary.id))
       .leftJoin(indicatorClusters, eq(objectivesDictionary.indicatorClusterId, indicatorClusters.id))
       .leftJoin(calculationTypes, eq(objectivesDictionary.calculationTypeId, calculationTypes.id))
@@ -440,12 +450,12 @@ export class DatabaseStorage implements IStorage {
     return results.map((row) => ({
       ...row.assignment,
       objective: {
-        ...row.objective,
+        ...(row.objective || {} as any),
         title: row.dictionary?.title || "Obiettivo",
         description: row.dictionary?.description || "",
         objectiveType: row.dictionary?.objectiveType,
         targetValue: row.dictionary?.targetValue ? parseFloat(String(row.dictionary.targetValue)) : null,
-        actualValue: row.objective.actualValue ? parseFloat(String(row.objective.actualValue)) : null,
+        actualValue: row.objective?.actualValue ? parseFloat(String(row.objective.actualValue)) : null,
         indicatorCluster: row.indicatorCluster || undefined,
         calculationType: row.calculationType || undefined,
       },
@@ -523,6 +533,52 @@ export class DatabaseStorage implements IStorage {
       .from(documentAcceptances)
       .where(and(eq(documentAcceptances.userId, userId), eq(documentAcceptances.documentId, documentId)));
     return !!acceptance;
+  }
+
+  // Update progress on all assignments for an objective
+  async updateAssignmentProgressByObjective(objectiveId: string, progress: number): Promise<void> {
+    await db
+      .update(objectiveAssignments)
+      .set({ progress })
+      .where(eq(objectiveAssignments.objectiveId, objectiveId));
+  }
+
+  // Update dictionary with reporting data and propagate to all objectives and assignments
+  async reportOnDictionary(dictionaryId: string, reportData: {
+    actualValue?: number;
+    qualitativeResult?: string;
+    progress: number;
+  }): Promise<void> {
+    // Update the dictionary
+    await db
+      .update(objectivesDictionary)
+      .set({
+        actualValue: reportData.actualValue,
+        qualitativeResult: reportData.qualitativeResult,
+        reportedAt: new Date(),
+      })
+      .where(eq(objectivesDictionary.id, dictionaryId));
+
+    // Get all objectives for this dictionary
+    const relatedObjectives = await db
+      .select()
+      .from(objectives)
+      .where(eq(objectives.dictionaryId, dictionaryId));
+
+    // Update all objectives
+    for (const objective of relatedObjectives) {
+      await db
+        .update(objectives)
+        .set({
+          actualValue: reportData.actualValue,
+          qualitativeResult: reportData.qualitativeResult,
+          reportedAt: new Date(),
+        })
+        .where(eq(objectives.id, objective.id));
+
+      // Update all assignments for this objective
+      await this.updateAssignmentProgressByObjective(objective.id, reportData.progress);
+    }
   }
 
   // MBO Regulation Acceptance operations

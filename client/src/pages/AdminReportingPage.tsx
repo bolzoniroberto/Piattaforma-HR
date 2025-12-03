@@ -38,11 +38,10 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { User, Objective, ObjectivesDictionary, IndicatorCluster, CalculationType, ObjectiveAssignment } from "@shared/schema";
 
 interface ObjectiveWithAssignments {
-  objective: Objective;
-  dictionary: ObjectivesDictionary | null;
+  dictionary: ObjectivesDictionary;
   indicatorCluster: IndicatorCluster | null;
   calculationType: CalculationType | null;
-  assignedUsers: { user: User; assignment: ObjectiveAssignment }[];
+  assignedUsers: { user: User; assignment: ObjectiveAssignment; objective: Objective }[];
 }
 
 export default function AdminReportingPage() {
@@ -71,8 +70,8 @@ export default function AdminReportingPage() {
   });
 
   const reportMutation = useMutation({
-    mutationFn: async (data: { objectiveId: string; actualValue?: number; qualitativeResult?: string }) => {
-      const res = await apiRequest("PATCH", `/api/objectives/${data.objectiveId}/report`, {
+    mutationFn: async (data: { dictionaryId: string; actualValue?: number; qualitativeResult?: string }) => {
+      const res = await apiRequest("PATCH", `/api/dictionary/${data.dictionaryId}/report`, {
         actualValue: data.actualValue,
         qualitativeResult: data.qualitativeResult,
       });
@@ -120,9 +119,9 @@ export default function AdminReportingPage() {
 
   const stats = useMemo(() => {
     const total = objectivesWithAssignments.length;
-    const numeric = objectivesWithAssignments.filter((o) => o.dictionary?.objectiveType === "numeric").length;
-    const qualitative = objectivesWithAssignments.filter((o) => o.dictionary?.objectiveType === "qualitative").length;
-    const reported = objectivesWithAssignments.filter((o) => o.objective.reportedAt).length;
+    const numeric = objectivesWithAssignments.filter((o) => o.dictionary.objectiveType === "numeric").length;
+    const qualitative = objectivesWithAssignments.filter((o) => o.dictionary.objectiveType === "qualitative").length;
+    const reported = objectivesWithAssignments.filter((o) => o.dictionary.reportedAt).length;
     return { total, numeric, qualitative, reported };
   }, [objectivesWithAssignments]);
 
@@ -134,8 +133,8 @@ export default function AdminReportingPage() {
 
   const openReportDialog = (item: ObjectiveWithAssignments) => {
     setSelectedObjective(item);
-    setReportValue(item.objective.actualValue?.toString() || "");
-    setQualitativeResult(item.objective.qualitativeResult || "");
+    setReportValue(item.dictionary.actualValue?.toString() || "");
+    setQualitativeResult(item.dictionary.qualitativeResult || "");
     setReportDialogOpen(true);
   };
 
@@ -152,14 +151,14 @@ export default function AdminReportingPage() {
   const handleSaveReport = () => {
     if (!selectedObjective) return;
 
-    if (selectedObjective.dictionary?.objectiveType === "numeric") {
+    if (selectedObjective.dictionary.objectiveType === "numeric") {
       const numValue = parseFloat(reportValue);
       if (isNaN(numValue)) {
         toast({ title: "Inserisci un valore numerico valido", variant: "destructive" });
         return;
       }
-      reportMutation.mutate({ 
-        objectiveId: selectedObjective.objective.id, 
+      reportMutation.mutate({
+        dictionaryId: selectedObjective.dictionary.id,
         actualValue: numValue,
       });
     } else {
@@ -167,20 +166,20 @@ export default function AdminReportingPage() {
         toast({ title: "Seleziona se l'obiettivo è stato raggiunto", variant: "destructive" });
         return;
       }
-      reportMutation.mutate({ objectiveId: selectedObjective.objective.id, qualitativeResult });
+      reportMutation.mutate({ dictionaryId: selectedObjective.dictionary.id, qualitativeResult });
     }
   };
 
   const getProgressColor = (item: ObjectiveWithAssignments) => {
-    if (!item.objective.reportedAt) return "secondary";
-    if (item.dictionary?.objectiveType === "qualitative") {
-      if (item.objective.qualitativeResult === "reached") return "default";
-      if (item.objective.qualitativeResult === "partial") return "secondary"; // Yellow/neutral for partial
+    if (!item.dictionary.reportedAt) return "secondary";
+    if (item.dictionary.objectiveType === "qualitative") {
+      if (item.dictionary.qualitativeResult === "reached") return "default";
+      if (item.dictionary.qualitativeResult === "partial") return "secondary"; // Yellow/neutral for partial
       return "destructive";
     }
     // For numeric objectives, check the qualitative result set by backend
-    if (item.objective.qualitativeResult === "reached") return "default"; // Green
-    if (item.objective.qualitativeResult === "partial") return "secondary"; // Yellow for partial
+    if (item.dictionary.qualitativeResult === "reached") return "default"; // Green
+    if (item.dictionary.qualitativeResult === "partial") return "secondary"; // Yellow for partial
     return "destructive"; // Red for not_reached
   };
 
@@ -328,11 +327,11 @@ export default function AdminReportingPage() {
                         </TableHeader>
                         <TableBody>
                           {filteredObjectives.map((item) => {
-                            const isReported = !!item.objective.reportedAt;
-                            const isNumeric = item.dictionary?.objectiveType === "numeric";
+                            const isReported = !!item.dictionary.reportedAt;
+                            const isNumeric = item.dictionary.objectiveType === "numeric";
 
                             return (
-                              <TableRow key={item.objective.id} data-testid={`row-objective-${item.objective.id}`}>
+                              <TableRow key={item.dictionary.id} data-testid={`row-objective-${item.dictionary.id}`}>
                                 <TableCell>
                                   <div>
                                     <p className="font-medium text-sm">
@@ -365,12 +364,12 @@ export default function AdminReportingPage() {
                                 <TableCell className="text-right font-medium">
                                   {isReported ? (
                                     isNumeric ? (
-                                      item.objective.actualValue
-                                        ? Number(item.objective.actualValue).toLocaleString()
+                                      item.dictionary.actualValue
+                                        ? Number(item.dictionary.actualValue).toLocaleString()
                                         : "-"
                                     ) : (
                                       <div className="flex items-center justify-end gap-1">
-                                        {item.objective.qualitativeResult === "reached" ? (
+                                        {item.dictionary.qualitativeResult === "reached" ? (
                                           <>
                                             <CheckCircle2 className="h-4 w-4 text-green-600" />
                                             <span className="text-green-600">Raggiunto</span>
@@ -393,8 +392,8 @@ export default function AdminReportingPage() {
                                 <TableCell>
                                   <Badge variant={getProgressColor(item)}>
                                     {isReported ? (
-                                      item.objective.qualitativeResult === "reached" ? "Raggiunto" : 
-                                      item.objective.qualitativeResult === "partial" ? "Raggiunto parzialmente" :
+                                      item.dictionary.qualitativeResult === "reached" ? "Raggiunto" :
+                                      item.dictionary.qualitativeResult === "partial" ? "Raggiunto parzialmente" :
                                       "Non raggiunto"
                                     ) : "In attesa"}
                                   </Badge>
@@ -404,7 +403,7 @@ export default function AdminReportingPage() {
                                     size="sm"
                                     variant={isReported ? "outline" : "default"}
                                     onClick={() => openReportDialog(item)}
-                                    data-testid={`button-report-${item.objective.id}`}
+                                    data-testid={`button-report-${item.dictionary.id}`}
                                   >
                                     {isReported ? "Modifica" : "Rendiconta"}
                                   </Button>
