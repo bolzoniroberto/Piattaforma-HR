@@ -87,11 +87,7 @@ export default async function runApp(
   
   // Start listening IMMEDIATELY so health checks can pass
   // while setup continues in the background
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 
