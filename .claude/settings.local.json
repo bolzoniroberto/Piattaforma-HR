@@ -4,7 +4,9 @@
       "Bash(kill:*)",
       "Bash(npm run dev:*)",
       "Bash(curl:*)",
-      "Bash(npm run check:*)"
+      "Bash(npm run check:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

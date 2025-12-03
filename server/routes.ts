@@ -188,8 +188,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const users = await storage.getAllUsers();
-      res.json(users);
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+
+      // If pagination params are provided, use paginated endpoint
+      if (page || limit) {
+        const result = await storage.getAllUsersPaginated({ page, limit });
+        res.json(result);
+      } else {
+        // Backward compatibility: no params = return all users
+        const users = await storage.getAllUsers();
+        res.json(users);
+      }
     } catch (error) {
       handleError(res, error);
     }
