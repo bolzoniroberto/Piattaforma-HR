@@ -56,7 +56,7 @@ export default function AdminReportingPage() {
   const [qualitativeResult, setQualitativeResult] = useState<string>("");
 
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "300px", // 60px rail + 240px panel
   };
 
   const { data: objectivesWithAssignments = [], isLoading } = useQuery<ObjectiveWithAssignments[]>({

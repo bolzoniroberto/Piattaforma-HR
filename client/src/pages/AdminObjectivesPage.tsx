@@ -309,12 +309,12 @@ export default function AdminObjectivesPage() {
                 
                 <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
                   <DialogTrigger asChild>
-                    <Button data-testid="button-add-objective">
+                    <Button className="md3-state-layer" data-testid="button-add-objective">
                       <Plus className="mr-2 h-4 w-4" />
                       Nuovo Obiettivo
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px]">
+                  <DialogContent className="sm:max-w-[600px] rounded-3xl" style={{boxShadow: 'var(--shadow-5)'}}>
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Modifica Obiettivo" : "Crea Nuovo Obiettivo"}</DialogTitle>
                       <DialogDescription>
@@ -550,11 +550,13 @@ export default function AdminObjectivesPage() {
                         const Icon = getClusterIcon(clusterName);
                         return (
                           <div key={clusterName} className="space-y-3">
-                            <div className="flex items-center gap-2 pb-2 border-b">
-                              <Icon className="h-5 w-5 text-primary" />
-                              <h3 className="font-semibold">{clusterName}</h3>
-                              <Badge variant="secondary" className="ml-auto">
-                                {objectives.length} obiettivi
+                            <div className="flex items-center gap-3 pb-3 border-b">
+                              <div className="p-2 rounded-xl bg-primary/10">
+                                <Icon className="h-5 w-5 text-primary" />
+                              </div>
+                              <h3 className="md3-title-medium flex-1">{clusterName}</h3>
+                              <Badge variant="secondary" className="rounded-full px-3">
+                                {objectives.length}
                               </Badge>
                             </div>
                             <Table>
@@ -589,6 +591,7 @@ export default function AdminObjectivesPage() {
                                         <Button
                                           size="sm"
                                           variant="ghost"
+                                          className="md3-state-layer rounded-full"
                                           onClick={() => handleEditObjective(obj)}
                                           data-testid={`button-edit-objective-${obj.id}`}
                                         >
@@ -598,12 +601,13 @@ export default function AdminObjectivesPage() {
                                           <Button
                                             size="sm"
                                             variant="ghost"
+                                            className="md3-state-layer rounded-full"
                                             onClick={() => setDeleteId(obj.id)}
                                             data-testid={`button-delete-objective-${obj.id}`}
                                           >
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                           </Button>
-                                          <AlertDialogContent>
+                                          <AlertDialogContent className="rounded-3xl" style={{boxShadow: 'var(--shadow-5)'}}>
                                             <AlertDialogHeader>
                                               <AlertDialogTitle>Elimina Obiettivo</AlertDialogTitle>
                                               <AlertDialogDescription>

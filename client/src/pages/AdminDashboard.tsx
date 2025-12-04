@@ -126,11 +126,13 @@ export default function AdminDashboard() {
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               <div>
-                <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                  <LayoutDashboard className="h-8 w-8" />
+                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-primary/10">
+                    <LayoutDashboard className="h-6 w-6 text-primary" />
+                  </div>
                   Dashboard Amministrativa
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="md3-body-large text-muted-foreground">
                   Gestione dipendenti e obiettivi
                 </p>
               </div>
@@ -149,9 +151,9 @@ export default function AdminDashboard() {
 
                 {/* Tab Dipendenti */}
                 <TabsContent value="employees" className="space-y-4">
-                  <Card>
+                  <Card className="md3-surface md3-motion-standard">
                     <CardHeader>
-                      <CardTitle>Dipendenti Eligibili ({allUsers.length})</CardTitle>
+                      <CardTitle className="md3-title-large">Dipendenti Eligibili ({allUsers.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4">
@@ -162,7 +164,7 @@ export default function AdminDashboard() {
                         ) : (
                           <div className="space-y-3">
                             {allUsers.map((emp) => (
-                              <Card key={emp.id} className="p-4 hover-elevate">
+                              <Card key={emp.id} className="p-4 md3-elevated md3-motion-standard">
                                 <div className="flex items-start justify-between gap-4">
                                   <div className="flex-1 min-w-0">
                                     <h3 className="font-semibold text-base" data-testid={`text-employee-name-${emp.id}`}>
@@ -220,9 +222,9 @@ export default function AdminDashboard() {
 
                 {/* Tab Obiettivi */}
                 <TabsContent value="objectives" className="space-y-4">
-                  <Card>
+                  <Card className="md3-surface md3-motion-standard">
                     <CardHeader>
-                      <CardTitle>Obiettivi Disponibili ({objectivesDictionary.length})</CardTitle>
+                      <CardTitle className="md3-title-large">Obiettivi Disponibili ({objectivesDictionary.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4">
@@ -235,7 +237,7 @@ export default function AdminDashboard() {
                             {objectivesDictionary.map((obj) => (
                               <Card
                                 key={obj.id}
-                                className="p-4 hover-elevate flex flex-col"
+                                className="p-4 md3-elevated md3-motion-standard flex flex-col"
                                 data-testid={`card-objective-${obj.id}`}
                               >
                                 {editingId === obj.id ? (
