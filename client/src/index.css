@@ -93,6 +93,10 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
+  /* Sidebar Width Variables */
+  --sidebar-rail-width: 60px;
+  --sidebar-panel-width: 240px;
+
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);

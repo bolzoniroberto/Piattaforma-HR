@@ -85,23 +85,25 @@ export default function AdminClearAllAssignmentsPage() {
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                    <Trash2 className="h-8 w-8" />
+                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-destructive/10">
+                      <Trash2 className="h-6 w-6 text-destructive" />
+                    </div>
                     Disassocia Tutti gli Obiettivi
                   </h1>
-                  <p className="text-muted-foreground">
+                  <p className="md3-body-large text-muted-foreground">
                     Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti
                   </p>
                 </div>
               </div>
 
-              <Card className="border-destructive/50 bg-destructive/5">
+              <Card className="md3-surface md3-motion-standard border-destructive/50 bg-destructive/5">
                 <CardHeader>
-                  <CardTitle className="text-destructive flex items-center gap-2">
+                  <CardTitle className="md3-title-large text-destructive flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
                     Attenzione: Operazione Importante
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="md3-body-medium">
                     Questa azione disassocerà tutti gli obiettivi da tutti i dipendenti. Gli obiettivi rimangono nel sistema, ma verranno rimossi dalle assegnazioni dei dipendenti.
                   </CardDescription>
                 </CardHeader>

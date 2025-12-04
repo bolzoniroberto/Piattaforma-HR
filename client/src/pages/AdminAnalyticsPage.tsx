@@ -96,57 +96,67 @@ export default function AdminAnalyticsPage() {
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                <BarChart3 className="h-8 w-8" />
+              <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-primary/10">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
                 Analytics & Reports
               </h1>
-              <p className="text-muted-foreground">Aggregated performance metrics and insights</p>
+              <p className="md3-body-large text-muted-foreground">Metriche di performance e insights aggregati</p>
             </div>
           </div>
 
           {/* KPI Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="md3-elevated md3-motion-standard">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Obiettivi Assegnati</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="md3-title-small text-muted-foreground">Obiettivi Assegnati</CardTitle>
+                <div className="p-2 rounded-full bg-primary/10">
+                  <Target className="h-4 w-4 text-primary" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overviewStats.totalObjectives}</div>
-                <p className="text-xs text-muted-foreground">Assegnati ai dipendenti</p>
+              <CardContent className="pt-1">
+                <div className="md3-headline-medium">{overviewStats.totalObjectives}</div>
+                <p className="md3-body-medium text-muted-foreground mt-1">Assegnati ai dipendenti</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="md3-elevated md3-motion-standard">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="md3-title-small text-muted-foreground">Completion Rate</CardTitle>
+                <div className="p-2 rounded-full bg-primary/10">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overviewStats.averageCompletion}%</div>
-                <p className="text-xs text-muted-foreground">Average across all objectives</p>
+              <CardContent className="pt-1">
+                <div className="md3-headline-medium">{overviewStats.averageCompletion}%</div>
+                <p className="md3-body-medium text-muted-foreground mt-1">Media su tutti gli obiettivi</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="md3-elevated md3-motion-standard">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Employees</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="md3-title-small text-muted-foreground">Dipendenti Attivi</CardTitle>
+                <div className="p-2 rounded-full bg-primary/10">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overviewStats.activeEmployees}</div>
-                <p className="text-xs text-muted-foreground">Out of {overviewStats.totalEmployees} total</p>
+              <CardContent className="pt-1">
+                <div className="md3-headline-medium">{overviewStats.activeEmployees}</div>
+                <p className="md3-body-medium text-muted-foreground mt-1">Su {overviewStats.totalEmployees} totali</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="md3-elevated md3-motion-standard">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                <Award className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="md3-title-small text-muted-foreground">Completati</CardTitle>
+                <div className="p-2 rounded-full bg-primary/10">
+                  <Award className="h-4 w-4 text-primary" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overviewStats.completedObjectives}</div>
-                <p className="text-xs text-muted-foreground">Successfully achieved</p>
+              <CardContent className="pt-1">
+                <div className="md3-headline-medium">{overviewStats.completedObjectives}</div>
+                <p className="md3-body-medium text-muted-foreground mt-1">Obiettivi raggiunti</p>
               </CardContent>
             </Card>
           </div>
@@ -163,10 +173,10 @@ export default function AdminAnalyticsPage() {
             <TabsContent value="overview" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 {/* Obiettivi per Cluster */}
-                <Card>
+                <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle>Obiettivi per Cluster</CardTitle>
-                    <CardDescription>Distribuzione obiettivi per tipologia</CardDescription>
+                    <CardTitle className="md3-title-large">Obiettivi per Cluster</CardTitle>
+                    <CardDescription className="md3-body-medium">Distribuzione obiettivi per tipologia</CardDescription>
                   </CardHeader>
                   <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -193,10 +203,10 @@ export default function AdminAnalyticsPage() {
                 </Card>
 
                 {/* Eligibles per Dipartimento */}
-                <Card>
+                <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle>Eligibles per Dipartimento</CardTitle>
-                    <CardDescription>Dipendenti con MBO attivo</CardDescription>
+                    <CardTitle className="md3-title-large">Eligibles per Dipartimento</CardTitle>
+                    <CardDescription className="md3-body-medium">Dipendenti con MBO attivo</CardDescription>
                   </CardHeader>
                   <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -214,10 +224,10 @@ export default function AdminAnalyticsPage() {
                 </Card>
 
                 {/* Completion Progress Aggregato */}
-                <Card>
+                <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle>Livello Completamento</CardTitle>
-                    <CardDescription>Percentuale obiettivi completati</CardDescription>
+                    <CardTitle className="md3-title-large">Livello Completamento</CardTitle>
+                    <CardDescription className="md3-body-medium">Percentuale obiettivi completati</CardDescription>
                   </CardHeader>
                   <CardContent className="h-[300px] flex items-center justify-center">
                     <div className="text-center">
@@ -239,10 +249,10 @@ export default function AdminAnalyticsPage() {
               </div>
 
               {/* Completion by Department */}
-              <Card>
+              <Card className="md3-surface md3-motion-standard">
                 <CardHeader>
-                  <CardTitle>Livello Completamento per Dipartimento</CardTitle>
-                  <CardDescription>Percentuale di completamento obiettivi per ogni dipartimento</CardDescription>
+                  <CardTitle className="md3-title-large">Livello Completamento per Dipartimento</CardTitle>
+                  <CardDescription className="md3-body-medium">Percentuale di completamento obiettivi per ogni dipartimento</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -265,10 +275,10 @@ export default function AdminAnalyticsPage() {
 
             {/* Departments Tab */}
             <TabsContent value="departments" className="space-y-4">
-              <Card>
+              <Card className="md3-surface md3-motion-standard">
                 <CardHeader>
-                  <CardTitle>Performance by Department</CardTitle>
-                  <CardDescription>Comparison of objective completion across departments</CardDescription>
+                  <CardTitle className="md3-title-large">Performance by Department</CardTitle>
+                  <CardDescription className="md3-body-medium">Comparison of objective completion across departments</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -286,10 +296,10 @@ export default function AdminAnalyticsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="md3-surface md3-motion-standard">
                 <CardHeader>
-                  <CardTitle>Average Completion Rate by Department</CardTitle>
-                  <CardDescription>Percentage completion rates</CardDescription>
+                  <CardTitle className="md3-title-large">Average Completion Rate by Department</CardTitle>
+                  <CardDescription className="md3-body-medium">Percentage completion rates</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -313,67 +323,77 @@ export default function AdminAnalyticsPage() {
             <TabsContent value="financial" className="space-y-4">
               {/* Financial KPI Cards */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <Card>
+                <Card className="md3-elevated md3-motion-standard">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Target Teorico MBO</CardTitle>
-                    <Euro className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="md3-title-small text-muted-foreground">Target Teorico MBO</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Euro className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">€{financialData.theoreticalTargetPayout.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Potenziale massimo payout</p>
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium">€{financialData.theoreticalTargetPayout.toLocaleString()}</div>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Potenziale massimo payout</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="md3-elevated md3-motion-standard">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Payout Effettivo</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="md3-title-small text-muted-foreground">Payout Effettivo</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">€{financialData.actualProjectedPayout.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Basato su performance reale</p>
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium">€{financialData.actualProjectedPayout.toLocaleString()}</div>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Basato su performance reale</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="md3-elevated md3-motion-standard">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Risparmio</CardTitle>
-                    <TrendingDown className="h-4 w-4 text-green-600" />
+                    <CardTitle className="md3-title-small text-muted-foreground">Risparmio</CardTitle>
+                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/20">
+                      <TrendingDown className="h-4 w-4 text-green-600" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">€{financialData.savings.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Differenza target vs effettivo</p>
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium text-green-600">€{financialData.savings.toLocaleString()}</div>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Differenza target vs effettivo</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="md3-elevated md3-motion-standard">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">% Risparmio</CardTitle>
-                    <Activity className="h-4 w-4 text-green-600" />
+                    <CardTitle className="md3-title-small text-muted-foreground">% Risparmio</CardTitle>
+                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/20">
+                      <Activity className="h-4 w-4 text-green-600" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{financialData.savingsPercentage}%</div>
-                    <p className="text-xs text-muted-foreground">Sul budget totale MBO</p>
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium text-green-600">{financialData.savingsPercentage}%</div>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Sul budget totale MBO</p>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="md3-elevated md3-motion-standard">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">MBO Medio per Dipendente</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="md3-title-small text-muted-foreground">MBO Medio per Dipendente</CardTitle>
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Users className="h-4 w-4 text-primary" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">€{(financialData.averageTheoreticalMBO || 0).toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">Target medio teorico</p>
+                  <CardContent className="pt-1">
+                    <div className="md3-headline-medium">€{(financialData.averageTheoreticalMBO || 0).toLocaleString()}</div>
+                    <p className="md3-body-medium text-muted-foreground mt-1">Target medio teorico</p>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Charts */}
-              <Card>
+              <Card className="md3-surface md3-motion-standard">
                 <CardHeader>
-                  <CardTitle>Target vs Effettivo per Reparto</CardTitle>
-                  <CardDescription>Confronto payout teorico e reale</CardDescription>
+                  <CardTitle className="md3-title-large">Target vs Effettivo per Reparto</CardTitle>
+                  <CardDescription className="md3-body-medium">Confronto payout teorico e reale</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -391,10 +411,10 @@ export default function AdminAnalyticsPage() {
               </Card>
 
               {/* Detailed Table */}
-              <Card>
+              <Card className="md3-surface md3-motion-standard">
                 <CardHeader>
-                  <CardTitle>Dettaglio Payout per Dipendente</CardTitle>
-                  <CardDescription>Analisi dettagliata RAL, MBO% e performance</CardDescription>
+                  <CardTitle className="md3-title-large">Dettaglio Payout per Dipendente</CardTitle>
+                  <CardDescription className="md3-body-medium">Analisi dettagliata RAL, MBO% e performance</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">

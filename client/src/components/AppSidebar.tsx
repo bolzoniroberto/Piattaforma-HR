@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -8,144 +9,100 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
 } from "@/components/ui/sidebar";
-import {
-  LayoutDashboard,
-  Target,
-  Users,
-  FileText,
-  Settings,
-  CheckCircle,
-  Trash2,
-  BarChart3,
-} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const dashboardItem = {
-  title: "Dashboard",
-  url: "/admin",
-  icon: LayoutDashboard,
-};
-
-const impostazioniStruttureItems = [
-  {
-    title: "Gestione Utenti",
-    url: "/admin/users",
-    icon: Users,
-  },
-  {
-    title: "Impostazioni Strutture",
-    url: "/admin/settings",
-    icon: Settings,
-  },
-];
-
-const goalSettingItems = [
-  {
-    title: "Database Obiettivi",
-    url: "/admin/objectives",
-    icon: Target,
-  },
-  {
-    title: "Assegnazione Obiettivi",
-    url: "/admin/assignments-bulk",
-    icon: FileText,
-  },
-  {
-    title: "Cancella Obiettivi",
-    url: "/admin/clear-assignments",
-    icon: Trash2,
-  },
-];
-
-const rendicontazioneItems = [
-  {
-    title: "Rendicontazione",
-    url: "/admin/reporting",
-    icon: CheckCircle,
-  },
-  {
-    title: "Analytics",
-    url: "/admin/analytics",
-    icon: BarChart3,
-  },
-];
+import { useRail } from "@/contexts/RailContext";
+import AppRail from "./AppRail";
+import AppPanel from "./AppPanel";
+import { railNavigation } from "@/lib/navigationConfig";
 
 export default function AppSidebar() {
+  const isMobile = useIsMobile();
   const [location] = useLocation();
   const { user } = useAuth();
-  const isMobile = useIsMobile();
+  const { isRailOpen, setIsRailOpen } = useRail();
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
-  const renderMenuGroup = (items: Array<{ title: string; url: string; icon: any }>) => (
-    <SidebarMenu>
-      {items.map((item) => {
-        const isActive = location === item.url;
-        return (
-          <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild isActive={isActive}>
-              <Link href={item.url} data-testid={`link-sidebar-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                <item.icon className="h-4 w-4" />
-                <span>{item.title}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+  // Auto-detect active section based on current route
+  useEffect(() => {
+    const currentPath = location;
+
+    for (const railItem of railNavigation) {
+      if (railItem.children) {
+        const matchingChild = railItem.children.find(
+          (child) => child.url === currentPath
         );
-      })}
-    </SidebarMenu>
-  );
+        if (matchingChild) {
+          setActiveSection(railItem.id);
+          return;
+        }
+      }
+    }
 
-  const isAdmin = user?.role === "admin";
+    // If no match found, close panel
+    setActiveSection(null);
+  }, [location]);
 
+  const handleSectionClick = (sectionId: string) => {
+    setActiveSection((prev) => (prev === sectionId ? null : sectionId));
+  };
+
+  const handleClosePanel = () => {
+    setActiveSection(null);
+    setIsRailOpen(false);
+  };
+
+  // Mobile: Single expanded sidebar with all menus open
+  if (isMobile) {
+    return (
+      <Sidebar collapsible="offcanvas" className="w-[280px]">
+        <SidebarContent>
+          {/* Render all sections expanded */}
+          {railNavigation
+            .filter((item) => !item.adminOnly || user?.role === "admin")
+            .map((section) => (
+              <SidebarGroup key={section.id}>
+                <SidebarGroupLabel className="flex items-center gap-2">
+                  <section.icon className="h-4 w-4" />
+                  <span>{section.title}</span>
+                </SidebarGroupLabel>
+                {section.children && (
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {section.children.map((child) => (
+                        <SidebarMenuItem key={child.id}>
+                          <SidebarMenuButton asChild>
+                            <Link href={child.url || "#"}>
+                              <child.icon className="h-4 w-4" />
+                              <span>{child.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            ))}
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
+  // Desktop: Rail + Panel
   return (
-    <Sidebar collapsible={isMobile ? "offcanvas" : "icon"}>
-      <SidebarContent>
-        {/* Dashboard */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/"}>
-                  <Link href="/" data-testid="link-sidebar-miei-obiettivi">
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>La mia dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Admin Section - only if user is admin */}
-        {isAdmin && (
-          <>
-            {/* 1. Impostazioni Strutture */}
-            <SidebarGroup>
-              <SidebarGroupLabel>Impostazioni Strutture</SidebarGroupLabel>
-              <SidebarGroupContent>
-                {renderMenuGroup(impostazioniStruttureItems)}
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {/* 2. Goal Setting */}
-            <SidebarGroup>
-              <SidebarGroupLabel>Goal Setting</SidebarGroupLabel>
-              <SidebarGroupContent>
-                {renderMenuGroup(goalSettingItems)}
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {/* 3. Rendicontazione */}
-            <SidebarGroup>
-              <SidebarGroupLabel>Rendicontazione</SidebarGroupLabel>
-              <SidebarGroupContent>
-                {renderMenuGroup(rendicontazioneItems)}
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
-      </SidebarContent>
-    </Sidebar>
+    <>
+      <AppRail
+        activeSection={activeSection}
+        onSectionClick={handleSectionClick}
+        isOpen={isRailOpen}
+      />
+      <AppPanel
+        activeSection={activeSection}
+        isOpen={activeSection !== null}
+        onClose={handleClosePanel}
+      />
+    </>
   );
 }

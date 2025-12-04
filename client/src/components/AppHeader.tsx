@@ -1,4 +1,4 @@
-import { Bell, User, Settings, LogOut } from "lucide-react";
+import { Bell, User, Settings, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRail } from "@/contexts/RailContext";
 import logoPath from "@assets/image_1764169863444.png";
 
 interface AppHeaderProps {
@@ -30,6 +31,7 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { toggleRail } = useRail();
 
   const handleLogout = async () => {
     // Clear demo mode
@@ -56,14 +58,26 @@ export default function AppHeader({
   return (
     <header className="h-16 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50" style={{boxShadow: 'var(--shadow-2)'}}>
       <div className="flex items-center gap-3 md:gap-4">
-        {showSidebarTrigger && <SidebarTrigger data-testid="button-sidebar-toggle" />}
+        {showSidebarTrigger && !isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleRail}
+            className="h-10 w-10 md3-state-layer rounded-full"
+            data-testid="button-rail-toggle"
+            aria-label="Toggle navigation rail"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+        {showSidebarTrigger && isMobile && <SidebarTrigger data-testid="button-sidebar-toggle" />}
         <div className="flex items-center gap-3">
-          <img src={logoPath} alt="Piattaforma di gestione MBO" className="h-6 md:h-7" />
+          <img src={logoPath} alt="Piattaforma HR" className="h-6 md:h-7" />
           <h1 className="md3-title-large text-foreground hidden sm:block">
-            Piattaforma MBO
+            Piattaforma HR
           </h1>
           <h1 className="md3-title-medium text-foreground sm:hidden">
-            MBO
+            HR
           </h1>
         </div>
       </div>
