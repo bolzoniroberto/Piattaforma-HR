@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Target, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -125,31 +126,38 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex gap-6 max-w-[1800px] mx-auto">
-        {/* Sidebar Level 1 - Navigation Rail */}
-        <AppRail
-          activeSection={activeSection}
-          onSectionClick={handleSectionClick}
-          isOpen={isRailOpen}
-        />
+    <>
+      <AppHeader
+        userName={user?.name || "Amministratore"}
+        userRole="Amministratore"
+        notificationCount={0}
+        showSidebarTrigger={true}
+      />
+      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          {/* Sidebar Level 1 - Navigation Rail */}
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
 
-        {/* Sidebar Level 2 - Contextual Panel */}
-        <AppPanel
-          activeSection={activeSection}
-          isOpen={isPanelOpen}
-          onClose={handlePanelClose}
-        />
+          {/* Sidebar Level 2 - Contextual Panel */}
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
 
-        {/* Main Content */}
-        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          {/* Main Content */}
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
               <div>
                 <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
                   <div className="p-2.5 rounded-2xl bg-primary/10">
                     <LayoutDashboard className="h-6 w-6 text-primary" />
                   </div>
-                  Dashboard Amministrativa
+                  Dashboard
                 </h1>
                 <p className="md3-body-large text-muted-foreground">
                   Gestione dipendenti e obiettivi
@@ -345,7 +353,8 @@ export default function AdminDashboard() {
               </Tabs>
             </div>
           </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

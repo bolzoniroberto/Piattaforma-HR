@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppHeader from "@/components/AppHeader";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -294,19 +295,26 @@ export default function AdminObjectivesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex gap-6 max-w-[1800px] mx-auto">
-        <AppRail
-          activeSection={activeSection}
-          onSectionClick={handleSectionClick}
-          isOpen={isRailOpen}
-        />
-        <AppPanel
-          activeSection={activeSection}
-          isOpen={isPanelOpen}
-          onClose={handlePanelClose}
-        />
-        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+    <>
+      <AppHeader
+        userName={user?.name || "Amministratore"}
+        userRole="Amministratore"
+        notificationCount={0}
+        showSidebarTrigger={true}
+      />
+      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
@@ -671,5 +679,6 @@ export default function AdminObjectivesPage() {
         </main>
       </div>
     </div>
+    </>
   );
 }

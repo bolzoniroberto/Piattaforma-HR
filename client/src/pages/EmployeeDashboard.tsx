@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppHeader from "@/components/AppHeader";
 import EmployeeCard from "@/components/EmployeeCard";
 import DocumentList, { type Document } from "@/components/DocumentList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -804,29 +805,37 @@ export default function EmployeeDashboard() {
 
   // New floating layout
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex gap-6 max-w-[1800px] mx-auto">
-        {/* Sidebar Level 1 - Navigation Rail */}
-        <AppRail
-          activeSection={activeSection}
-          onSectionClick={handleSectionClick}
-          isOpen={isRailOpen}
-        />
+    <>
+      <AppHeader
+        userName={employee?.name || "Utente"}
+        userRole={isAdmin ? "Amministratore" : "Dipendente"}
+        notificationCount={0}
+        showSidebarTrigger={true}
+      />
+      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          {/* Sidebar Level 1 - Navigation Rail */}
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
 
-        {/* Sidebar Level 2 - Contextual Panel */}
-        <AppPanel
-          activeSection={activeSection}
-          isOpen={isPanelOpen}
-          onClose={handlePanelClose}
-        />
+          {/* Sidebar Level 2 - Contextual Panel */}
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
 
-        {/* Main Content */}
-        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          {regulationModal}
-          {regulationViewDialog}
-          {dashboardContent}
-        </main>
+          {/* Main Content */}
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+            {regulationModal}
+            {regulationViewDialog}
+            {dashboardContent}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

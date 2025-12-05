@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppHeader from "@/components/AppHeader";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -196,19 +197,26 @@ export default function AdminReportingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex gap-6 max-w-[1800px] mx-auto">
-        <AppRail
-          activeSection={activeSection}
-          onSectionClick={handleSectionClick}
-          isOpen={isRailOpen}
-        />
-        <AppPanel
-          activeSection={activeSection}
-          isOpen={isPanelOpen}
-          onClose={handlePanelClose}
-        />
-        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+    <>
+      <AppHeader
+        userName={user?.name || "Amministratore"}
+        userRole="Amministratore"
+        notificationCount={0}
+        showSidebarTrigger={true}
+      />
+      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
             <div>
               <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
@@ -436,6 +444,7 @@ export default function AdminReportingPage() {
           </div>
         </main>
       </div>
+    </div>
 
       <Dialog open={reportDialogOpen} onOpenChange={handleCloseReportDialog}>
         <DialogContent>
@@ -514,6 +523,6 @@ export default function AdminReportingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
