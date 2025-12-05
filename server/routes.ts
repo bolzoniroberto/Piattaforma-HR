@@ -184,6 +184,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update current user's profile (name, phone, address, etc.)
+  app.post("/api/auth/profile", isAuthenticated, async (req, res) => {
+    try {
+      console.log("Profile update request received");
+      console.log("User session:", (req.user as any)?.id);
+      
+      const userId = getUserId(req);
+      console.log("Extracted userId:", userId);
+      
+      if (!userId) {
+        console.error("No user ID found");
+        return res.status(401).json({ message: "Unauthorized - no user ID" });
+      }
+
+      // Only allow updating specific personal fields
+      const allowedFields = ["firstName", "lastName", "telefono", "indirizzo", "cap", "citta"];
+      const updateData: any = {};
+      
+      for (const field of allowedFields) {
+        if (field in req.body) {
+          updateData[field] = req.body[field];
+        }
+      }
+
+      console.log("Data to update:", updateData);
+
+      // Validate the data
+      const validatedData = upsertUserSchema.partial().parse(updateData);
+      console.log("Validated data:", validatedData);
+      
+      // Update user
+      const user = await storage.updateUser(userId, validatedData);
+      console.log("User updated successfully:", user);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      handleError(res, error);
+    }
+  });
+
   app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;

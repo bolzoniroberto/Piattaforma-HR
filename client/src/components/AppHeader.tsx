@@ -1,4 +1,5 @@
 import { Bell, User, Settings, LogOut, Menu } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -126,9 +127,11 @@ export default function AppHeader({
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Il mio account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem data-testid="menu-profile">
-              <User className="mr-2 h-4 w-4" />
-              Profilo
+            <DropdownMenuItem asChild data-testid="menu-profile">
+              <Link href="/profile">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profilo</span>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem data-testid="menu-settings">
               <Settings className="mr-2 h-4 w-4" />

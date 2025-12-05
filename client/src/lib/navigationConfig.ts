@@ -7,6 +7,7 @@ import {
   FileText,
   Trash2,
   CheckCircle,
+  Network,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -99,5 +100,12 @@ export const railNavigation: NavItem[] = [
         adminOnly: true,
       },
     ],
+  },
+  {
+    id: "organigramma",
+    title: "Organigramma",
+    url: "/organigramma",
+    icon: Network,
+    adminOnly: false,
   },
 ];

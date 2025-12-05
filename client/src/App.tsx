@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
+import ProfilePage from "@/pages/ProfilePage";
 import RegulationPage from "@/pages/RegulationPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
@@ -19,6 +20,7 @@ import AdminReportingPage from "@/pages/AdminReportingPage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
 import AdminAnalyticsPage from "@/pages/AdminAnalyticsPage";
+import OrgChartPage from "@/pages/OrgChartPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
@@ -69,6 +71,11 @@ function Router() {
           <RegulationPage />
         </ProtectedRoute>
       )} />
+      <Route path="/profile" component={() => (
+        <ProtectedRoute>
+          <ProfilePage />
+        </ProtectedRoute>
+      )} />
       <Route path="/admin" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminDashboard />
@@ -117,6 +124,11 @@ function Router() {
       <Route path="/admin/analytics" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminAnalyticsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/organigramma" component={() => (
+        <ProtectedRoute>
+          <OrgChartPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />
