@@ -10,7 +10,8 @@
       "Bash(npm run db:push:*)",
       "Bash(psql:*)",
       "Bash(tsx scripts/runMigrations.ts:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

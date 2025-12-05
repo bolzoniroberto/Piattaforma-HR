@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import AppHeader from "@/components/AppHeader";
-import AppSidebar from "@/components/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,7 @@ export default function AdminAssignmentsPage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedObjectives, setSelectedObjectives] = useState<SelectedObjectiveDetail[]>([]);
   const [assignmentDeadline, setAssignmentDeadline] = useState<string>("");
@@ -97,6 +98,21 @@ export default function AdminAssignmentsPage() {
   const [configWeight, setConfigWeight] = useState<number>(20);
   const [configObjectiveType, setConfigObjectiveType] = useState<"numeric" | "qualitative">("numeric");
   const [configTargetValue, setConfigTargetValue] = useState<string>("");
+
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
 
   const { data: targetUser, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
@@ -263,32 +279,46 @@ export default function AdminAssignmentsPage() {
     return Math.round(total / userAssignments.length);
   }, [userAssignments]);
 
-  const style = {
-    "--sidebar-width": "16rem",
-  };
-
   if (userLoading) {
     return (
-      <SidebarProvider style={style as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <SidebarInset className="flex flex-col flex-1">
-            <div className="flex items-center justify-center flex-1">
+      <div className="min-h-screen bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+            <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Caricamento...</p>
             </div>
-          </SidebarInset>
+          </main>
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
   if (!targetUser) {
     return (
-      <SidebarProvider style={style as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <SidebarInset className="flex flex-col flex-1">
-            <div className="flex items-center justify-center flex-1">
+      <div className="min-h-screen bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+            <div className="flex items-center justify-center h-full">
               <Card className="max-w-md">
                 <CardContent className="pt-6 text-center">
                   <p className="text-muted-foreground mb-4">Utente non trovato</p>
@@ -301,41 +331,45 @@ export default function AdminAssignmentsPage() {
                 </CardContent>
               </Card>
             </div>
-          </SidebarInset>
+          </main>
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1">
-          <AppHeader
-            userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin"}
-            userRole="Amministratore"
-            showSidebarTrigger={true}
-          />
-          
-          <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
-              <div className="flex items-center gap-4">
-                <Link href="/admin/users">
-                  <Button variant="ghost" size="icon" data-testid="button-back">
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <div className="flex-1">
-                  <h1 className="text-3xl font-semibold mb-1 flex items-center gap-2">
-                    <Target className="h-8 w-8" />
-                    Assegnazione Obiettivi
-                  </h1>
-                  <p className="text-muted-foreground">
-                    Gestisci gli obiettivi assegnati a questo dipendente
-                  </p>
-                </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex items-center gap-4">
+              <Link href="/admin/users">
+                <Button variant="ghost" size="icon" data-testid="button-back">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div className="flex-1">
+                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-primary/10">
+                    <Target className="h-6 w-6 text-primary" />
+                  </div>
+                  Assegnazione Obiettivi
+                </h1>
+                <p className="md3-body-large text-muted-foreground">
+                  Gestisci gli obiettivi assegnati a questo dipendente
+                </p>
               </div>
+            </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-1">
@@ -701,12 +735,11 @@ export default function AdminAssignmentsPage() {
                       </div>
                     )}
                   </CardContent>
-                </Card>
-              </div>
+              </Card>
             </div>
-          </main>
-        </SidebarInset>
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

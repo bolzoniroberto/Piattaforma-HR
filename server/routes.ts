@@ -4,11 +4,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { seed } from "./seed";
 
-// Use local auth in development, Replit auth in production
-const isLocalDev = process.env.NODE_ENV === "development" && !process.env.REPLIT_DB_URL;
-const authModule = isLocalDev
-  ? await import("./localAuth")
-  : await import("./replitAuth");
+// Use local auth in development and Railway production (disable Replit auth)
+// Replit OAuth is not available in Railway deployment
+const authModule = await import("./localAuth");
 
 const { setupAuth, isAuthenticated, isAdmin } = authModule;
 import {

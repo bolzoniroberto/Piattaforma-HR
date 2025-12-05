@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppHeader from "@/components/AppHeader";
-import AppSidebar from "@/components/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,12 +42,28 @@ interface Document {
 export default function AdminDocumentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<{
     title: string;
     description: string;
   }>({ title: "", description: "" });
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
 
   const { data: documents = [] } = useQuery<Document[]>({
     queryKey: ["/api/documents"],
@@ -117,33 +133,32 @@ export default function AdminDocumentsPage() {
     setEditFormData({ title: "", description: "" });
   };
 
-  const style = {
-    "--sidebar-width": "16rem",
-  };
-
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <AppHeader
-            userName="Admin User"
-            userRole="Amministratore"
-            notificationCount={0}
-            showSidebarTrigger={true}
-          />
-
-          <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
-              <div>
-                <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                  <FileText className="h-8 w-8" />
-                  Gestione Documenti
-                </h1>
-                <p className="text-muted-foreground">
-                  Visualizza e modifica i documenti aziendali
-                </p>
-              </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-6xl mx-auto space-y-6">
+            <div>
+              <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-primary/10">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+                Gestione Documenti
+              </h1>
+              <p className="md3-body-large text-muted-foreground">
+                Visualizza e modifica i documenti aziendali
+              </p>
+            </div>
 
               <div className="grid gap-4">
                 {documents.length === 0 ? (
@@ -260,13 +275,12 @@ export default function AdminDocumentsPage() {
                         </div>
                       )}
                     </Card>
-                  ))
-                )}
-              </div>
+                ))
+              )}
             </div>
-          </main>
-        </SidebarInset>
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

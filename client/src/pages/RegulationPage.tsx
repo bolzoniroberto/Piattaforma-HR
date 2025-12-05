@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
-import AppHeader from "@/components/AppHeader";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +13,23 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function RegulationPage() {
   const { user } = useAuth();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [accepted, setAccepted] = useState(false);
+
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
 
   const alreadyAccepted = useMemo(() => {
     return !!user?.mboRegulationAcceptedAt;
@@ -34,11 +52,20 @@ export default function RegulationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader userName="Mario Rossi" userRole="Dipendente" />
-      
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        <div className="space-y-6">
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <Link href="/">
               <Button variant="ghost" data-testid="button-back">
@@ -228,11 +255,12 @@ export default function RegulationPage() {
                     </Link>
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+            </div>
+          </CardContent>
+        </Card>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

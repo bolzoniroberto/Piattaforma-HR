@@ -6,13 +6,14 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        'sm': '0.25rem',     /* 4px */
-        'DEFAULT': '0.375rem', /* 6px */
-        'md': '0.5rem',      /* 8px */
-        'lg': '0.75rem',     /* 12px */
-        'xl': '1rem',        /* 16px */
-        '2xl': '1.25rem',    /* 20px */
-        '3xl': '1.5rem',     /* 24px */
+        'none': '0',
+        'sm': '0.375rem',    /* 6px */
+        'DEFAULT': '0.5rem',  /* 8px */
+        'md': '0.75rem',      /* 12px */
+        'lg': '1rem',         /* 16px */
+        'xl': '1.5rem',       /* 24px */
+        '2xl': '2rem',        /* 32px */
+        '3xl': '2.5rem',      /* 40px */
         'full': '9999px',
       },
       spacing: {
@@ -22,6 +23,9 @@ export default {
         '3.5': '0.875rem',  /* 14px */
         '5': '1.25rem',     /* 20px */
         '7': '1.75rem',     /* 28px */
+        '18': '4.5rem',     /* 72px */
+        '22': '5.5rem',     /* 88px */
+        '26': '6.5rem',     /* 104px */
       },
       colors: {
         // Flat / base colors (regular buttons)

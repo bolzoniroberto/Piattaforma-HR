@@ -3,16 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { railNavigation } from "@/lib/navigationConfig";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarHeader,
-} from "@/components/ui/sidebar";
 
 interface AppRailProps {
   activeSection: string | null;
@@ -35,75 +25,75 @@ export default function AppRail({ activeSection, onSectionClick, isOpen }: AppRa
   }
 
   return (
-    <Sidebar
-      collapsible="none"
-      className="w-[240px] border-r border-border"
-      style={{ "--sidebar-width": "240px" } as React.CSSProperties}
+    <aside
+      className="w-[220px] bg-sidebar rounded-2xl p-4 sticky top-6 max-h-[calc(100vh-3rem)] flex flex-col"
+      style={{ boxShadow: 'var(--shadow-2)' }}
     >
-      <SidebarHeader className="px-6 py-5 border-b border-border-subtle">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center">
-            <span className="text-primary font-bold text-sm">S24</span>
+      <div className="mb-4 pb-3 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+            <span className="text-primary font-bold text-sm">HR</span>
           </div>
-          <span className="md3-title-medium text-foreground">MBO Platform</span>
+          <div>
+            <div className="font-semibold text-sm text-sidebar-foreground">Piattaforma HR</div>
+            <div className="text-[10px] text-muted-foreground">MBO System</div>
+          </div>
         </div>
-      </SidebarHeader>
+      </div>
 
-      <SidebarContent className="px-3 py-4">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {visibleItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.url
-                  ? location === item.url
-                  : activeSection === item.id;
+      <nav className="space-y-0.5 overflow-y-auto flex-1">
+        {visibleItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = item.url
+            ? location === item.url
+            : activeSection === item.id;
 
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      asChild={!!item.url}
-                      onClick={() => !item.url && onSectionClick(item.id)}
-                      isActive={isActive}
-                      className={cn(
-                        "w-full h-11 px-4 flex items-center gap-3 rounded-lg",
-                        "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                        "transition-all duration-200",
-                        "md3-label-large",
-                        isActive && "bg-sidebar-accent border-l-2 border-primary font-semibold"
-                      )}
-                    >
-                      {item.url ? (
-                        <Link href={item.url} className="flex items-center gap-3 flex-1">
-                          <Icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1 text-left">{item.title}</span>
-                          {item.children && (
-                            <ChevronRight className={cn(
-                              "h-4 w-4 transition-transform",
-                              activeSection === item.id && "rotate-90"
-                            )} />
-                          )}
-                        </Link>
-                      ) : (
-                        <div className="flex items-center gap-3 flex-1 cursor-pointer">
-                          <Icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1 text-left">{item.title}</span>
-                          {item.children && (
-                            <ChevronRight className={cn(
-                              "h-4 w-4 transition-transform",
-                              activeSection === item.id && "rotate-90"
-                            )} />
-                          )}
-                        </div>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+          return (
+            <div key={item.id}>
+              {item.url ? (
+                <Link href={item.url}>
+                  <a
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
+                      "text-sm text-sidebar-foreground",
+                      "hover:bg-sidebar-accent transition-all duration-200",
+                      isActive && "bg-primary/10 text-primary font-medium"
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span className="flex-1 text-left">{item.title}</span>
+                    {item.children && (
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform",
+                        activeSection === item.id && "rotate-90"
+                      )} />
+                    )}
+                  </a>
+                </Link>
+              ) : (
+                <button
+                  onClick={() => onSectionClick(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
+                    "text-sm text-sidebar-foreground",
+                    "hover:bg-sidebar-accent transition-all duration-200",
+                    isActive && "bg-primary/10 text-primary font-medium"
+                  )}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="flex-1 text-left">{item.title}</span>
+                  {item.children && (
+                    <ChevronRight className={cn(
+                      "h-4 w-4 transition-transform",
+                      activeSection === item.id && "rotate-90"
+                    )} />
+                  )}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }
