@@ -34,7 +34,7 @@ export default function AppPanel({ activeSection, isOpen, onClose }: AppPanelPro
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="w-[280px] bg-sidebar rounded-2xl p-4 sticky top-6 max-h-[calc(100vh-3rem)] flex flex-col"
+          className="w-[240px] shrink-0 bg-sidebar rounded-2xl p-4 sticky top-6 max-h-[calc(100vh-3rem)] flex flex-col"
           style={{ boxShadow: 'var(--shadow-2)' }}
         >
           <div className="flex items-center justify-between mb-4 pb-3 shrink-0">

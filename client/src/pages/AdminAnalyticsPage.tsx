@@ -5,11 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3 } from "lucide-react";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppHeader from "@/components/AppHeader";
 import { useRail } from "@/contexts/RailContext";
+import { useAuth } from "@/hooks/useAuth";
 
 const COLORS = ['#DC2626', '#6B7280', '#9CA3AF', '#D1D5DB', '#EF4444', '#991B1B'];
 
 export default function AdminAnalyticsPage() {
+  const { user } = useAuth();
   const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
 
   const handleSectionClick = (sectionId: string) => {
@@ -50,25 +53,33 @@ export default function AdminAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+      <>
+        <AppHeader
+          userName={user?.name || "Amministratore"}
+          userRole="Amministratore"
+          notificationCount={0}
+          showSidebarTrigger={true}
+        />
+        <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+          <div className="flex gap-6 max-w-[1800px] mx-auto">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+              isOpen={isRailOpen}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              isOpen={isPanelOpen}
+              onClose={handlePanelClose}
+            />
+            <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading analytics...</p>
             </div>
           </main>
         </div>
       </div>
+      </>
     );
   }
 
@@ -114,19 +125,26 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex gap-6 max-w-[1800px] mx-auto">
-        <AppRail
-          activeSection={activeSection}
-          onSectionClick={handleSectionClick}
-          isOpen={isRailOpen}
-        />
-        <AppPanel
-          activeSection={activeSection}
-          isOpen={isPanelOpen}
-          onClose={handlePanelClose}
-        />
-        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+    <>
+      <AppHeader
+        userName={user?.name || "Amministratore"}
+        userRole="Amministratore"
+        notificationCount={0}
+        showSidebarTrigger={true}
+      />
+      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">
@@ -510,5 +528,6 @@ export default function AdminAnalyticsPage() {
         </main>
       </div>
     </div>
+    </>
   );
 }
