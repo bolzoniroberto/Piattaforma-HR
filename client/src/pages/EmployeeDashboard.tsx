@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppHeader from "@/components/AppHeader";
-import AppSidebar from "@/components/AppSidebar";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
 import EmployeeCard from "@/components/EmployeeCard";
 import DocumentList, { type Document } from "@/components/DocumentList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,11 +29,11 @@ import {
 import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard, HelpCircle, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useRail } from "@/contexts/RailContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ObjectiveAssignment, Document as DocumentType, IndicatorCluster, CalculationType } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge, { type ObjectiveStatus } from "@/components/StatusBadge";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 interface EnrichedObjective {
   id: string;
@@ -59,6 +59,7 @@ interface EnrichedObjective {
 export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [showRegulationModal, setShowRegulationModal] = useState(false);
   const [showRegulationDialog, setShowRegulationDialog] = useState(false);
 
@@ -238,6 +239,21 @@ export default function EmployeeDashboard() {
     }));
   }, [allDocuments, acceptedDocs]);
 
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
+
   const isLoading = userLoading || assignmentsLoading || documentsLoading;
   const isAdmin = user?.role === "admin";
   const regulationNotAccepted = user && !user.mboRegulationAcceptedAt;
@@ -332,17 +348,18 @@ export default function EmployeeDashboard() {
 
   // Content to render (same for both admin and employee)
   const dashboardContent = (
-    <main className="flex-1 overflow-auto p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-semibold font-serif mb-2 flex items-center gap-2">
-            <LayoutDashboard className="h-8 w-8" />
-            Il Mio Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-primary/10">
+            <LayoutDashboard className="h-6 w-6 text-primary" />
+          </div>
+          Il Mio Dashboard
+        </h1>
+        <p className="md3-body-large text-muted-foreground">
+          Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
+        </p>
+      </div>
 
         {isLoading ? (
           <div className="text-center py-12">
@@ -705,49 +722,27 @@ export default function EmployeeDashboard() {
             </div>
           </div>
         )}
-      </div>
-    </main>
+    </div>
   );
-
-  // If admin, wrap with sidebar
-  if (isAdmin) {
-    const style = {
-      "--sidebar-width": "16rem",
-      "--sidebar-width-icon": "3rem",
-    };
-
-    return (
-      <SidebarProvider style={style as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-            <AppHeader userName={employee.name} userRole="Amministratore" notificationCount={0} showSidebarTrigger={true} />
-            {regulationViewDialog}
-            {dashboardContent}
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-    );
-  }
 
   // Regulation acceptance modal
   const regulationModal = (
     <AlertDialog open={showRegulationModal} onOpenChange={setShowRegulationModal}>
       <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-regulation-required">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl font-serif">
+          <AlertDialogTitle className="text-xl">
             Accettazione Regolamento MBO
           </AlertDialogTitle>
           <AlertDialogDescription>
             È necessario leggere e accettare il regolamento MBO prima di proseguire
           </AlertDialogDescription>
         </AlertDialogHeader>
-        
+
         <div className="space-y-4 my-4 text-sm text-muted-foreground max-h-[40vh] overflow-y-auto">
           <p>
             <strong>Regolamento della Piattaforma HR</strong>
           </p>
-          
+
           <p>
             La presente piattaforma di gestione degli Obiettivi di Management by Objectives (MBO) è uno strumento aziendale dedicato alla gestione, monitoraggio e valutazione degli obiettivi lavorativi. Tutti gli utenti della piattaforma sono tenuti a leggere e accettare le seguenti condizioni di utilizzo:
           </p>
@@ -782,13 +777,13 @@ export default function EmployeeDashboard() {
             L'utilizzo della piattaforma è soggetto alle leggi e ai regolamenti applicabili. Qualsiasi utilizzo non autorizzato è vietato.
           </p>
 
-          <p className="pt-2 border-t">
+          <p className="pt-2">
             Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma HR e ti impegni a rispettarle.
           </p>
         </div>
 
         <div className="flex gap-3 mt-6">
-          <AlertDialogCancel 
+          <AlertDialogCancel
             data-testid="button-skip-regulation"
             disabled={acceptRegulationMutation.isPending}
           >
@@ -807,13 +802,31 @@ export default function EmployeeDashboard() {
     </AlertDialog>
   );
 
-  // Regular employee layout
+  // New floating layout
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader userName={employee.name} userRole={employee.role} notificationCount={0} />
-      {regulationModal}
-      {regulationViewDialog}
-      {dashboardContent}
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        {/* Sidebar Level 1 - Navigation Rail */}
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+
+        {/* Sidebar Level 2 - Contextual Panel */}
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+
+        {/* Main Content */}
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          {regulationModal}
+          {regulationViewDialog}
+          {dashboardContent}
+        </main>
+      </div>
     </div>
   );
 }

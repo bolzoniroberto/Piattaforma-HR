@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Sole+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,20 +5,20 @@
 @layer base {
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-sans);
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.025em;
   }
 
   /* Modern compact typography */
-  h1 { @apply text-2xl; }
-  h2 { @apply text-xl; }
-  h3 { @apply text-lg; }
-  h4 { @apply text-base; }
-  h5 { @apply text-sm; }
-  h6 { @apply text-xs; }
+  h1 { @apply text-xl font-semibold; }
+  h2 { @apply text-lg font-semibold; }
+  h3 { @apply text-base font-medium; }
+  h4 { @apply text-sm font-medium; }
+  h5 { @apply text-xs font-medium; }
+  h6 { @apply text-xs font-medium; }
 }
 
-/* LIGHT MODE - Sole 24 Ore Design System */
+/* LIGHT MODE - Corporate Modern Design System */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -30,47 +28,47 @@
 
   /* === BACKGROUNDS === */
   --background: 0 0% 100%;              /* Pure white */
-  --surface: 30 10% 98%;                /* Very warm gray, almost white */
-  --surface-elevated: 30 8% 96%;        /* Warm gray for elevated cards */
-  --card: 30 10% 98%;
-  --card-foreground: 210 10% 15%;
-  --card-border: 30 8% 94%;
+  --surface: 0 0% 100%;                 /* Pure white */
+  --surface-elevated: 0 0% 99%;         /* Almost white */
+  --card: 0 0% 100%;                    /* Pure white */
+  --card-foreground: 0 0% 10%;
+  --card-border: 0 0% 0% / 0;           /* No borders */
 
   /* === FOREGROUNDS === */
-  --foreground: 210 10% 15%;            /* Dark anthracite */
-  --muted-foreground: 30 5% 45%;        /* Medium warm gray */
+  --foreground: 0 0% 10%;               /* Almost black */
+  --muted-foreground: 0 0% 45%;         /* Medium neutral gray */
 
   /* === ACCENTS === */
-  --primary: 350 85% 47%;               /* Sole 24 Ore red #C8102E */
-  --primary-hover: 350 85% 42%;         /* Darker red on hover */
+  --primary: 354 73% 48%;               /* Corporate red #D72638 */
+  --primary-hover: 354 73% 42%;         /* Darker red on hover */
   --primary-foreground: 0 0% 100%;
-  --accent: 30 15% 92%;                 /* Warm light gray for highlights */
-  --accent-hover: 30 15% 88%;           /* Slightly darker */
-  --accent-foreground: 210 10% 20%;
+  --accent: 0 0% 96%;                   /* Very light neutral gray */
+  --accent-hover: 0 0% 93%;             /* Slightly darker */
+  --accent-foreground: 0 0% 10%;
 
   /* === BORDERS === */
-  --border: 30 12% 88%;                 /* Warm gray for dividers */
-  --border-subtle: 30 8% 94%;           /* Very soft divider */
+  --border: 0 0% 0% / 0;                /* No borders */
+  --border-subtle: 0 0% 0% / 0;         /* No borders */
 
   /* === SIDEBAR === */
-  --sidebar: 30 8% 96%;                 /* Very warm gray */
-  --sidebar-foreground: 210 10% 20%;    /* Anthracite */
-  --sidebar-accent: 30 12% 92%;         /* Subtle highlight */
-  --sidebar-accent-foreground: 210 10% 20%;
-  --sidebar-border: 30 10% 90%;         /* Border sidebar */
-  --sidebar-primary: 350 85% 47%;       /* Sole 24 Ore red */
+  --sidebar: 0 0% 100%;                 /* Pure white */
+  --sidebar-foreground: 0 0% 10%;       /* Almost black */
+  --sidebar-accent: 0 0% 97%;           /* Very subtle highlight */
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-border: 0 0% 0% / 0;        /* No borders */
+  --sidebar-primary: 354 73% 48%;       /* Corporate red */
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-ring: 350 85% 47%;
+  --sidebar-ring: 354 73% 48%;
 
   /* === SECONDARY & MUTED === */
-  --secondary: 30 15% 92%;
-  --secondary-foreground: 210 10% 20%;
-  --muted: 30 15% 94%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 10%;
+  --muted: 0 0% 96%;
 
   /* === POPOVERS === */
-  --popover: 30 10% 98%;
-  --popover-foreground: 210 10% 15%;
-  --popover-border: 30 12% 88%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --popover-border: 0 0% 0% / 0;        /* No borders */
 
   /* === SEMANTIC COLORS === */
   --destructive: 0 84% 45%;             /* Red for destructive actions */
@@ -80,20 +78,19 @@
   --info: 199 89% 48%;                  /* Blue */
 
   /* === INPUT & RING === */
-  --input: 30 12% 75%;
-  --ring: 350 85% 47%;
+  --input: 0 0% 0% / 0;                 /* No input borders */
+  --ring: 354 73% 48%;
 
   /* === CHARTS === */
-  --chart-1: 350 85% 47%;
+  --chart-1: 354 73% 48%;
   --chart-2: 142 71% 35%;
   --chart-3: 262 83% 48%;
   --chart-4: 27 87% 50%;
   --chart-5: 340 82% 48%;
 
   /* === TYPOGRAPHY === */
-  --font-sans: Inter, sans-serif;
-  --font-serif: "Sole Serif", Georgia, serif;
-  --font-mono: IBM Plex Mono, monospace;
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
 
   /* === BORDER RADIUS (Increased for softer look) === */
   --radius-xs: 0.25rem;       /* 4px */
@@ -165,48 +162,48 @@
   --elevate-2: rgba(255,255,255, .06);
 
   /* === BACKGROUNDS === */
-  --background: 210 12% 10%;            /* Very dark anthracite */
-  --surface: 210 12% 12%;               /* Slightly lighter */
-  --surface-elevated: 210 12% 14%;      /* Elevated in dark mode */
-  --card: 210 12% 12%;
-  --card-foreground: 30 10% 95%;
-  --card-border: 210 12% 15%;
+  --background: 215 18% 8%;             /* Very dark blue-grey */
+  --surface: 215 16% 10%;               /* Slightly lighter */
+  --surface-elevated: 215 14% 12%;      /* Elevated in dark mode */
+  --card: 215 16% 10%;
+  --card-foreground: 210 10% 95%;
+  --card-border: 215 12% 14%;
 
   /* === FOREGROUNDS === */
-  --foreground: 30 10% 95%;             /* Warm light gray */
-  --muted-foreground: 30 8% 60%;        /* Medium warm gray */
+  --foreground: 210 10% 95%;            /* Cool light gray */
+  --muted-foreground: 215 8% 60%;       /* Medium cool gray */
 
   /* === ACCENTS === */
-  --primary: 350 85% 55%;               /* Lighter red in dark mode */
-  --primary-hover: 350 85% 50%;
+  --primary: 354 73% 55%;               /* Lighter corporate red in dark mode */
+  --primary-hover: 354 73% 50%;
   --primary-foreground: 0 0% 100%;
-  --accent: 210 15% 18%;                /* Dark gray for highlights */
-  --accent-hover: 210 15% 20%;
-  --accent-foreground: 30 10% 92%;
+  --accent: 215 15% 16%;                /* Dark gray for highlights */
+  --accent-hover: 215 15% 18%;
+  --accent-foreground: 210 10% 92%;
 
   /* === BORDERS === */
-  --border: 210 12% 18%;                /* Dark border */
-  --border-subtle: 210 10% 15%;         /* Very subtle border */
+  --border: 215 12% 18%;                /* Dark border */
+  --border-subtle: 215 10% 14%;         /* Very subtle border */
 
   /* === SIDEBAR === */
-  --sidebar: 210 12% 12%;
-  --sidebar-foreground: 30 10% 92%;
-  --sidebar-accent: 210 15% 16%;
-  --sidebar-accent-foreground: 30 10% 92%;
-  --sidebar-border: 210 12% 15%;
-  --sidebar-primary: 350 85% 55%;
+  --sidebar: 215 16% 10%;
+  --sidebar-foreground: 210 10% 92%;
+  --sidebar-accent: 215 15% 14%;
+  --sidebar-accent-foreground: 210 10% 92%;
+  --sidebar-border: 215 12% 15%;
+  --sidebar-primary: 354 73% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-ring: 350 85% 55%;
+  --sidebar-ring: 354 73% 55%;
 
   /* === SECONDARY & MUTED === */
-  --secondary: 210 15% 18%;
-  --secondary-foreground: 30 10% 92%;
-  --muted: 210 15% 16%;
+  --secondary: 215 15% 16%;
+  --secondary-foreground: 210 10% 92%;
+  --muted: 215 15% 14%;
 
   /* === POPOVERS === */
-  --popover: 210 12% 14%;
-  --popover-foreground: 30 10% 95%;
-  --popover-border: 210 12% 18%;
+  --popover: 215 16% 12%;
+  --popover-foreground: 210 10% 95%;
+  --popover-border: 215 12% 18%;
 
   /* === SEMANTIC COLORS === */
   --destructive: 0 84% 50%;
@@ -216,11 +213,11 @@
   --info: 199 89% 55%;
 
   /* === INPUT & RING === */
-  --input: 210 13% 35%;
-  --ring: 350 85% 55%;
+  --input: 215 13% 35%;
+  --ring: 354 73% 55%;
 
   /* === CHARTS === */
-  --chart-1: 350 85% 60%;
+  --chart-1: 354 73% 60%;
   --chart-2: 142 71% 55%;
   --chart-3: 262 83% 65%;
   --chart-4: 27 87% 60%;

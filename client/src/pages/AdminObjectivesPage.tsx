@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppHeader from "@/components/AppHeader";
-import AppSidebar from "@/components/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,7 @@ interface CalculationType {
 export default function AdminObjectivesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndicatorCluster, setSelectedIndicatorCluster] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -104,6 +105,21 @@ export default function AdminObjectivesPage() {
     targetValue: "",
     thresholdValue: "",
   });
+
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
 
   const { data: objectivesDictionary = [], isLoading: dictLoading } = useQuery<ObjectiveDictionary[]>({
     queryKey: ["/api/objectives-dictionary"],
@@ -277,23 +293,21 @@ export default function AdminObjectivesPage() {
     setIsDialogOpen(false);
   };
 
-  const style = {
-    "--sidebar-width": "16rem",
-  };
-
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1">
-          <AppHeader
-            userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin"}
-            userRole="Amministratore"
-            showSidebarTrigger={true}
-          />
-          
-          <main className="flex-1 overflow-auto p-4 md:p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
@@ -653,10 +667,9 @@ export default function AdminObjectivesPage() {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import AppSidebar from "@/components/AppSidebar";
-import AppHeader from "@/components/AppHeader";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ interface ObjectiveWithAssignments {
 export default function AdminReportingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [clusterFilter, setClusterFilter] = useState<string>("all");
@@ -55,8 +56,19 @@ export default function AdminReportingPage() {
   const [reportValue, setReportValue] = useState<string>("");
   const [qualitativeResult, setQualitativeResult] = useState<string>("");
 
-  const style = {
-    "--sidebar-width": "300px", // 60px rail + 240px panel
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
   };
 
   const { data: objectivesWithAssignments = [], isLoading } = useQuery<ObjectiveWithAssignments[]>({
@@ -184,27 +196,31 @@ export default function AdminReportingPage() {
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <AppHeader
-            userName={user?.firstName || "Admin"}
-            userRole="Amministratore"
-            showSidebarTrigger={true}
-          />
-
-          <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
-              <div>
-                <h1 className="text-3xl font-semibold mb-1 flex items-center gap-2">
-                  <BarChart3 className="h-8 w-8" />
-                  Rendicontazione Obiettivi
-                </h1>
-                <p className="text-muted-foreground">
-                  Gestisci la rendicontazione degli obiettivi assegnati
-                </p>
-              </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div>
+              <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-primary/10">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+                Rendicontazione Obiettivi
+              </h1>
+              <p className="md3-body-large text-muted-foreground">
+                Gestisci la rendicontazione degli obiettivi assegnati
+              </p>
+            </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
@@ -416,10 +432,9 @@ export default function AdminReportingPage() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
-            </div>
-          </main>
-        </SidebarInset>
+            </Card>
+          </div>
+        </main>
       </div>
 
       <Dialog open={reportDialogOpen} onOpenChange={handleCloseReportDialog}>
@@ -499,6 +514,6 @@ export default function AdminReportingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </div>
   );
 }

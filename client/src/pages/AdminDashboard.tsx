@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppHeader from "@/components/AppHeader";
-import AppSidebar from "@/components/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Target, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRail } from "@/contexts/RailContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ interface ObjectiveDictionary {
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<{
     title: string;
@@ -107,23 +108,41 @@ export default function AdminDashboard() {
     setEditFormData({ title: "", description: "" });
   };
 
-  const style = {
-    "--sidebar-width": "16rem",
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      // Toggle off if clicking same section
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <AppHeader
-            userName="Admin User"
-            userRole="Amministratore"
-            notificationCount={5}
-            showSidebarTrigger={true}
-          />
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        {/* Sidebar Level 1 - Navigation Rail */}
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
 
-          <main className="flex-1 overflow-auto p-6">
+        {/* Sidebar Level 2 - Contextual Panel */}
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+
+        {/* Main Content */}
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
               <div>
                 <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
@@ -326,8 +345,7 @@ export default function AdminDashboard() {
               </Tabs>
             </div>
           </main>
-        </SidebarInset>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

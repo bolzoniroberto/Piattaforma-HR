@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import AppSidebar from "@/components/AppSidebar";
-import AppHeader from "@/components/AppHeader";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Trash2 } from "lucide-react";
@@ -23,10 +23,22 @@ import type { User } from "@shared/schema";
 export default function AdminClearAllAssignmentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const style = {
-    "--sidebar-width": "16rem",
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
   };
 
   const { data: allUsers = [] } = useQuery<User[]>({
@@ -71,18 +83,20 @@ export default function AdminClearAllAssignmentsPage() {
   });
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <AppHeader
-            userName={user?.firstName || "Admin"}
-            userRole="Amministratore"
-            showSidebarTrigger={true}
-          />
-
-          <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
@@ -132,9 +146,9 @@ export default function AdminClearAllAssignmentsPage() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card>
+            </Card>
 
-              <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+            <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
                 <AlertDialogContent data-testid="dialog-confirm-clear">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confermare la disassociazione?</AlertDialogTitle>
@@ -150,13 +164,12 @@ export default function AdminClearAllAssignmentsPage() {
                   >
                     {clearMutation.isPending ? "Disassociazione in corso..." : "Disassocia Tutti"}
                   </AlertDialogAction>
-                  <AlertDialogCancel data-testid="button-cancel-clear">Annulla</AlertDialogCancel>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </main>
-        </SidebarInset>
+                <AlertDialogCancel data-testid="button-cancel-clear">Annulla</AlertDialogCancel>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

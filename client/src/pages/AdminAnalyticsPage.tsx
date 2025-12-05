@@ -3,13 +3,30 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3 } from "lucide-react";
-import AppSidebar from "@/components/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import AppHeader from "@/components/AppHeader";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 
 const COLORS = ['#DC2626', '#6B7280', '#9CA3AF', '#D1D5DB', '#EF4444', '#991B1B'];
 
 export default function AdminAnalyticsPage() {
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
+
   // Fetch aggregated statistics
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/admin/analytics/overview"],
@@ -33,15 +50,25 @@ export default function AdminAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <AppHeader />
-          <div className="flex items-center justify-center h-screen">
-            <p className="text-muted-foreground">Loading analytics...</p>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="min-h-screen bg-background p-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          <AppRail
+            activeSection={activeSection}
+            onSectionClick={handleSectionClick}
+            isOpen={isRailOpen}
+          />
+          <AppPanel
+            activeSection={activeSection}
+            isOpen={isPanelOpen}
+            onClose={handlePanelClose}
+          />
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">Loading analytics...</p>
+            </div>
+          </main>
+        </div>
+      </div>
     );
   }
 
@@ -87,12 +114,20 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppHeader showSidebarTrigger={true} />
-
-        <div className="flex-1 space-y-6 p-6">
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -471,8 +506,9 @@ export default function AdminAnalyticsPage() {
               </Card>
             </TabsContent>
           </Tabs>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }

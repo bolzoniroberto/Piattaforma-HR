@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppHeader from "@/components/AppHeader";
-import AppSidebar from "@/components/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppRail from "@/components/AppRail";
+import AppPanel from "@/components/AppPanel";
+import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +71,7 @@ interface BusinessFunction {
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
   const [openClusterDialog, setOpenClusterDialog] = useState(false);
   const [openCalcDialog, setOpenCalcDialog] = useState(false);
   const [openBusinessDialog, setOpenBusinessDialog] = useState(false);
@@ -79,6 +80,21 @@ export default function AdminSettingsPage() {
   const [editingBusiness, setEditingBusiness] = useState<BusinessFunction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteType, setDeleteType] = useState<"cluster" | "calc" | "business" | null>(null);
+
+  const handleSectionClick = (sectionId: string) => {
+    if (activeSection === sectionId) {
+      setActiveSection(null);
+      setIsPanelOpen(false);
+    } else {
+      setActiveSection(sectionId);
+      setIsPanelOpen(true);
+    }
+  };
+
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setActiveSection(null);
+  };
 
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
   const [calcForm, setCalcForm] = useState({ name: "", description: "", formula: "" });
@@ -319,32 +335,33 @@ export default function AdminSettingsPage() {
     },
   });
 
-  const style = {
-    "--sidebar-width": "16rem",
-  };
-
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <AppHeader
-            userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin"}
-            userRole="Amministratore"
-            showSidebarTrigger={true}
-          />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h1 className="text-3xl font-semibold mb-2 flex items-center gap-2">
-                    <Settings className="h-8 w-8" />
-                    Impostazioni Strutture
-                  </h1>
-                  <p className="text-muted-foreground">
-                    Configura indicatori, tipi di calcolo e funzioni aziendali
-                  </p>
-                </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <AppRail
+          activeSection={activeSection}
+          onSectionClick={handleSectionClick}
+          isOpen={isRailOpen}
+        />
+        <AppPanel
+          activeSection={activeSection}
+          isOpen={isPanelOpen}
+          onClose={handlePanelClose}
+        />
+        <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-3rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-primary/10">
+                    <Settings className="h-6 w-6 text-primary" />
+                  </div>
+                  Impostazioni Strutture
+                </h1>
+                <p className="md3-body-large text-muted-foreground">
+                  Configura indicatori, tipi di calcolo e funzioni aziendali
+                </p>
+              </div>
                 <Button
                   variant="outline"
                   onClick={() => seedMutation.mutate()}
@@ -763,13 +780,12 @@ export default function AdminSettingsPage() {
                   >
                     Elimina
                   </AlertDialogAction>
-                  <AlertDialogCancel data-testid="button-cancel-delete">Annulla</AlertDialogCancel>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </main>
-        </SidebarInset>
+                <AlertDialogCancel data-testid="button-cancel-delete">Annulla</AlertDialogCancel>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
