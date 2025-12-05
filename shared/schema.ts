@@ -42,6 +42,10 @@ export const users = pgTable("users", {
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
   mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"), // When user accepted MBO regulation
   isActive: boolean("is_active").notNull().default(true), // Whether user is active
+  telefono: varchar("telefono"), // Phone number
+  indirizzo: text("indirizzo"), // Address
+  cap: varchar("cap", { length: 10 }), // Postal code
+  citta: varchar("citta"), // City
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -60,6 +64,10 @@ const baseUpsertUserSchema = createInsertSchema(users).pick({
   mboPercentage: true,
   mboRegulationAcceptedAt: true,
   isActive: true,
+  telefono: true,
+  indirizzo: true,
+  cap: true,
+  citta: true,
 });
 
 export const upsertUserSchema = baseUpsertUserSchema.omit({
@@ -72,6 +80,10 @@ export const upsertUserSchema = baseUpsertUserSchema.omit({
     message: "MBO percentage must be a multiple of 5%",
   }).optional(),
   isActive: z.boolean().optional(),
+  telefono: z.string().nullable().optional(),
+  indirizzo: z.string().nullable().optional(),
+  cap: z.string().nullable().optional(),
+  citta: z.string().nullable().optional(),
 });
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
