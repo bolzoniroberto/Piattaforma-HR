@@ -77,6 +77,181 @@ export const upsertUserSchema = baseUpsertUserSchema.omit({
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// ==============================================
+// NORMALIZED USER TABLES
+// ==============================================
+
+// Persona - Dati Anagrafici Base
+export const persona = pgTable("persona", {
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).primaryKey(),
+  cognome: varchar("cognome").notNull(),
+  nome: varchar("nome").notNull(),
+  dataNascita: timestamp("data_nascita"),
+  sesso: varchar("sesso", { length: 1 }), // M, F, A
+  cittadinanza: varchar("cittadinanza"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPersonaSchema = createInsertSchema(persona).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPersona = z.infer<typeof insertPersonaSchema>;
+export type Persona = typeof persona.$inferSelect;
+
+// Contatti - Informazioni di Contatto
+export const contatti = pgTable("contatti", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  email: varchar("email").unique().notNull(),
+  telefono: varchar("telefono"),
+  indirizzo: text("indirizzo"),
+  cap: varchar("cap", { length: 10 }),
+  citta: varchar("citta"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertContattiSchema = createInsertSchema(contatti).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContatti = z.infer<typeof insertContattiSchema>;
+export type Contatti = typeof contatti.$inferSelect;
+
+// Organizzazione - Struttura Aziendale
+export const organizzazione = pgTable("organizzazione", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  codiceAzienda: varchar("codice_azienda"),
+  azienda: varchar("azienda"),
+  // Gerarchia strutturale (3 livelli)
+  codiceStrutturaL1: varchar("codice_struttura_l1"),
+  descrizioneStrutturaL1: varchar("descrizione_struttura_l1"),
+  codiceStrutturaL2: varchar("codice_struttura_l2"),
+  descrizioneStrutturaL2: varchar("descrizione_struttura_l2"),
+  codiceStrutturaL3: varchar("codice_struttura_l3"),
+  descrizioneStrutturaL3: varchar("descrizione_struttura_l3"),
+  // Centro di Costo
+  codiceCdc: varchar("codice_cdc"),
+  descrizioneCdc: varchar("descrizione_cdc"),
+  // Suddivisioni organizzative
+  area: varchar("area"),
+  sottoArea: varchar("sotto_area"),
+  unitaOrganizzativa: varchar("unita_organizzativa"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOrganizzazioneSchema = createInsertSchema(organizzazione).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOrganizzazione = z.infer<typeof insertOrganizzazioneSchema>;
+export type Organizzazione = typeof organizzazione.$inferSelect;
+
+// Contratti - Informazioni Contrattuali
+export const contratti = pgTable("contratti", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  // Date contrattuali
+  dataAssunzione: timestamp("data_assunzione"),
+  dataFineRapporto: timestamp("data_fine_rapporto"),
+  dataCessazione: timestamp("data_cessazione"),
+  // Tipologia contratto
+  codiceContratto: varchar("codice_contratto"),
+  descrizioneContratto: varchar("descrizione_contratto"),
+  tipologiaContrattoTermine: varchar("tipologia_contratto_termine"),
+  // Classificazione
+  qualifica: varchar("qualifica"),
+  livello: varchar("livello"),
+  jobTitle: varchar("job_title"),
+  // Part-time
+  partTimeCodice: varchar("part_time_codice"),
+  partTimePercentuale: integer("part_time_percentuale"),
+  partTimeDataInizio: timestamp("part_time_data_inizio"),
+  partTimeDataFine: timestamp("part_time_data_fine"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertContrattiSchema = createInsertSchema(contratti).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContratti = z.infer<typeof insertContrattiSchema>;
+export type Contratti = typeof contratti.$inferSelect;
+
+// Compensation - Retribuzione e MBO
+export const compensation = pgTable("compensation", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  // Retribuzione
+  ral: numeric("ral", { precision: 12, scale: 2 }),
+  valuta: varchar("valuta", { length: 3 }).default("EUR"),
+  // MBO
+  mboPercentuale: integer("mbo_percentuale"), // 0-100, multipli di 5
+  mboTargetEuro: numeric("mbo_target_euro", { precision: 12, scale: 2 }),
+  // Periodo di validità
+  validoDa: timestamp("valido_da").notNull(),
+  validoA: timestamp("valido_a"),
+  isCurrent: boolean("is_current").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCompensationSchema = createInsertSchema(compensation).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  ral: z.coerce.number().nullable().optional(),
+  mboPercentuale: z.number().int().min(0).max(100).refine((val) => val % 5 === 0, {
+    message: "MBO percentage must be a multiple of 5%",
+  }).optional(),
+});
+
+export type InsertCompensation = z.infer<typeof insertCompensationSchema>;
+export type Compensation = typeof compensation.$inferSelect;
+
+// Ruoli - Ruoli e Responsabilità
+export const ruoli = pgTable("ruoli", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  // Gerarchia
+  primoResponsabileCf: varchar("primo_responsabile_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
+  responsabileDirettoCf: varchar("responsabile_diretto_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
+  reportsToCf: varchar("reports_to_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
+  // Ruoli speciali
+  isTns: boolean("is_tns").default(false),
+  isSgsl: boolean("is_sgsl").default(false),
+  isPrivacy: boolean("is_privacy").default(false),
+  // Sistema
+  role: varchar("role").notNull().default("employee"),
+  profileImageUrl: varchar("profile_image_url"),
+  mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRuoliSchema = createInsertSchema(ruoli).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRuoli = z.infer<typeof insertRuoliSchema>;
+export type Ruoli = typeof ruoli.$inferSelect;
+
 // Indicator Clusters for objectives
 export const indicatorClusters = pgTable("indicator_clusters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -339,5 +514,70 @@ export const mboRegulationAcceptancesRelations = relations(mboRegulationAcceptan
   user: one(users, {
     fields: [mboRegulationAcceptances.userId],
     references: [users.id],
+  }),
+}));
+
+// Relations for normalized tables
+export const personaRelations = relations(persona, ({ one, many }) => ({
+  contatti: one(contatti, {
+    fields: [persona.codiceFiscale],
+    references: [contatti.codiceFiscale],
+  }),
+  organizzazione: one(organizzazione, {
+    fields: [persona.codiceFiscale],
+    references: [organizzazione.codiceFiscale],
+  }),
+  contratti: many(contratti),
+  compensation: many(compensation),
+  ruoli: one(ruoli, {
+    fields: [persona.codiceFiscale],
+    references: [ruoli.codiceFiscale],
+  }),
+}));
+
+export const contattiRelations = relations(contatti, ({ one }) => ({
+  persona: one(persona, {
+    fields: [contatti.codiceFiscale],
+    references: [persona.codiceFiscale],
+  }),
+}));
+
+export const organizzazioneRelations = relations(organizzazione, ({ one }) => ({
+  persona: one(persona, {
+    fields: [organizzazione.codiceFiscale],
+    references: [persona.codiceFiscale],
+  }),
+}));
+
+export const contrattiRelations = relations(contratti, ({ one }) => ({
+  persona: one(persona, {
+    fields: [contratti.codiceFiscale],
+    references: [persona.codiceFiscale],
+  }),
+}));
+
+export const compensationRelations = relations(compensation, ({ one }) => ({
+  persona: one(persona, {
+    fields: [compensation.codiceFiscale],
+    references: [persona.codiceFiscale],
+  }),
+}));
+
+export const ruoliRelations = relations(ruoli, ({ one }) => ({
+  persona: one(persona, {
+    fields: [ruoli.codiceFiscale],
+    references: [persona.codiceFiscale],
+  }),
+  primoResponsabile: one(persona, {
+    fields: [ruoli.primoResponsabileCf],
+    references: [persona.codiceFiscale],
+  }),
+  responsabileDiretto: one(persona, {
+    fields: [ruoli.responsabileDirettoCf],
+    references: [persona.codiceFiscale],
+  }),
+  reportsTo: one(persona, {
+    fields: [ruoli.reportsToCf],
+    references: [persona.codiceFiscale],
   }),
 }));

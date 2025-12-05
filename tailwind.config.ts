@@ -6,9 +6,22 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        'sm': '0.25rem',     /* 4px */
+        'DEFAULT': '0.375rem', /* 6px */
+        'md': '0.5rem',      /* 8px */
+        'lg': '0.75rem',     /* 12px */
+        'xl': '1rem',        /* 16px */
+        '2xl': '1.25rem',    /* 20px */
+        '3xl': '1.5rem',     /* 24px */
+        'full': '9999px',
+      },
+      spacing: {
+        '0.5': '0.125rem',  /* 2px */
+        '1.5': '0.375rem',  /* 6px */
+        '2.5': '0.625rem',  /* 10px */
+        '3.5': '0.875rem',  /* 14px */
+        '5': '1.25rem',     /* 20px */
+        '7': '1.75rem',     /* 28px */
       },
       colors: {
         // Flat / base colors (regular buttons)

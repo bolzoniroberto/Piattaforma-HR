@@ -254,7 +254,7 @@ export default function EmployeeDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Effettua il login per accedere al tuo dashboard MBO.
+              Effettua il login per accedere alla Piattaforma HR.
             </p>
             <Button onClick={() => (window.location.href = "/api/login")} className="w-full">
               Accedi
@@ -276,7 +276,7 @@ export default function EmployeeDashboard() {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-view-regulation">
         <DialogHeader>
           <DialogTitle className="text-xl font-serif">
-            Regolamento della Piattaforma MBO
+            Regolamento della Piattaforma HR
           </DialogTitle>
           <DialogDescription>
             Consulta il regolamento completo
@@ -285,7 +285,7 @@ export default function EmployeeDashboard() {
         
         <div className="space-y-4 text-sm text-muted-foreground">
           <p>
-            <strong>Regolamento della Piattaforma di Gestione MBO</strong>
+            <strong>Regolamento della Piattaforma HR</strong>
           </p>
           
           <p>
@@ -323,7 +323,7 @@ export default function EmployeeDashboard() {
           </p>
 
           <p className="pt-2 border-t">
-            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della piattaforma di gestione MBO e ti impegni a rispettarle.
+            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma HR e ti impegni a rispettarle.
           </p>
         </div>
       </DialogContent>
@@ -745,7 +745,7 @@ export default function EmployeeDashboard() {
         
         <div className="space-y-4 my-4 text-sm text-muted-foreground max-h-[40vh] overflow-y-auto">
           <p>
-            <strong>Regolamento della Piattaforma di Gestione MBO</strong>
+            <strong>Regolamento della Piattaforma HR</strong>
           </p>
           
           <p>
@@ -783,7 +783,7 @@ export default function EmployeeDashboard() {
           </p>
 
           <p className="pt-2 border-t">
-            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della piattaforma di gestione MBO e ti impegni a rispettarle.
+            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma HR e ti impegni a rispettarle.
           </p>
         </div>
 

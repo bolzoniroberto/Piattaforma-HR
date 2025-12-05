@@ -51,7 +51,7 @@ export const railNavigation: NavItem[] = [
   },
   {
     id: "mbo",
-    title: "Gestione MBO",
+    title: "Gestione Obiettivi",
     icon: Target,
     adminOnly: true,
     children: [
@@ -87,7 +87,7 @@ export const railNavigation: NavItem[] = [
   },
   {
     id: "analytics",
-    title: "Analytics MBO",
+    title: "Analytics",
     icon: PieChart,
     adminOnly: true,
     children: [

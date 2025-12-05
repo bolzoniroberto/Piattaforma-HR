@@ -20,66 +20,97 @@
   h6 { @apply text-xs; }
 }
 
-/* LIGHT MODE */
+/* LIGHT MODE - Sole 24 Ore Design System */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
-  --background: 0 0% 100%;
-  --foreground: 220 9% 15%;
-  --border: 220 13% 91%;
-  --card: 0 0% 98%;
-  --card-foreground: 220 9% 15%;
-  --card-border: 220 13% 94%;
-  --sidebar: 220 10% 96%;
-  --sidebar-foreground: 220 9% 15%;
-  --sidebar-border: 220 13% 92%;
-  --sidebar-primary: 25 100% 50%;
-  --sidebar-primary-foreground: 210 100% 98%;
-  --sidebar-accent: 220 14% 89%;
-  --sidebar-accent-foreground: 220 9% 20%;
-  --sidebar-ring: 25 100% 50%;
-  --popover: 220 14% 95%;
-  --popover-foreground: 220 9% 15%;
-  --popover-border: 220 13% 91%;
-  --primary: 0deg 84.28% 44.9%;
-  --primary-foreground: 210 100% 98%;
-  --secondary: 220 14% 92%;
-  --secondary-foreground: 220 9% 20%;
-  --muted: 220 14% 94%;
-  --muted-foreground: 220 9% 40%;
-  --accent: 0deg 84.28% 44.9%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 45%;
+  --elevate-1: rgba(0,0,0, .02);
+  --elevate-2: rgba(0,0,0, .04);
+
+  /* === BACKGROUNDS === */
+  --background: 0 0% 100%;              /* Pure white */
+  --surface: 30 10% 98%;                /* Very warm gray, almost white */
+  --surface-elevated: 30 8% 96%;        /* Warm gray for elevated cards */
+  --card: 30 10% 98%;
+  --card-foreground: 210 10% 15%;
+  --card-border: 30 8% 94%;
+
+  /* === FOREGROUNDS === */
+  --foreground: 210 10% 15%;            /* Dark anthracite */
+  --muted-foreground: 30 5% 45%;        /* Medium warm gray */
+
+  /* === ACCENTS === */
+  --primary: 350 85% 47%;               /* Sole 24 Ore red #C8102E */
+  --primary-hover: 350 85% 42%;         /* Darker red on hover */
+  --primary-foreground: 0 0% 100%;
+  --accent: 30 15% 92%;                 /* Warm light gray for highlights */
+  --accent-hover: 30 15% 88%;           /* Slightly darker */
+  --accent-foreground: 210 10% 20%;
+
+  /* === BORDERS === */
+  --border: 30 12% 88%;                 /* Warm gray for dividers */
+  --border-subtle: 30 8% 94%;           /* Very soft divider */
+
+  /* === SIDEBAR === */
+  --sidebar: 30 8% 96%;                 /* Very warm gray */
+  --sidebar-foreground: 210 10% 20%;    /* Anthracite */
+  --sidebar-accent: 30 12% 92%;         /* Subtle highlight */
+  --sidebar-accent-foreground: 210 10% 20%;
+  --sidebar-border: 30 10% 90%;         /* Border sidebar */
+  --sidebar-primary: 350 85% 47%;       /* Sole 24 Ore red */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-ring: 350 85% 47%;
+
+  /* === SECONDARY & MUTED === */
+  --secondary: 30 15% 92%;
+  --secondary-foreground: 210 10% 20%;
+  --muted: 30 15% 94%;
+
+  /* === POPOVERS === */
+  --popover: 30 10% 98%;
+  --popover-foreground: 210 10% 15%;
+  --popover-border: 30 12% 88%;
+
+  /* === SEMANTIC COLORS === */
+  --destructive: 0 84% 45%;             /* Red for destructive actions */
   --destructive-foreground: 0 0% 98%;
-  --input: 220 13% 75%;
-  --ring: 0deg 84.28% 44.9%;
-  --chart-1: 25 100% 50%;
+  --warning: 38 92% 50%;                /* Amber */
+  --success: 142 76% 36%;               /* Green */
+  --info: 199 89% 48%;                  /* Blue */
+
+  /* === INPUT & RING === */
+  --input: 30 12% 75%;
+  --ring: 350 85% 47%;
+
+  /* === CHARTS === */
+  --chart-1: 350 85% 47%;
   --chart-2: 142 71% 35%;
   --chart-3: 262 83% 48%;
   --chart-4: 27 87% 50%;
   --chart-5: 340 82% 48%;
+
+  /* === TYPOGRAPHY === */
   --font-sans: Inter, sans-serif;
   --font-serif: "Sole Serif", Georgia, serif;
   --font-mono: IBM Plex Mono, monospace;
 
-  /* Material Design 3 - Border Radius */
-  --radius-xs: 0.25rem;
-  --radius-sm: 0.5rem;
-  --radius: 0.75rem;
-  --radius-md: 1rem;
-  --radius-lg: 1.5rem;
-  --radius-xl: 2rem;
+  /* === BORDER RADIUS (Increased for softer look) === */
+  --radius-xs: 0.25rem;       /* 4px */
+  --radius-sm: 0.375rem;      /* 6px */
+  --radius: 0.5rem;           /* 8px */
+  --radius-md: 0.75rem;       /* 12px */
+  --radius-lg: 1rem;          /* 16px */
+  --radius-xl: 1.25rem;       /* 20px */
+  --radius-2xl: 1.5rem;       /* 24px */
   --radius-full: 9999px;
 
-  /* Material Design 3 - Elevation Shadows */
-  --shadow-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
-  --shadow-2: 0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
-  --shadow-3: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-4: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-5: 0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04);
+  /* === SHADOWS (Very soft, almost imperceptible) === */
+  --shadow-1: 0px 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-2: 0px 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-3: 0px 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-4: 0px 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-5: 0px 8px 24px rgba(0, 0, 0, 0.10);
 
   /* Backward compatibility */
   --shadow-2xs: var(--shadow-1);
@@ -93,8 +124,8 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  /* Sidebar Width Variables */
-  --sidebar-rail-width: 60px;
+  /* === SIDEBAR WIDTH VARIABLES === */
+  --sidebar-rail-width: 240px;          /* Expanded from 60px */
   --sidebar-panel-width: 240px;
 
 /* Fallback for older browsers */
@@ -130,49 +161,77 @@
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-  --background: 220 15% 8%;
-  --foreground: 210 40% 96%;
-  --border: 220 13% 18%;
-  --card: 220 14% 10%;
-  --card-foreground: 210 40% 96%;
-  --card-border: 220 13% 13%;
-  --sidebar: 220 14% 12%;
-  --sidebar-foreground: 210 40% 96%;
-  --sidebar-border: 220 13% 15%;
-  --sidebar-primary: 25 100% 55%;
-  --sidebar-primary-foreground: 210 100% 98%;
-  --sidebar-accent: 220 14% 16%;
-  --sidebar-accent-foreground: 210 40% 92%;
-  --sidebar-ring: 25 100% 55%;
-  --popover: 220 14% 14%;
-  --popover-foreground: 210 40% 96%;
-  --popover-border: 220 13% 17%;
-  --primary: 217 91% 48%;
-  --primary-foreground: 210 100% 98%;
-  --secondary: 220 14% 18%;
-  --secondary-foreground: 210 40% 92%;
-  --muted: 220 14% 16%;
-  --muted-foreground: 210 20% 70%;
-  --accent: 217 20% 16%;
-  --accent-foreground: 210 40% 92%;
-  --destructive: 0 84% 45%;
+  --elevate-1: rgba(255,255,255, .03);
+  --elevate-2: rgba(255,255,255, .06);
+
+  /* === BACKGROUNDS === */
+  --background: 210 12% 10%;            /* Very dark anthracite */
+  --surface: 210 12% 12%;               /* Slightly lighter */
+  --surface-elevated: 210 12% 14%;      /* Elevated in dark mode */
+  --card: 210 12% 12%;
+  --card-foreground: 30 10% 95%;
+  --card-border: 210 12% 15%;
+
+  /* === FOREGROUNDS === */
+  --foreground: 30 10% 95%;             /* Warm light gray */
+  --muted-foreground: 30 8% 60%;        /* Medium warm gray */
+
+  /* === ACCENTS === */
+  --primary: 350 85% 55%;               /* Lighter red in dark mode */
+  --primary-hover: 350 85% 50%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 210 15% 18%;                /* Dark gray for highlights */
+  --accent-hover: 210 15% 20%;
+  --accent-foreground: 30 10% 92%;
+
+  /* === BORDERS === */
+  --border: 210 12% 18%;                /* Dark border */
+  --border-subtle: 210 10% 15%;         /* Very subtle border */
+
+  /* === SIDEBAR === */
+  --sidebar: 210 12% 12%;
+  --sidebar-foreground: 30 10% 92%;
+  --sidebar-accent: 210 15% 16%;
+  --sidebar-accent-foreground: 30 10% 92%;
+  --sidebar-border: 210 12% 15%;
+  --sidebar-primary: 350 85% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-ring: 350 85% 55%;
+
+  /* === SECONDARY & MUTED === */
+  --secondary: 210 15% 18%;
+  --secondary-foreground: 30 10% 92%;
+  --muted: 210 15% 16%;
+
+  /* === POPOVERS === */
+  --popover: 210 12% 14%;
+  --popover-foreground: 30 10% 95%;
+  --popover-border: 210 12% 18%;
+
+  /* === SEMANTIC COLORS === */
+  --destructive: 0 84% 50%;
   --destructive-foreground: 0 0% 98%;
-  --input: 220 13% 35%;
-  --ring: 25 100% 55%;
-  --chart-1: 217 91% 65%;
+  --warning: 38 92% 55%;
+  --success: 142 76% 45%;
+  --info: 199 89% 55%;
+
+  /* === INPUT & RING === */
+  --input: 210 13% 35%;
+  --ring: 350 85% 55%;
+
+  /* === CHARTS === */
+  --chart-1: 350 85% 60%;
   --chart-2: 142 71% 55%;
   --chart-3: 262 83% 65%;
   --chart-4: 27 87% 60%;
   --chart-5: 340 82% 60%;
 
-  /* Material Design 3 - Elevation Shadows (Dark Mode) */
-  --shadow-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
-  --shadow-2: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
-  --shadow-3: 0px 4px 6px -1px rgba(0, 0, 0, 0.4), 0px 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-4: 0px 10px 15px -3px rgba(0, 0, 0, 0.4), 0px 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-5: 0px 20px 25px -5px rgba(0, 0, 0, 0.4), 0px 10px 10px -5px rgba(0, 0, 0, 0.3);
+  /* === SHADOWS (Slightly more evident in dark mode) === */
+  --shadow-1: 0px 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0px 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-3: 0px 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-4: 0px 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-5: 0px 8px 24px rgba(0, 0, 0, 0.4);
 
   /* Backward compatibility */
   --shadow-2xs: var(--shadow-1);

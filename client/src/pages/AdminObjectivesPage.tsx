@@ -303,7 +303,7 @@ export default function AdminObjectivesPage() {
                     Database Obiettivi
                   </h1>
                   <p className="md3-body-large text-muted-foreground">
-                    Gestisci il dizionario completo degli obiettivi MBO
+                    Gestisci il dizionario completo degli obiettivi aziendali
                   </p>
                 </div>
                 
@@ -318,7 +318,7 @@ export default function AdminObjectivesPage() {
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Modifica Obiettivo" : "Crea Nuovo Obiettivo"}</DialogTitle>
                       <DialogDescription>
-                        {editingId ? "Modifica i dettagli dell'obiettivo" : "Aggiungi un nuovo obiettivo al dizionario MBO"}
+                        {editingId ? "Modifica i dettagli dell'obiettivo" : "Aggiungi un nuovo obiettivo al dizionario"}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
