@@ -27,10 +27,20 @@ export default function OrgChartPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
-  // Fetch all users
-  const { data: users = [], isLoading } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+  // Fetch orgchart users (hybrid access)
+  const { data, isLoading } = useQuery<{
+    users: User[];
+    metadata: {
+      isFiltered: boolean;
+      totalVisible: number;
+      viewerRole: string;
+    }
+  }>({
+    queryKey: ["/api/orgchart"],
   });
+
+  const users = data?.users || [];
+  const isFilteredView = data?.metadata.isFiltered || false;
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -83,38 +93,38 @@ export default function OrgChartPage() {
         userRole={user?.role === "admin" ? "Amministratore" : "Dipendente"}
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Organigramma Aziendale"
+        pageIcon={Network}
+        pageDescription="Visualizza la struttura organizzativa e la gerarchia dell'azienda"
+        pageBadge={isFilteredView ? (
+          <Badge variant="outline" className="text-xs">
+            Vista limitata al tuo team
+          </Badge>
+        ) : undefined}
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <div className="relative max-w-[1800px] mx-auto">
           {/* Sidebar Level 1 - Navigation Rail */}
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
+          <div className={`absolute left-0 top-0 transition-opacity duration-200 ${isRailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+              isOpen={true}
+            />
+          </div>
 
           {/* Sidebar Level 2 - Contextual Panel */}
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          <div className={`absolute left-[84px] top-0 transition-opacity duration-200 ${isPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppPanel
+              activeSection={activeSection}
+              isOpen={true}
+              onClose={handlePanelClose}
+            />
+          </div>
 
-          {/* Main Content */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          {/* Main Content - Fixed margin */}
+          <main className="ml-[348px] bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
-              <div>
-                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-primary/10">
-                    <Network className="h-6 w-6 text-primary" />
-                  </div>
-                  Organigramma Aziendale
-                </h1>
-                <p className="md3-body-large text-muted-foreground">
-                  Visualizza la struttura organizzativa e la gerarchia dell'azienda
-                </p>
-              </div>
-
               {/* Search Bar */}
               <Card>
                 <CardHeader>

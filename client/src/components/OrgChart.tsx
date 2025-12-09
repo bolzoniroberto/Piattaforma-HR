@@ -1,8 +1,8 @@
-import { ChevronDown, ChevronUp, User } from "lucide-react";
+import { ChevronDown, ChevronUp, User, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import type { User as UserType } from "@shared/schema";
 
 interface OrgChartProps {
@@ -54,39 +54,50 @@ export default function OrgChart({ users, selectedUserId, onUserSelect, onUserCl
       <div className="flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-500">
         {/* User Card */}
         <Card
-          className="w-56 border-2 border-primary/60 bg-primary/8 shadow-lg transition-all duration-200 hover:shadow-xl cursor-pointer relative z-10"
-          onClick={() => onUserClick?.(rootUser)}
+          className="relative w-72 shadow-lg transition-all duration-200 hover:shadow-xl cursor-pointer bg-card border border-border z-10"
         >
-          <CardContent className="p-5">
+          {/* Badge conteggio collaboratori (top-right) */}
+          {directReports.length > 0 && (
+            <Badge className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center p-0 text-sm font-bold shadow-md hover:bg-primary/90">
+              {directReports.length}
+            </Badge>
+          )}
+
+          <CardContent className="p-6 pt-8">
             <div className="flex flex-col items-center">
               {/* Avatar */}
-              <Avatar className="h-20 w-20 mb-3">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">
+              <Avatar className="h-24 w-24 mb-4 border-2 border-primary/20">
+                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
                   {getInitials(rootUser.firstName, rootUser.lastName)}
                 </AvatarFallback>
               </Avatar>
 
-              {/* User Info */}
-              <h2 className="font-bold text-lg text-center">
+              {/* Nome (link cliccabile) */}
+              <button
+                onClick={() => onUserClick?.(rootUser)}
+                className="text-primary hover:text-primary/80 font-semibold text-lg mb-1 transition-colors text-center w-full"
+              >
                 {`${rootUser.firstName || ""} ${rootUser.lastName || ""}`.trim()}
-              </h2>
-              <p className="text-sm text-muted-foreground text-center">
-                {rootUser.department || "N/A"}
+              </button>
+
+              {/* Dipartimento */}
+              <p className="text-sm text-muted-foreground text-center mb-3">
+                {rootUser.department || "Dipartimento non specificato"}
               </p>
-              {rootUser.email && (
-                <p className="text-xs text-muted-foreground text-center hover:underline">
-                  {rootUser.email}
-                </p>
+
+              {/* Sede/Indirizzo con icona */}
+              {rootUser.indirizzo && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-2">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span>{rootUser.indirizzo}</span>
+                </div>
               )}
 
-              {/* Direct Reports Count */}
-              {directReports.length > 0 && (
-                <div className="mt-4 text-center">
-                  <p className="text-xs font-semibold text-primary">
-                    {directReports.length}{" "}
-                    {directReports.length === 1 ? "collaboratore" : "collaboratori"}
-                  </p>
-                </div>
+              {/* Email */}
+              {rootUser.email && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {rootUser.email}
+                </p>
               )}
             </div>
           </CardContent>
@@ -95,132 +106,100 @@ export default function OrgChart({ users, selectedUserId, onUserSelect, onUserCl
         {/* Direct Reports */}
         {directReports.length > 0 && (
           <>
-            {/* Vertical Connector Line - Enhanced */}
-            <div className="relative mt-6 animate-in fade-in zoom-in-95 duration-500">
-              {/* Main line */}
-              <div className="w-1 h-12 bg-gradient-to-b from-primary via-primary/90 to-primary/70 rounded-full shadow-md" />
-              {/* Glow effect */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-12 bg-primary/20 blur-sm rounded-full" />
+            {/* Vertical Connector Line from Root */}
+            <div className="flex justify-center mt-8 animate-in fade-in zoom-in-95 duration-500">
+              <div className="w-0.5 h-16 bg-gradient-to-b from-primary to-primary/40" />
             </div>
 
             {/* Container with horizontal line and reports */}
             <div className="relative">
-              {/* Horizontal Connector Line - Enhanced with shadow and border */}
+              {/* Horizontal Connector Line */}
               {directReports.length > 1 && (
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2" style={{
-                  width: `${Math.min(directReports.length * 200, 800)}px`,
-                }}>
-                  {/* Shadow/border effect */}
-                  <div className="absolute top-1/2 -translate-y-1/2 w-full h-1.5 bg-primary/20 blur-sm rounded-full animate-in fade-in duration-700" />
-                  {/* Main line */}
-                  <div className="relative w-full h-1 bg-gradient-to-r from-primary/70 via-primary to-primary/70 rounded-full shadow-lg animate-in fade-in zoom-in-95 duration-700">
-                    {/* Animated pulse effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-pulse" />
+                <div className="flex justify-center mb-8">
+                  <div className="relative h-0.5 bg-gradient-to-r from-transparent via-primary/60 to-transparent" style={{
+                    width: `${Math.min(directReports.length * 280, 1400)}px`,
+                  }}>
+                    {/* Center connection point */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary" />
                   </div>
                 </div>
               )}
 
-              {/* Flexbox of Direct Reports - Staggered Layout */}
-              <div className="flex flex-wrap justify-center gap-x-12 gap-y-16 px-4 pt-8 max-w-6xl">
+              {/* Grid of Direct Reports with Better Spacing */}
+              <div className="flex flex-wrap justify-center gap-x-16 gap-y-12 px-4 max-w-7xl mx-auto">
                 {directReports.map((report, index) => {
                   const hasSubReports = users.some((u) => u.managerId === report.id);
-                  const isFirst = index === 0;
-                  const isLast = index === directReports.length - 1;
 
                   return (
                     <div
                       key={report.id}
-                      className="flex flex-col items-center cursor-pointer group relative animate-in fade-in slide-in-from-bottom-4"
+                      className="relative flex flex-col items-center animate-in fade-in slide-in-from-bottom-4"
                       style={{
                         animationDelay: `${index * 100}ms`,
                         animationDuration: '500ms',
                         animationFillMode: 'backwards'
                       }}
-                      onClick={() => {
-                        onUserSelect?.(report.id);
-                      }}
                     >
-                      {/* Vertical Connector Line (from horizontal line to card) - Enhanced */}
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-0">
-                        {/* Glow effect */}
-                        <div className="absolute left-1/2 -translate-x-1/2 w-3 h-8 bg-primary/15 blur-sm rounded-full" />
-                        {/* Main line with gradient */}
-                        <div className="relative w-1 h-8 bg-gradient-to-b from-primary/80 via-primary/70 to-primary/50 rounded-full shadow-md group-hover:from-primary group-hover:to-primary/70 transition-all duration-300" />
-                      </div>
-
-                      {/* Enhanced corner connectors for first/last items */}
-                      {directReports.length > 1 && (
-                        <>
-                          {isFirst && (
-                            <div className="absolute -top-8 left-1/2 w-20 h-8">
-                              {/* Horizontal part */}
-                              <div className="absolute top-0 -left-20 w-20 h-1 bg-gradient-to-l from-primary/80 to-primary/50 rounded-full shadow-md" />
-                              {/* Glow for horizontal */}
-                              <div className="absolute top-0 -left-20 w-20 h-1.5 bg-primary/15 blur-sm rounded-full" />
-                            </div>
-                          )}
-                          {isLast && (
-                            <div className="absolute -top-8 right-1/2 w-20 h-8">
-                              {/* Horizontal part */}
-                              <div className="absolute top-0 left-0 w-20 h-1 bg-gradient-to-r from-primary/80 to-primary/50 rounded-full shadow-md" />
-                              {/* Glow for horizontal */}
-                              <div className="absolute top-0 left-0 w-20 h-1.5 bg-primary/15 blur-sm rounded-full" />
-                            </div>
-                          )}
-                        </>
-                      )}
+                      {/* Vertical Connector Line (individual per card) */}
+                      <div className="w-0.5 h-12 bg-gradient-to-b from-primary/40 to-transparent mb-4" />
 
                       {/* Report Card */}
                       <Card
-                        className={cn(
-                          "w-48 transition-all duration-200 hover:shadow-lg hover:border-primary/70",
-                          "hover:bg-primary/6 border",
-                          hasSubReports ? "border-primary/40 bg-blue-50/50" : "border-border"
-                        )}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUserClick?.(report);
-                        }}
+                        className="relative w-64 shadow-lg transition-all duration-200 hover:shadow-xl bg-card border border-border"
                       >
-                        <CardContent className="p-4">
+                        {/* Badge conteggio sub-reports (top-right) */}
+                        {hasSubReports && (
+                          <Badge className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center p-0 text-xs font-bold shadow-md hover:bg-primary/90">
+                            {users.filter((u) => u.managerId === report.id).length}
+                          </Badge>
+                        )}
+
+                        <CardContent className="p-6 pt-7">
                           <div className="flex flex-col items-center">
                             {/* Avatar */}
-                            <div className="relative mb-3">
-                              <Avatar className="h-14 w-14">
-                                <AvatarFallback className="bg-muted text-foreground text-sm font-medium">
-                                  {getInitials(report.firstName, report.lastName)}
-                                </AvatarFallback>
-                              </Avatar>
+                            <Avatar className="h-20 w-20 mb-4 border-2 border-primary/20">
+                              <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                                {getInitials(report.firstName, report.lastName)}
+                              </AvatarFallback>
+                            </Avatar>
 
-                              {/* Badge for sub-reports */}
-                              {hasSubReports && (
-                                <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">
-                                  {users.filter((u) => u.managerId === report.id).length}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* User Info */}
-                            <h3 className="font-semibold text-sm text-center truncate w-full">
+                            {/* Nome (link cliccabile) */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUserClick?.(report);
+                              }}
+                              className="text-primary hover:text-primary/80 font-semibold text-base mb-1 transition-colors text-center w-full"
+                            >
                               {`${report.firstName || ""} ${report.lastName || ""}`.trim()}
-                            </h3>
-                            <p className="text-xs text-muted-foreground text-center truncate w-full">
-                              {report.department || "N/A"}
+                            </button>
+
+                            {/* Dipartimento */}
+                            <p className="text-sm text-muted-foreground text-center mb-2">
+                              {report.department || "Dipartimento non specificato"}
                             </p>
+
+                            {/* Sede/Indirizzo con icona */}
+                            {report.indirizzo && (
+                              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-3">
+                                <MapPin className="h-3 w-3" />
+                                <span className="truncate max-w-[200px]">{report.indirizzo}</span>
+                              </div>
+                            )}
 
                             {/* Explore Button */}
                             {hasSubReports && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="mt-2 h-8 w-full text-xs gap-1 group-hover:bg-primary/20"
+                                className="w-full mt-2 gap-1.5 hover:bg-primary/10"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onUserSelect?.(report.id);
                                 }}
                               >
-                                <ChevronDown className="h-3 w-3" />
-                                Esplora
+                                <ChevronDown className="h-4 w-4" />
+                                Esplora Team
                               </Button>
                             )}
                           </div>

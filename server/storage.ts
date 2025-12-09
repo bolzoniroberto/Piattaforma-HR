@@ -127,6 +127,9 @@ export interface IStorage {
   
   // Statistics
   getUserStats(userId: string): Promise<{ totalObjectives: number; completedObjectives: number }>;
+
+  // Org Chart
+  getOrgChartUsers(userId: string, isAdmin: boolean): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -659,6 +662,69 @@ export class DatabaseStorage implements IStorage {
       totalObjectives: Number(result[0]?.total || 0),
       completedObjectives: Number(result[0]?.completed || 0),
     };
+  }
+
+  // Org Chart operations
+  async getOrgChartUsers(userId: string, isAdmin: boolean): Promise<User[]> {
+    // Admin: ritorna tutti gli utenti
+    if (isAdmin) {
+      return this.getAllUsers();
+    }
+
+    // Dipendente: costruisce lista filtrata
+    const visibleUserIds = new Set<string>();
+
+    // 1. Aggiungi utente corrente
+    visibleUserIds.add(userId);
+
+    // 2. Aggiungi catena manager (ricorsivo fino al top)
+    await this.addManagerChain(userId, visibleUserIds);
+
+    // 3. Aggiungi collaboratori diretti
+    await this.addDirectReports(userId, visibleUserIds);
+
+    // 4. Aggiungi colleghi (stesso managerId)
+    await this.addPeers(userId, visibleUserIds);
+
+    // Recupera e filtra utenti
+    const allUsers = await this.getAllUsers();
+    return allUsers.filter(u => visibleUserIds.has(u.id));
+  }
+
+  private async addManagerChain(
+    userId: string,
+    visibleIds: Set<string>,
+    visited: Set<string> = new Set()
+  ): Promise<void> {
+    // Protezione da riferimenti circolari
+    if (visited.has(userId)) {
+      console.error(`Circular reference detected for user ${userId}`);
+      return;
+    }
+    visited.add(userId);
+
+    const user = await this.getUser(userId);
+    if (!user || !user.managerId) return;
+
+    visibleIds.add(user.managerId);
+    await this.addManagerChain(user.managerId, visibleIds, visited);
+  }
+
+  private async addDirectReports(userId: string, visibleIds: Set<string>): Promise<void> {
+    const allUsers = await this.getAllUsers();
+    const reports = allUsers.filter(u => u.managerId === userId);
+    reports.forEach(r => visibleIds.add(r.id));
+  }
+
+  private async addPeers(userId: string, visibleIds: Set<string>): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user || !user.managerId) return; // Top-level non ha colleghi
+
+    const allUsers = await this.getAllUsers();
+    const peers = allUsers.filter(u =>
+      u.managerId === user.managerId && u.id !== userId
+    );
+    peers.forEach(p => visibleIds.add(p.id));
   }
 
 }

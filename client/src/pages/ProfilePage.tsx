@@ -129,30 +129,13 @@ export default function ProfilePage() {
         userName={`${user.firstName || ""} ${user.lastName || ""}`}
         userRole={user.role === "admin" ? "Amministratore" : "Dipendente"}
         showSidebarTrigger={true}
+        pageTitle="Il Mio Profilo"
+        pageIcon={User}
+        pageDescription="Gestisci i tuoi dati personali e le tue informazioni di contatto"
       />
 
       <main className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
         <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setLocation("/")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-primary/10">
-                <User className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="md3-headline-medium">Il Mio Profilo</h1>
-                <p className="text-sm text-muted-foreground">Gestisci i tuoi dati personali e le tue informazioni di contatto</p>
-              </div>
-            </div>
-          </div>
-
           {/* Main Profile Card */}
           <Card className="mb-6">
             <CardHeader>

@@ -171,6 +171,9 @@ export default function AdminAssignmentsBulkPage() {
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Assegnazione Obiettivi in Bulk"
+        pageIcon={Target}
+        pageDescription="Assegna un obiettivo a tutti i dipendenti di un dipartimento"
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
@@ -186,20 +189,6 @@ export default function AdminAssignmentsBulkPage() {
           />
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-primary/10">
-                      <Target className="h-6 w-6 text-primary" />
-                    </div>
-                    Assegnazione Obiettivi in Bulk
-                  </h1>
-                  <p className="md3-body-large text-muted-foreground">
-                    Assegna un obiettivo a tutti i dipendenti di un dipartimento
-                  </p>
-                </div>
-              </div>
-
               {/* Progress Steps */}
               <div className="flex items-center gap-4">
                 <div className={`flex items-center gap-2 ${step >= 1 ? "text-primary" : "text-muted-foreground"}`}>

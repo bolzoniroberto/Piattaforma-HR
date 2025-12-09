@@ -350,18 +350,6 @@ export default function EmployeeDashboard() {
   // Content to render (same for both admin and employee)
   const dashboardContent = (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-primary/10">
-            <LayoutDashboard className="h-6 w-6 text-primary" />
-          </div>
-          Il Mio Dashboard
-        </h1>
-        <p className="md3-body-large text-muted-foreground">
-          Benvenuto, {employee.name}. Ecco il tuo progresso MBO.
-        </p>
-      </div>
-
         {isLoading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Caricamento dati...</p>
@@ -811,6 +799,9 @@ export default function EmployeeDashboard() {
         userRole={isAdmin ? "Amministratore" : "Dipendente"}
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Il Mio Dashboard"
+        pageIcon={LayoutDashboard}
+        pageDescription={`Benvenuto, ${employee?.name || "Utente"}. Ecco il tuo progresso MBO.`}
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
