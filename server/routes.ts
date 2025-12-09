@@ -247,6 +247,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Org chart endpoint with hybrid access (admin sees all, employees see their team)
+  app.get("/api/orgchart", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized - no user ID" });
+      }
+
+      // Recupera utente corrente per verificare il ruolo
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const isAdmin = user.role === "admin";
+
+      // Recupera utenti filtrati in base al ruolo
+      const users = await storage.getOrgChartUsers(userId, isAdmin);
+
+      // Mappa a DTO per escludere campi sensibili
+      const dtoUsers = users.map(u => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        department: u.department,
+        managerId: u.managerId,
+        email: u.email,
+        role: u.role,
+        isActive: u.isActive,
+        location: u.location,
+        businessFunction: u.businessFunction,
+      }));
+
+      // Ritorna dati con metadata
+      res.json({
+        users: dtoUsers,
+        metadata: {
+          isFiltered: !isAdmin,
+          totalVisible: dtoUsers.length,
+          viewerRole: user.role,
+        }
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   app.get("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);

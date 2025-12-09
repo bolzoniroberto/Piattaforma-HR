@@ -343,6 +343,9 @@ export default function AdminSettingsPage() {
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Impostazioni Strutture"
+        pageIcon={Settings}
+        pageDescription="Configura indicatori, tipi di calcolo e funzioni aziendali"
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
@@ -358,18 +361,7 @@ export default function AdminSettingsPage() {
           />
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-primary/10">
-                    <Settings className="h-6 w-6 text-primary" />
-                  </div>
-                  Impostazioni Strutture
-                </h1>
-                <p className="md3-body-large text-muted-foreground">
-                  Configura indicatori, tipi di calcolo e funzioni aziendali
-                </p>
-              </div>
+            <div className="flex items-center justify-end gap-4 flex-wrap">
                 <Button
                   variant="outline"
                   onClick={() => seedMutation.mutate()}

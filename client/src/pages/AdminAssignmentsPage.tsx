@@ -361,6 +361,9 @@ export default function AdminAssignmentsPage() {
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Assegnazione Obiettivi"
+        pageIcon={Target}
+        pageDescription={`Gestisci gli obiettivi assegnati a ${targetUser?.firstName || ""} ${targetUser?.lastName || ""}`}
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
@@ -382,17 +385,6 @@ export default function AdminAssignmentsPage() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
-              <div className="flex-1">
-                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-primary/10">
-                    <Target className="h-6 w-6 text-primary" />
-                  </div>
-                  Assegnazione Obiettivi
-                </h1>
-                <p className="md3-body-large text-muted-foreground">
-                  Gestisci gli obiettivi assegnati a questo dipendente
-                </p>
-              </div>
             </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

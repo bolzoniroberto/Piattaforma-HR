@@ -90,6 +90,9 @@ export default function AdminClearAllAssignmentsPage() {
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Disassocia Tutti gli Obiettivi"
+        pageIcon={Trash2}
+        pageDescription="Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti"
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
@@ -105,20 +108,6 @@ export default function AdminClearAllAssignmentsPage() {
           />
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-destructive/10">
-                      <Trash2 className="h-6 w-6 text-destructive" />
-                    </div>
-                    Disassocia Tutti gli Obiettivi
-                  </h1>
-                  <p className="md3-body-large text-muted-foreground">
-                    Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti
-                  </p>
-                </div>
-              </div>
-
               <Card className="md3-surface md3-motion-standard border-destructive/50 bg-destructive/5">
                 <CardHeader>
                   <CardTitle className="md3-title-large text-destructive flex items-center gap-2">

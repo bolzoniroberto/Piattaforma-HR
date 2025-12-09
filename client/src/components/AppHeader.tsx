@@ -1,4 +1,4 @@
-import { Bell, User, Settings, LogOut, Menu } from "lucide-react";
+import { Bell, User, Settings, LogOut, Menu, LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,19 +16,28 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRail } from "@/contexts/RailContext";
 import logoPath from "@assets/image_1764169863444.png";
+import { ReactNode } from "react";
 
 interface AppHeaderProps {
   userName?: string;
   userRole?: string;
   notificationCount?: number;
   showSidebarTrigger?: boolean;
+  pageTitle?: string;
+  pageIcon?: LucideIcon;
+  pageDescription?: string;
+  pageBadge?: ReactNode;
 }
 
 export default function AppHeader({
   userName = "Mario Rossi",
   userRole = "Dipendente",
   notificationCount = 0,
-  showSidebarTrigger = false
+  showSidebarTrigger = false,
+  pageTitle,
+  pageIcon: PageIcon,
+  pageDescription,
+  pageBadge
 }: AppHeaderProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -82,6 +91,32 @@ export default function AppHeader({
           </h1>
         </div>
       </div>
+
+      {/* Page Title Section */}
+      {pageTitle && (
+        <div className="flex-1 flex items-center justify-center mx-4">
+          <div className="flex items-center gap-3 max-w-2xl">
+            {PageIcon && (
+              <div className="p-2 rounded-xl bg-primary/10 flex-shrink-0">
+                <PageIcon className="h-5 w-5 text-primary" />
+              </div>
+            )}
+            <div className="flex flex-col min-w-0 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="md3-title-large text-foreground">
+                  {pageTitle}
+                </h2>
+                {pageBadge}
+              </div>
+              {pageDescription && (
+                <p className="text-xs text-muted-foreground hidden md:block">
+                  {pageDescription}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         {!isMobile && (

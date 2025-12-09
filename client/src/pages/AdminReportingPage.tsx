@@ -203,6 +203,9 @@ export default function AdminReportingPage() {
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}
+        pageTitle="Rendicontazione Obiettivi"
+        pageIcon={BarChart3}
+        pageDescription="Gestisci la rendicontazione degli obiettivi assegnati"
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
@@ -218,18 +221,6 @@ export default function AdminReportingPage() {
           />
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
-            <div>
-              <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-primary/10">
-                  <BarChart3 className="h-6 w-6 text-primary" />
-                </div>
-                Rendicontazione Obiettivi
-              </h1>
-              <p className="md3-body-large text-muted-foreground">
-                Gestisci la rendicontazione degli obiettivi assegnati
-              </p>
-            </div>
-
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-3">
