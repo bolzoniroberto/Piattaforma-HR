@@ -8,6 +8,10 @@ interface RailContextType {
   setActiveSection: (sectionId: string | null) => void;
   isPanelOpen: boolean;
   setIsPanelOpen: (open: boolean) => void;
+  // Actions Panel (sidebar destra)
+  isActionsPanelOpen: boolean;
+  toggleActionsPanel: () => void;
+  setIsActionsPanelOpen: (open: boolean) => void;
 }
 
 const RailContext = createContext<RailContextType | undefined>(undefined);
@@ -16,8 +20,10 @@ export function RailProvider({ children }: { children: ReactNode }) {
   const [isRailOpen, setIsRailOpen] = useState(true); // Default open on desktop
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isActionsPanelOpen, setIsActionsPanelOpen] = useState(true); // Default open for admin
 
   const toggleRail = () => setIsRailOpen((prev) => !prev);
+  const toggleActionsPanel = () => setIsActionsPanelOpen((prev) => !prev);
 
   return (
     <RailContext.Provider value={{
@@ -27,7 +33,10 @@ export function RailProvider({ children }: { children: ReactNode }) {
       activeSection,
       setActiveSection,
       isPanelOpen,
-      setIsPanelOpen
+      setIsPanelOpen,
+      isActionsPanelOpen,
+      toggleActionsPanel,
+      setIsActionsPanelOpen
     }}>
       {children}
     </RailContext.Provider>
