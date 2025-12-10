@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import AppHeader from "@/components/AppHeader";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -53,7 +54,7 @@ import type { User } from "@shared/schema";
 export default function AdminUsersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
@@ -370,18 +371,27 @@ export default function AdminUsersPage() {
         pageDescription="Visualizza e gestisci tutti gli utenti del sistema MBO"
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+        <div className="relative max-w-[1800px] mx-auto">
+          {/* Sidebar Level 1 - Navigation Rail */}
+          <div className={`absolute left-0 top-0 transition-opacity duration-200 ${isRailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+              isOpen={true}
+            />
+          </div>
+
+          {/* Sidebar Level 2 - Contextual Panel */}
+          <div className={`absolute left-[84px] top-0 transition-opacity duration-200 ${isPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppPanel
+              activeSection={activeSection}
+              isOpen={true}
+              onClose={handlePanelClose}
+            />
+          </div>
+
+          {/* Main Content - Dynamic margin */}
+          <main className={`ml-[348px] ${isActionsPanelOpen ? 'mr-[264px]' : 'mr-0'} transition-[margin] duration-200 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]`} style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="md3-elevated md3-motion-standard">
@@ -447,52 +457,11 @@ export default function AdminUsersPage() {
 
               <Card className="md3-surface md3-motion-standard">
                 <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                      <CardTitle className="md3-title-large">Elenco Utenti</CardTitle>
-                      <CardDescription className="md3-body-medium mt-1">
-                        Gestisci tutti gli utenti del sistema
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Cerca utenti..."
-                          className="pl-9 w-56"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          data-testid="input-search-users"
-                        />
-                      </div>
-                      <Select value={roleFilter} onValueChange={setRoleFilter}>
-                        <SelectTrigger className="w-[140px]" data-testid="select-role-filter">
-                          <SelectValue placeholder="Ruolo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutti i ruoli</SelectItem>
-                          <SelectItem value="employee">Dipendente</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                        <SelectTrigger className="w-[160px]" data-testid="select-department-filter">
-                          <SelectValue placeholder="Dipartimento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutti i dipartimenti</SelectItem>
-                          {departments.map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button onClick={handleAddUser} data-testid="button-add-user">
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Aggiungi Utente
-                      </Button>
-                    </div>
+                  <div>
+                    <CardTitle className="md3-title-large">Elenco Utenti</CardTitle>
+                    <CardDescription className="md3-body-medium mt-1">
+                      Gestisci tutti gli utenti del sistema
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 
@@ -819,6 +788,77 @@ export default function AdminUsersPage() {
             </Card>
           </div>
         </main>
+
+          {/* Sidebar Level 3 - Actions Panel (destra) */}
+          <div className={`absolute right-0 top-0 transition-opacity duration-200 ${isActionsPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppActionsPanel isOpen={true} onClose={() => setIsActionsPanelOpen(false)} title="Gestione Utenti">
+              {/* Nuovo Utente */}
+              <Button className="w-full gap-2" onClick={handleAddUser} data-testid="button-add-user-sidebar">
+                <UserPlus className="h-4 w-4" />
+                Nuovo Utente
+              </Button>
+
+              <div className="border-t my-4" />
+
+              {/* Filtri */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs font-medium">Cerca</Label>
+                  <div className="relative mt-1.5">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Nome, email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                      data-testid="input-search-users-sidebar"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-medium">Ruolo</Label>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="mt-1.5" data-testid="select-role-filter-sidebar">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti i ruoli</SelectItem>
+                      <SelectItem value="employee">Dipendente</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-medium">Dipartimento</Label>
+                  <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                    <SelectTrigger className="mt-1.5" data-testid="select-department-filter-sidebar">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti i dipartimenti</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="border-t my-4" />
+
+              {/* Info */}
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Totale: <span className="font-medium text-foreground">{stats.total}</span> utenti</p>
+                {pagination && (
+                  <p>Pagina <span className="font-medium text-foreground">{page}</span> di <span className="font-medium text-foreground">{pagination.totalPages}</span></p>
+                )}
+              </div>
+            </AppActionsPanel>
+          </div>
       </div>
     </div>
 

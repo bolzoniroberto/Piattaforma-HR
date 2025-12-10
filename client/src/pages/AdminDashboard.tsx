@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Target, LayoutDashboard } from "lucide-react";
@@ -47,7 +48,7 @@ interface ObjectiveDictionary {
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<{
     title: string;
@@ -137,23 +138,27 @@ export default function AdminDashboard() {
         pageDescription="Gestione dipendenti e obiettivi"
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <div className="relative max-w-[1800px] mx-auto">
           {/* Sidebar Level 1 - Navigation Rail */}
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
+          <div className={`absolute left-0 top-0 transition-opacity duration-200 ${isRailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+              isOpen={true}
+            />
+          </div>
 
           {/* Sidebar Level 2 - Contextual Panel */}
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          <div className={`absolute left-[84px] top-0 transition-opacity duration-200 ${isPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppPanel
+              activeSection={activeSection}
+              isOpen={true}
+              onClose={handlePanelClose}
+            />
+          </div>
 
-          {/* Main Content */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          {/* Main Content - Dynamic margin */}
+          <main className={`ml-[348px] ${isActionsPanelOpen ? 'mr-[264px]' : 'mr-0'} transition-[margin] duration-200 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]`} style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
               <Tabs defaultValue="employees" className="w-full">
                 <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -344,6 +349,35 @@ export default function AdminDashboard() {
               </Tabs>
             </div>
           </main>
+
+          {/* Sidebar Level 3 - Actions Panel (destra) */}
+          <div className={`absolute right-0 top-0 transition-opacity duration-200 ${isActionsPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <AppActionsPanel isOpen={true} onClose={() => setIsActionsPanelOpen(false)} title="Dashboard Admin">
+              {/* Quick Stats */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Statistiche Rapide</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10 text-center">
+                    <div className="text-lg font-bold text-primary">{allUsers.length}</div>
+                    <div className="text-xs text-muted-foreground">Utenti</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-primary/10 text-center">
+                    <div className="text-lg font-bold text-primary">{objectivesDictionary.length}</div>
+                    <div className="text-xs text-muted-foreground">Obiettivi</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t my-4" />
+
+              {/* Info */}
+              <div className="text-xs text-muted-foreground space-y-2">
+                <p className="font-medium text-foreground">Panoramica Sistema</p>
+                <p>Utilizza i tab sopra per gestire dipendenti e obiettivi</p>
+                <p className="pt-2">Usa il menu laterale per accedere alle altre sezioni di amministrazione</p>
+              </div>
+            </AppActionsPanel>
+          </div>
         </div>
       </div>
     </>

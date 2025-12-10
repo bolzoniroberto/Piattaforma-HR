@@ -247,6 +247,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user (admin only - for org chart editing)
+  app.patch("/api/users/:userId", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { department, managerId } = req.body;
+
+      // Validate that user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Prevent circular manager relationships
+      if (managerId && managerId !== null) {
+        // Check if the new manager would create a cycle
+        let currentManagerId = managerId;
+        const visited = new Set<string>([userId]);
+
+        while (currentManagerId) {
+          if (visited.has(currentManagerId)) {
+            return res.status(400).json({
+              message: "Invalid manager assignment: would create a circular hierarchy"
+            });
+          }
+          visited.add(currentManagerId);
+
+          const manager = await storage.getUser(currentManagerId);
+          if (!manager) break;
+          currentManagerId = manager.managerId || null;
+        }
+      }
+
+      // Update user with new department and/or manager
+      await storage.updateUser(userId, {
+        department: department !== undefined ? department : user.department,
+        managerId: managerId !== undefined ? managerId : user.managerId,
+      });
+
+      // Fetch updated user
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("User update error:", error);
+      handleError(res, error);
+    }
+  });
+
   // Org chart endpoint with hybrid access (admin sees all, employees see their team)
   app.get("/api/orgchart", isAuthenticated, async (req, res) => {
     try {
