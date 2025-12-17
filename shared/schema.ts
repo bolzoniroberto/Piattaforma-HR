@@ -593,3 +593,485 @@ export const ruoliRelations = relations(ruoli, ({ one }) => ({
     references: [persona.codiceFiscale],
   }),
 }));
+
+// ==============================================
+// CUSTOM FIELDS SYSTEM
+// ==============================================
+
+// Custom Field Definitions - Configuration of custom fields
+export const customFieldDefinitions = pgTable("custom_field_definitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fieldName: varchar("field_name").notNull(), // Internal name (snake_case)
+  fieldLabel: varchar("field_label").notNull(), // Display label
+  fieldType: varchar("field_type").notNull(), // text, number, date, select, multiselect, boolean, email, phone, url
+  category: varchar("category").notNull(), // personal, contact, organizational, professional, custom
+  section: varchar("section"), // Which section of the profile to display in
+  isRequired: boolean("is_required").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  isSearchable: boolean("is_searchable").notNull().default(false),
+  displayOrder: integer("display_order").default(0),
+  placeholder: varchar("placeholder"),
+  helpText: text("help_text"),
+  validationRules: jsonb("validation_rules"), // JSON for min, max, pattern, etc.
+  options: jsonb("options"), // For select/multiselect: [{value: "opt1", label: "Option 1"}]
+  defaultValue: text("default_value"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCustomFieldDefinitionSchema = createInsertSchema(customFieldDefinitions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  fieldType: z.enum(["text", "number", "date", "select", "multiselect", "boolean", "email", "phone", "url", "textarea"]),
+  category: z.enum(["personal", "contact", "organizational", "professional", "custom"]),
+  validationRules: z.any().optional(),
+  options: z.any().optional(),
+});
+
+export type InsertCustomFieldDefinition = z.infer<typeof insertCustomFieldDefinitionSchema>;
+export type CustomFieldDefinition = typeof customFieldDefinitions.$inferSelect;
+
+// Custom Field Values - Actual values for each user
+export const customFieldValues = pgTable("custom_field_values", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fieldId: varchar("field_id").notNull().references(() => customFieldDefinitions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  value: text("value"), // Stored as text, parsed based on field type
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("unique_field_user").on(table.fieldId, table.userId),
+]);
+
+export const insertCustomFieldValueSchema = createInsertSchema(customFieldValues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCustomFieldValue = z.infer<typeof insertCustomFieldValueSchema>;
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+
+// Relations
+export const customFieldDefinitionsRelations = relations(customFieldDefinitions, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [customFieldDefinitions.createdBy],
+    references: [users.id],
+  }),
+  values: many(customFieldValues),
+}));
+
+export const customFieldValuesRelations = relations(customFieldValues, ({ one }) => ({
+  field: one(customFieldDefinitions, {
+    fields: [customFieldValues.fieldId],
+    references: [customFieldDefinitions.id],
+  }),
+  user: one(users, {
+    fields: [customFieldValues.userId],
+    references: [users.id],
+  }),
+}));
+
+// ==============================================
+// COMPETENCIES & PERFORMANCE MANAGEMENT SYSTEM
+// ==============================================
+
+// Competency Models - Templates for different personas
+export const competencyModels = pgTable("competency_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // "Executive Competencies", "Manager Competencies"
+  description: text("description"),
+  personaType: varchar("persona_type").notNull(), // "executive", "manager", "professional", "individual_contributor"
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCompetencyModelSchema = createInsertSchema(competencyModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  personaType: z.enum(["executive", "manager", "professional", "individual_contributor"]),
+});
+
+export type InsertCompetencyModel = z.infer<typeof insertCompetencyModelSchema>;
+export type CompetencyModel = typeof competencyModels.$inferSelect;
+
+// Competencies - Individual competency definitions
+export const competencies = pgTable("competencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelId: varchar("model_id").notNull().references(() => competencyModels.id, { onDelete: "cascade" }),
+  name: varchar("name").notNull(), // "Leadership", "Problem Solving", "Communication"
+  description: text("description"),
+  category: varchar("category"), // "technical", "behavioral", "leadership", "transversal"
+  isTransversal: boolean("is_transversal").notNull().default(false), // Shared across multiple personas
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCompetencySchema = createInsertSchema(competencies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  category: z.enum(["technical", "behavioral", "leadership", "transversal"]).optional(),
+});
+
+export type InsertCompetency = z.infer<typeof insertCompetencySchema>;
+export type Competency = typeof competencies.$inferSelect;
+
+// Evaluation Cycles - Annual performance review cycles
+export const evaluationCycles = pgTable("evaluation_cycles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // "Ciclo 2024", "Performance Review 2024"
+  year: integer("year").notNull(),
+  status: varchar("status").notNull().default("draft"), // "draft", "active", "completed", "archived"
+
+  // Phase dates
+  selfAssessmentStart: timestamp("self_assessment_start"),
+  selfAssessmentEnd: timestamp("self_assessment_end"),
+  peerFeedbackStart: timestamp("peer_feedback_start"),
+  peerFeedbackEnd: timestamp("peer_feedback_end"),
+  managerEvaluationStart: timestamp("manager_evaluation_start"),
+  managerEvaluationEnd: timestamp("manager_evaluation_end"),
+  feedbackDeliveryStart: timestamp("feedback_delivery_start"),
+  feedbackDeliveryEnd: timestamp("feedback_delivery_end"),
+
+  // Configuration
+  enable360Feedback: boolean("enable_360_feedback").notNull().default(false),
+
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEvaluationCycleSchema = createInsertSchema(evaluationCycles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.enum(["draft", "active", "completed", "archived"]).default("draft"),
+});
+
+export type InsertEvaluationCycle = z.infer<typeof insertEvaluationCycleSchema>;
+export type EvaluationCycle = typeof evaluationCycles.$inferSelect;
+
+// Self Assessments - Employee self-evaluations
+export const selfAssessments = pgTable("self_assessments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: varchar("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment").notNull(),
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueCycleUserCompetency: uniqueIndex("unique_self_assessment").on(table.cycleId, table.userId, table.competencyId),
+}));
+
+export const insertSelfAssessmentSchema = createInsertSchema(selfAssessments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+}).extend({
+  rating: z.number().int().min(1).max(5),
+});
+
+export type InsertSelfAssessment = z.infer<typeof insertSelfAssessmentSchema>;
+export type SelfAssessment = typeof selfAssessments.$inferSelect;
+
+// Peer Feedback Requests - 360 degree feedback requests
+export const peerFeedbackRequests = pgTable("peer_feedback_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  requestorUserId: varchar("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  peerUserId: varchar("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status").notNull().default("pending"), // "pending", "completed", "declined"
+  requestedAt: timestamp("requested_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueCycleRequestorPeer: uniqueIndex("unique_peer_request").on(table.cycleId, table.requestorUserId, table.peerUserId),
+}));
+
+export const insertPeerFeedbackRequestSchema = createInsertSchema(peerFeedbackRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  requestedAt: true,
+  completedAt: true,
+}).extend({
+  status: z.enum(["pending", "completed", "declined"]).default("pending"),
+});
+
+export type InsertPeerFeedbackRequest = z.infer<typeof insertPeerFeedbackRequestSchema>;
+export type PeerFeedbackRequest = typeof peerFeedbackRequests.$inferSelect;
+
+// Peer Feedbacks - Anonymous 360 feedback
+export const peerFeedbacks = pgTable("peer_feedbacks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requestId: varchar("request_id").notNull().references(() => peerFeedbackRequests.id, { onDelete: "cascade" }),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  requestorUserId: varchar("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  peerUserId: varchar("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: varchar("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment").notNull(),
+  isAnonymous: boolean("is_anonymous").notNull().default(true),
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueRequestCompetency: uniqueIndex("unique_peer_feedback").on(table.requestId, table.competencyId),
+}));
+
+export const insertPeerFeedbackSchema = createInsertSchema(peerFeedbacks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+}).extend({
+  rating: z.number().int().min(1).max(5),
+});
+
+export type InsertPeerFeedback = z.infer<typeof insertPeerFeedbackSchema>;
+export type PeerFeedback = typeof peerFeedbacks.$inferSelect;
+
+// Manager Evaluations - Manager's evaluation of employees
+export const managerEvaluations = pgTable("manager_evaluations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  employeeUserId: varchar("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managerUserId: varchar("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: varchar("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment").notNull(),
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueCycleEmployeeCompetency: uniqueIndex("unique_manager_evaluation").on(table.cycleId, table.employeeUserId, table.competencyId),
+}));
+
+export const insertManagerEvaluationSchema = createInsertSchema(managerEvaluations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+}).extend({
+  rating: z.number().int().min(1).max(5),
+});
+
+export type InsertManagerEvaluation = z.infer<typeof insertManagerEvaluationSchema>;
+export type ManagerEvaluation = typeof managerEvaluations.$inferSelect;
+
+// Development Plans - Collaborative development plans
+export const developmentPlans = pgTable("development_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  employeeUserId: varchar("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managerUserId: varchar("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  // Competencies to develop (array of competency IDs)
+  competenciesToDevelop: jsonb("competencies_to_develop"), // ["comp-id-1", "comp-id-2"]
+
+  // Development goals
+  developmentGoals: text("development_goals").notNull(),
+
+  // Action items with deadlines and status
+  actionItems: jsonb("action_items"), // [{ action: "...", deadline: "...", status: "..." }]
+
+  // Notes
+  managerNotes: text("manager_notes"),
+  employeeNotes: text("employee_notes"),
+
+  // Timeline
+  feedbackSessionDate: timestamp("feedback_session_date"),
+  reviewDate: timestamp("review_date"),
+
+  status: varchar("status").notNull().default("draft"), // "draft", "agreed", "in_progress", "completed"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueCycleEmployee: uniqueIndex("unique_development_plan").on(table.cycleId, table.employeeUserId),
+}));
+
+export const insertDevelopmentPlanSchema = createInsertSchema(developmentPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.enum(["draft", "agreed", "in_progress", "completed"]).default("draft"),
+  competenciesToDevelop: z.any().optional(),
+  actionItems: z.any().optional(),
+});
+
+export type InsertDevelopmentPlan = z.infer<typeof insertDevelopmentPlanSchema>;
+export type DevelopmentPlan = typeof developmentPlans.$inferSelect;
+
+// Evaluation Notifications - Automated reminders and notifications
+export const evaluationNotifications = pgTable("evaluation_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  notificationType: varchar("notification_type").notNull(), // "self_assessment_reminder", "peer_feedback_request", etc.
+  phase: varchar("phase").notNull(), // "self_assessment", "peer_feedback", "manager_evaluation", "feedback_delivery"
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  sentAt: timestamp("sent_at").defaultNow(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEvaluationNotificationSchema = createInsertSchema(evaluationNotifications).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  readAt: true,
+});
+
+export type InsertEvaluationNotification = z.infer<typeof insertEvaluationNotificationSchema>;
+export type EvaluationNotification = typeof evaluationNotifications.$inferSelect;
+
+// Relations for competency system
+export const competencyModelsRelations = relations(competencyModels, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [competencyModels.createdBy],
+    references: [users.id],
+  }),
+  competencies: many(competencies),
+}));
+
+export const competenciesRelations = relations(competencies, ({ one, many }) => ({
+  model: one(competencyModels, {
+    fields: [competencies.modelId],
+    references: [competencyModels.id],
+  }),
+  selfAssessments: many(selfAssessments),
+  peerFeedbacks: many(peerFeedbacks),
+  managerEvaluations: many(managerEvaluations),
+}));
+
+export const evaluationCyclesRelations = relations(evaluationCycles, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [evaluationCycles.createdBy],
+    references: [users.id],
+  }),
+  selfAssessments: many(selfAssessments),
+  peerFeedbackRequests: many(peerFeedbackRequests),
+  peerFeedbacks: many(peerFeedbacks),
+  managerEvaluations: many(managerEvaluations),
+  developmentPlans: many(developmentPlans),
+  notifications: many(evaluationNotifications),
+}));
+
+export const selfAssessmentsRelations = relations(selfAssessments, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [selfAssessments.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  user: one(users, {
+    fields: [selfAssessments.userId],
+    references: [users.id],
+  }),
+  competency: one(competencies, {
+    fields: [selfAssessments.competencyId],
+    references: [competencies.id],
+  }),
+}));
+
+export const peerFeedbackRequestsRelations = relations(peerFeedbackRequests, ({ one, many }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [peerFeedbackRequests.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  requestor: one(users, {
+    fields: [peerFeedbackRequests.requestorUserId],
+    references: [users.id],
+  }),
+  peer: one(users, {
+    fields: [peerFeedbackRequests.peerUserId],
+    references: [users.id],
+  }),
+  feedbacks: many(peerFeedbacks),
+}));
+
+export const peerFeedbacksRelations = relations(peerFeedbacks, ({ one }) => ({
+  request: one(peerFeedbackRequests, {
+    fields: [peerFeedbacks.requestId],
+    references: [peerFeedbackRequests.id],
+  }),
+  cycle: one(evaluationCycles, {
+    fields: [peerFeedbacks.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  requestor: one(users, {
+    fields: [peerFeedbacks.requestorUserId],
+    references: [users.id],
+  }),
+  peer: one(users, {
+    fields: [peerFeedbacks.peerUserId],
+    references: [users.id],
+  }),
+  competency: one(competencies, {
+    fields: [peerFeedbacks.competencyId],
+    references: [competencies.id],
+  }),
+}));
+
+export const managerEvaluationsRelations = relations(managerEvaluations, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [managerEvaluations.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  employee: one(users, {
+    fields: [managerEvaluations.employeeUserId],
+    references: [users.id],
+  }),
+  manager: one(users, {
+    fields: [managerEvaluations.managerUserId],
+    references: [users.id],
+  }),
+  competency: one(competencies, {
+    fields: [managerEvaluations.competencyId],
+    references: [competencies.id],
+  }),
+}));
+
+export const developmentPlansRelations = relations(developmentPlans, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [developmentPlans.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  employee: one(users, {
+    fields: [developmentPlans.employeeUserId],
+    references: [users.id],
+  }),
+  manager: one(users, {
+    fields: [developmentPlans.managerUserId],
+    references: [users.id],
+  }),
+}));
+
+export const evaluationNotificationsRelations = relations(evaluationNotifications, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [evaluationNotifications.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  user: one(users, {
+    fields: [evaluationNotifications.userId],
+    references: [users.id],
+  }),
+}));

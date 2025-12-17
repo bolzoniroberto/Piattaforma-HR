@@ -12,10 +12,9 @@ import {
 interface AppRailProps {
   activeSection: string | null;
   onSectionClick: (sectionId: string) => void;
-  isOpen: boolean;
 }
 
-export default function AppRail({ activeSection, onSectionClick, isOpen }: AppRailProps) {
+export default function AppRail({ activeSection, onSectionClick }: AppRailProps) {
   const { user } = useAuth();
   const [location] = useLocation();
 
@@ -24,15 +23,10 @@ export default function AppRail({ activeSection, onSectionClick, isOpen }: AppRa
     (item) => !item.adminOnly || user?.role === "admin"
   );
 
-  // If rail is not open, don't render
-  if (!isOpen) {
-    return null;
-  }
-
   return (
     <TooltipProvider delayDuration={200}>
       <aside
-        className="w-[72px] bg-sidebar rounded-2xl p-3 sticky top-6 max-h-[calc(100vh-3rem)] flex flex-col z-40"
+        className="w-[72px] shrink-0 bg-sidebar rounded-2xl p-3 sticky top-6 max-h-[calc(100vh-3rem)] flex flex-col z-40"
         style={{ boxShadow: 'var(--shadow-2)' }}
       >
         {/* Logo Icon */}

@@ -48,7 +48,7 @@ interface ObjectiveDictionary {
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<{
     title: string;
@@ -114,16 +114,9 @@ export default function AdminDashboard() {
     if (activeSection === sectionId) {
       // Toggle off if clicking same section
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   return (
@@ -137,28 +130,22 @@ export default function AdminDashboard() {
         pageIcon={LayoutDashboard}
         pageDescription="Gestione dipendenti e obiettivi"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
-        <div className="relative max-w-[1800px] mx-auto">
-          {/* Sidebar Level 1 - Navigation Rail */}
-          <div className={`absolute left-0 top-0 transition-opacity duration-200 ${isRailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
             <AppRail
               activeSection={activeSection}
               onSectionClick={handleSectionClick}
-              isOpen={true}
             />
-          </div>
-
-          {/* Sidebar Level 2 - Contextual Panel */}
-          <div className={`absolute left-[84px] top-0 transition-opacity duration-200 ${isPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <AppPanel
               activeSection={activeSection}
-              isOpen={true}
-              onClose={handlePanelClose}
+              className="transition-opacity duration-200"
             />
           </div>
 
-          {/* Main Content - Dynamic margin */}
-          <main className={`ml-[348px] ${isActionsPanelOpen ? 'mr-[264px]' : 'mr-0'} transition-[margin] duration-200 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]`} style={{ boxShadow: 'var(--shadow-2)' }}>
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
               <Tabs defaultValue="employees" className="w-full">
                 <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -351,8 +338,8 @@ export default function AdminDashboard() {
           </main>
 
           {/* Sidebar Level 3 - Actions Panel (destra) */}
-          <div className={`absolute right-0 top-0 transition-opacity duration-200 ${isActionsPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <AppActionsPanel isOpen={true} onClose={() => setIsActionsPanelOpen(false)} title="Dashboard Admin">
+          {isActionsPanelOpen && (
+            <AppActionsPanel isOpen={isActionsPanelOpen} onClose={() => setIsActionsPanelOpen(false)} title="Dashboard Admin">
               {/* Quick Stats */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Statistiche Rapide</Label>
@@ -377,7 +364,7 @@ export default function AdminDashboard() {
                 <p className="pt-2">Usa il menu laterale per accedere alle altre sezioni di amministrazione</p>
               </div>
             </AppActionsPanel>
-          </div>
+          )}
         </div>
       </div>
     </>

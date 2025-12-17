@@ -9,6 +9,8 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import ProfilePage from "@/pages/ProfilePage";
+import ProfiloPage from "@/pages/ProfiloPage";
+import TeamPage from "@/pages/TeamPage";
 import RegulationPage from "@/pages/RegulationPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
@@ -20,6 +22,16 @@ import AdminReportingPage from "@/pages/AdminReportingPage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
 import AdminAnalyticsPage from "@/pages/AdminAnalyticsPage";
+import AdminCustomFieldsPage from "@/pages/AdminCustomFieldsPage";
+import AdminCompetenciesPage from "@/pages/AdminCompetenciesPage";
+import AdminEvaluationCyclesPage from "@/pages/AdminEvaluationCyclesPage";
+import AdminCompetenciesAnalyticsPage from "@/pages/AdminCompetenciesAnalyticsPage";
+import EmployeeSelfAssessmentPage from "@/pages/EmployeeSelfAssessmentPage";
+import EmployeePeerFeedbackPage from "@/pages/EmployeePeerFeedbackPage";
+import EmployeeDevelopmentPlanPage from "@/pages/EmployeeDevelopmentPlanPage";
+import ManagerTeamEvaluationsPage from "@/pages/ManagerTeamEvaluationsPage";
+import ManagerEmployeeEvaluationPage from "@/pages/ManagerEmployeeEvaluationPage";
+import ManagerDevelopmentPlansPage from "@/pages/ManagerDevelopmentPlansPage";
 import OrgChartPage from "@/pages/OrgChartPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
@@ -126,9 +138,69 @@ function Router() {
           <AdminAnalyticsPage />
         </ProtectedRoute>
       )} />
+      <Route path="/admin/custom-fields" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminCustomFieldsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/competencies" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminCompetenciesPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/evaluation-cycles" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminEvaluationCyclesPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/competencies-analytics" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminCompetenciesAnalyticsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/employee/self-assessment" component={() => (
+        <ProtectedRoute>
+          <EmployeeSelfAssessmentPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/employee/peer-feedback" component={() => (
+        <ProtectedRoute>
+          <EmployeePeerFeedbackPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/employee/development-plan" component={() => (
+        <ProtectedRoute>
+          <EmployeeDevelopmentPlanPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/manager/team-evaluations" component={() => (
+        <ProtectedRoute>
+          <ManagerTeamEvaluationsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/manager/team-evaluations/:userId/:cycleId" component={() => (
+        <ProtectedRoute>
+          <ManagerEmployeeEvaluationPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/manager/development-plans" component={() => (
+        <ProtectedRoute>
+          <ManagerDevelopmentPlansPage />
+        </ProtectedRoute>
+      )} />
       <Route path="/organigramma" component={() => (
         <ProtectedRoute>
           <OrgChartPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/profilo" component={() => (
+        <ProtectedRoute>
+          <ProfiloPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/team" component={() => (
+        <ProtectedRoute>
+          <TeamPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />

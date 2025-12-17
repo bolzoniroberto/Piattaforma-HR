@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ interface ObjectiveDictionary {
 export default function AdminAssignmentsBulkPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedObjective, setSelectedObjective] = useState<ObjectiveDictionary | null>(null);
@@ -175,20 +176,22 @@ export default function AdminAssignmentsBulkPage() {
         pageIcon={Target}
         pageDescription="Assegna un obiettivo a tutti i dipendenti di un dipartimento"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="space-y-6">
               {/* Progress Steps */}
               <div className="flex items-center gap-4">
                 <div className={`flex items-center gap-2 ${step >= 1 ? "text-primary" : "text-muted-foreground"}`}>
@@ -450,6 +453,60 @@ export default function AdminAssignmentsBulkPage() {
             )}
           </div>
         </main>
+
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Assegnazione Massiva"
+            >
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Procedura Guidata</p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>1</div>
+                  <span className={step >= 1 ? "font-medium" : "text-muted-foreground"}>Seleziona Obiettivo</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>2</div>
+                  <span className={step >= 2 ? "font-medium" : "text-muted-foreground"}>Seleziona Dipartimento</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>3</div>
+                  <span className={step >= 3 ? "font-medium" : "text-muted-foreground"}>Conferma e Assegna</span>
+                </div>
+              </div>
+            </div>
+
+            {selectedObjective && (
+              <div className="pt-4 border-t space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Obiettivo Selezionato</p>
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <p className="text-sm font-medium">{selectedObjective.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{selectedObjective.indicatorCluster?.name}</p>
+                </div>
+              </div>
+            )}
+
+            {selectedDepartment && (
+              <div className="pt-4 border-t space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Dipartimento</p>
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <p className="text-sm font-medium">{selectedDepartment}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {targetUsers.length} {targetUsers.length === 1 ? "dipendente" : "dipendenti"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Assegna rapidamente lo stesso obiettivo a tutti i dipendenti di un dipartimento specificato.
+              </p>
+            </div>
+          </AppActionsPanel>
+          )}
       </div>
     </div>
     </>

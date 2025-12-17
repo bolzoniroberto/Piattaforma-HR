@@ -34,7 +34,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function OrgChartPage() {
   const { user } = useAuth();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
@@ -67,16 +67,9 @@ export default function OrgChartPage() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const handleUserClick = (clickedUser: User) => {
@@ -175,28 +168,22 @@ export default function OrgChartPage() {
           </Badge>
         ) : undefined}
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
-        <div className="relative max-w-[1800px] mx-auto">
-          {/* Sidebar Level 1 - Navigation Rail */}
-          <div className={`absolute left-0 top-0 transition-opacity duration-200 ${isRailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
             <AppRail
               activeSection={activeSection}
               onSectionClick={handleSectionClick}
-              isOpen={true}
             />
-          </div>
-
-          {/* Sidebar Level 2 - Contextual Panel */}
-          <div className={`absolute left-[84px] top-0 transition-opacity duration-200 ${isPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <AppPanel
               activeSection={activeSection}
-              isOpen={true}
-              onClose={handlePanelClose}
+              className="transition-opacity duration-200"
             />
           </div>
 
-          {/* Main Content - Dynamic margin */}
-          <main className={`ml-[348px] ${isActionsPanelOpen ? 'mr-[264px]' : 'mr-0'} transition-[margin] duration-200 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]`} style={{ boxShadow: 'var(--shadow-2)' }}>
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Organization Chart */}
               <Card>
@@ -236,9 +223,9 @@ export default function OrgChartPage() {
             </div>
           </main>
 
-          {/* Sidebar Level 3 - Actions Panel (destra) */}
-          <div className={`absolute right-0 top-0 transition-opacity duration-200 ${isActionsPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <AppActionsPanel isOpen={true} onClose={() => setIsActionsPanelOpen(false)} title="Azioni Organigramma">
+          {/* AppActionsPanel - Right sidebar, conditional rendering OK */}
+          {isActionsPanelOpen && (
+            <AppActionsPanel isOpen={isActionsPanelOpen} onClose={() => setIsActionsPanelOpen(false)} title="Azioni Organigramma">
               {/* Search Section */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Cerca Persone</Label>
@@ -290,7 +277,7 @@ export default function OrgChartPage() {
                 </div>
               )}
             </AppActionsPanel>
-          </div>
+          )}
         </div>
       </div>
 

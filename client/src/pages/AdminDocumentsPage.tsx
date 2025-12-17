@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ interface Document {
 export default function AdminDocumentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<{
     title: string;
@@ -54,16 +55,9 @@ export default function AdminDocumentsPage() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const { data: documents = [] } = useQuery<Document[]>({
@@ -142,18 +136,21 @@ export default function AdminDocumentsPage() {
         notificationCount={0}
         showSidebarTrigger={true}
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-6xl mx-auto space-y-6">
             <div>
@@ -288,8 +285,37 @@ export default function AdminDocumentsPage() {
             </div>
           </div>
         </main>
+
+          {/* AppActionsPanel - Right sidebar, conditional rendering OK */}
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Documenti"
+            >
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-lg bg-primary/10 text-center">
+                  <div className="text-lg font-bold text-primary">{documents.length}</div>
+                  <div className="text-xs text-muted-foreground">Documenti</div>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-500/10 text-center">
+                  <div className="text-lg font-bold text-blue-600">{documents.filter(d => d.requiresAcceptance).length}</div>
+                  <div className="text-xs text-muted-foreground">Accettazione</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Gestisci i documenti del sistema come policy, regolamenti e informazioni aziendali.
+              </p>
+            </div>
+            </AppActionsPanel>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }

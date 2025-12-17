@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ interface BusinessFunction {
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [openClusterDialog, setOpenClusterDialog] = useState(false);
   const [openCalcDialog, setOpenCalcDialog] = useState(false);
   const [openBusinessDialog, setOpenBusinessDialog] = useState(false);
@@ -85,16 +86,9 @@ export default function AdminSettingsPage() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
@@ -347,18 +341,21 @@ export default function AdminSettingsPage() {
         pageIcon={Settings}
         pageDescription="Configura indicatori, tipi di calcolo e funzioni aziendali"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-end gap-4 flex-wrap">
@@ -371,47 +368,6 @@ export default function AdminSettingsPage() {
                   <Database className="h-4 w-4 mr-2" />
                   {seedMutation.isPending ? "Creazione..." : "Popola Dati Test"}
                 </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Indicatori</CardTitle>
-                    <Grid3x3 className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-clusters">
-                      {clusters.length}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Cluster di indicatori</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Tipi di Calcolo</CardTitle>
-                    <Calculator className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-calculation-types">
-                      {calcTypes.length}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Formule di valutazione</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Funzioni Aziendali</CardTitle>
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="stat-business-functions">
-                      {businessFunctions.length}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Dipartimenti</p>
-                  </CardContent>
-                </Card>
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
@@ -785,6 +741,48 @@ export default function AdminSettingsPage() {
             </AlertDialog>
           </div>
         </main>
+
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Azioni Impostazioni"
+            >
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => seedMutation.mutate()}
+              disabled={seedMutation.isPending}
+            >
+              <Database className="h-4 w-4" />
+              {seedMutation.isPending ? "Creazione..." : "Popola Dati Test"}
+            </Button>
+
+            <div className="pt-4 border-t space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Indicatori</span>
+                  <span className="font-semibold" data-testid="stat-clusters">{clusters.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tipi Calcolo</span>
+                  <span className="font-semibold" data-testid="stat-calculation-types">{calcTypes.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Funzioni Aziendali</span>
+                  <span className="font-semibold" data-testid="stat-business-functions">{businessFunctions.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Gestisci le strutture di base del sistema: cluster di indicatori, tipi di calcolo e funzioni aziendali/dipartimenti.
+              </p>
+            </div>
+          </AppActionsPanel>
+          )}
       </div>
     </div>
     </>

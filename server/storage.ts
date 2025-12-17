@@ -727,6 +727,54 @@ export class DatabaseStorage implements IStorage {
     peers.forEach(p => visibleIds.add(p.id));
   }
 
+  // ===============================================
+  // CUSTOM FIELDS - Delegate to customFieldsStorage
+  // ===============================================
+
+  async getCustomFieldDefinitions(includeInactive = false) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.getCustomFieldDefinitions(includeInactive);
+  }
+
+  async getCustomFieldDefinition(id: string) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.getCustomFieldDefinition(id);
+  }
+
+  async createCustomFieldDefinition(field: any) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.createCustomFieldDefinition(field);
+  }
+
+  async updateCustomFieldDefinition(id: string, field: any) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.updateCustomFieldDefinition(id, field);
+  }
+
+  async deleteCustomFieldDefinition(id: string) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.deleteCustomFieldDefinition(id);
+  }
+
+  async getCustomFieldValues(userId: string) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.getCustomFieldValues(userId);
+  }
+
+  async getCustomFieldValue(fieldId: string, userId: string) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.getCustomFieldValue(fieldId, userId);
+  }
+
+  async setCustomFieldValue(data: any) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.setCustomFieldValue(data);
+  }
+
+  async deleteCustomFieldValue(fieldId: string, userId: string) {
+    const { customFieldsStorage } = await import("./customFieldsStorage");
+    return customFieldsStorage.deleteCustomFieldValue(fieldId, userId);
+  }
 }
 
 export const storage = new DatabaseStorage();

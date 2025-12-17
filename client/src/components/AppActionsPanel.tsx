@@ -15,10 +15,8 @@ export default function AppActionsPanel({
   title = "Azioni",
   children
 }: AppActionsPanelProps) {
-  if (!isOpen) return null;
-
   return (
-    <aside className="w-[240px] h-[calc(100vh-7rem)] sticky top-6">
+    <aside className="w-[240px] shrink-0 h-[calc(100vh-7rem)] sticky top-6">
       <div
         className="bg-sidebar rounded-2xl p-4 h-full overflow-y-auto"
         style={{ boxShadow: 'var(--shadow-2)' }}

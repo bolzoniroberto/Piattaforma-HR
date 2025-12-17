@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,22 +25,15 @@ import type { User } from "@shared/schema";
 export default function AdminClearAllAssignmentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const { data: allUsers = [] } = useQuery<User[]>({
@@ -94,18 +88,21 @@ export default function AdminClearAllAssignmentsPage() {
         pageIcon={Trash2}
         pageDescription="Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
               <Card className="md3-surface md3-motion-standard border-destructive/50 bg-destructive/5">
@@ -166,8 +163,45 @@ export default function AdminClearAllAssignmentsPage() {
             </AlertDialog>
           </div>
         </main>
+
+          {/* AppActionsPanel - Right sidebar, conditional rendering OK */}
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Disassocia Tutti"
+            >
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <p className="text-xs font-medium text-destructive">Operazione Critica</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Questa azione rimuoverà tutte le assegnazioni obiettivi da tutti i dipendenti.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Dipendenti Totali</span>
+                  <span className="font-semibold">{allUsers.filter(u => u.role === "employee").length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Attenzione: Gli obiettivi rimangono nel dizionario, solo le assegnazioni vengono rimosse.
+              </p>
+            </div>
+            </AppActionsPanel>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }

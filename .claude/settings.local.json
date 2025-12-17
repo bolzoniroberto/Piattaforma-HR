@@ -18,7 +18,15 @@
       "Bash(pkill:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(sqlite3:*)",
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)",
+      "Bash(/Users/robertobolzoni/MBO/remove-toggle-buttons.sh)",
+      "Bash(perl:*)"
     ],
     "deny": [],
     "ask": []

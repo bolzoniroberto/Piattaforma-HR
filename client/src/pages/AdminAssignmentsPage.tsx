@@ -4,6 +4,7 @@ import { useParams, Link } from "wouter";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,14 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  ArrowLeft, 
-  Search, 
-  Users, 
-  Target, 
-  Building, 
-  Leaf, 
-  Plus, 
+import {
+  ArrowLeft,
+  Search,
+  Users,
+  Target,
+  Building,
+  Leaf,
+  Plus,
   Trash2,
   CheckCircle,
   Clock
@@ -91,7 +92,7 @@ export default function AdminAssignmentsPage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedObjectives, setSelectedObjectives] = useState<SelectedObjectiveDetail[]>([]);
   const [assignmentDeadline, setAssignmentDeadline] = useState<string>("");
@@ -103,16 +104,9 @@ export default function AdminAssignmentsPage() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const { data: targetUser, isLoading: userLoading } = useQuery<User>({
@@ -289,18 +283,18 @@ export default function AdminAssignmentsPage() {
           notificationCount={0}
           showSidebarTrigger={true}
         />
-        <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
           <div className="flex gap-6 max-w-[1800px] mx-auto">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-              isOpen={isRailOpen}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              isOpen={isPanelOpen}
-              onClose={handlePanelClose}
-            />
+            <div className="w-[312px] shrink-0 flex gap-3">
+              <AppRail
+                activeSection={activeSection}
+                onSectionClick={handleSectionClick}
+              />
+              <AppPanel
+                activeSection={activeSection}
+                className="transition-opacity duration-200"
+              />
+            </div>
             <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Caricamento...</p>
@@ -321,18 +315,18 @@ export default function AdminAssignmentsPage() {
           notificationCount={0}
           showSidebarTrigger={true}
         />
-        <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
           <div className="flex gap-6 max-w-[1800px] mx-auto">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-              isOpen={isRailOpen}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              isOpen={isPanelOpen}
-              onClose={handlePanelClose}
-            />
+            <div className="w-[312px] shrink-0 flex gap-3">
+              <AppRail
+                activeSection={activeSection}
+                onSectionClick={handleSectionClick}
+              />
+              <AppPanel
+                activeSection={activeSection}
+                className="transition-opacity duration-200"
+              />
+            </div>
             <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="flex items-center justify-center h-full">
               <Card className="max-w-md">
@@ -365,18 +359,21 @@ export default function AdminAssignmentsPage() {
         pageIcon={Target}
         pageDescription={`Gestisci gli obiettivi assegnati a ${targetUser?.firstName || ""} ${targetUser?.lastName || ""}`}
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
@@ -387,118 +384,36 @@ export default function AdminAssignmentsPage() {
               </Link>
             </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-1">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Informazioni Dipendente</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-16 w-16">
-                        {targetUser.profileImageUrl && (
-                          <AvatarImage src={targetUser.profileImageUrl} alt={targetUser.firstName || ""} />
-                        )}
-                        <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                          {getInitials(targetUser.firstName, targetUser.lastName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {targetUser.firstName} {targetUser.lastName}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{targetUser.email}</p>
-                      </div>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <CardTitle>Obiettivi Assegnati</CardTitle>
+                      <CardDescription>
+                        Obiettivi attualmente assegnati a {targetUser.firstName} {targetUser.lastName}
+                      </CardDescription>
                     </div>
-                    
-                    <div className="space-y-2 pt-2 border-t">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Dipartimento</span>
-                        <span className="font-medium">{targetUser.department || "-"}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">RAL</span>
-                        <span className="font-medium">
-                          {targetUser.ral ? `€${Number(targetUser.ral).toLocaleString()}` : "-"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">MBO %</span>
-                        <span className="font-medium">
-                          {targetUser.mboPercentage ? `${targetUser.mboPercentage}%` : "-"}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 pt-2 border-t">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Obiettivi Assegnati</span>
-                        <span className="font-semibold">{userAssignments.length}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Peso Totale</span>
-                        <span className={`font-semibold ${currentTotalWeight > 100 ? 'text-destructive' : currentTotalWeight === 100 ? 'text-green-600' : ''}`}>
-                          {currentTotalWeight}%
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        <Progress value={Math.min(currentTotalWeight, 100)} className="h-2" />
-                        {currentTotalWeight < 100 && (
-                          <p className="text-xs text-muted-foreground">
-                            Disponibile: {availableWeight}%
-                          </p>
-                        )}
-                        {currentTotalWeight === 100 && (
-                          <p className="text-xs text-green-600">
-                            Peso completo al 100%
-                          </p>
-                        )}
-                        {currentTotalWeight > 100 && (
-                          <p className="text-xs text-destructive">
-                            Attenzione: peso totale eccede il 100%
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-1 pt-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Progresso Medio</span>
-                          <span className="font-semibold">{overallProgress}%</span>
-                        </div>
-                        <Progress value={overallProgress} className="h-2" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button data-testid="button-assign-new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Assegna Obiettivo
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+                        <DialogHeader>
+                          <DialogTitle>Assegna Nuovi Obiettivi</DialogTitle>
+                          <DialogDescription>
+                            Seleziona gli obiettivi da assegnare a {targetUser.firstName} {targetUser.lastName}
+                          </DialogDescription>
+                        </DialogHeader>
 
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
-                      <div>
-                        <CardTitle>Obiettivi Assegnati</CardTitle>
-                        <CardDescription>
-                          Obiettivi attualmente assegnati al dipendente
-                        </CardDescription>
-                      </div>
-                      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button data-testid="button-assign-new">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Assegna Obiettivo
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
-                          <DialogHeader>
-                            <DialogTitle>Assegna Nuovi Obiettivi</DialogTitle>
-                            <DialogDescription>
-                              Seleziona gli obiettivi da assegnare a {targetUser.firstName} {targetUser.lastName}
-                            </DialogDescription>
-                          </DialogHeader>
-                          
-                          <div className="flex-1 overflow-auto space-y-2">
-                            {availableObjectives.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">
-                                Nessun obiettivo disponibile
-                              </div>
-                            ) : (
+                        <div className="flex-1 overflow-auto space-y-2">
+                          {availableObjectives.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              Nessun obiettivo disponibile
+                            </div>
+                          ) : (
                               availableObjectives.map((obj: ObjectiveDictionary) => (
                                 <div 
                                   key={obj.id}
@@ -752,9 +667,77 @@ export default function AdminAssignmentsPage() {
                     )}
                   </CardContent>
               </Card>
-            </div>
           </div>
         </main>
+
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Assegnazioni"
+            >
+            <Link href="/admin/users">
+              <Button variant="outline" className="w-full gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Lista Utenti
+              </Button>
+            </Link>
+
+            {targetUser && (
+              <>
+                <div className="pt-4 border-t space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Dipendente</p>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      {targetUser.profileImageUrl && (
+                        <AvatarImage src={targetUser.profileImageUrl} alt={targetUser.firstName || ""} />
+                      )}
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                        {getInitials(targetUser.firstName, targetUser.lastName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {targetUser.firstName} {targetUser.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{targetUser.department || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Obiettivi</span>
+                      <span className="font-semibold">{userAssignments.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Peso Totale</span>
+                      <span className={`font-semibold ${currentTotalWeight > 100 ? 'text-destructive' : currentTotalWeight === 100 ? 'text-green-600' : ''}`}>
+                        {currentTotalWeight}%
+                      </span>
+                    </div>
+                    <Progress value={Math.min(currentTotalWeight, 100)} className="h-2" />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progresso Medio</span>
+                      <span className="font-semibold">{overallProgress}%</span>
+                    </div>
+                    <Progress value={overallProgress} className="h-2" />
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full gap-2 mt-4"
+                  onClick={() => setIsAssignDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Assegna Obiettivo
+                </Button>
+              </>
+            )}
+          </AppActionsPanel>
+          )}
       </div>
     </div>
     </>

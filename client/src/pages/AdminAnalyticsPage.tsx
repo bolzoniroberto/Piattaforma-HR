@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -13,21 +15,14 @@ const COLORS = ['#DC2626', '#6B7280', '#9CA3AF', '#D1D5DB', '#EF4444', '#991B1B'
 
 export default function AdminAnalyticsPage() {
   const { user } = useAuth();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   // Fetch aggregated statistics
@@ -60,18 +55,20 @@ export default function AdminAnalyticsPage() {
           notificationCount={0}
           showSidebarTrigger={true}
         />
-        <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
           <div className="flex gap-6 max-w-[1800px] mx-auto">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-              isOpen={isRailOpen}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              isOpen={isPanelOpen}
-              onClose={handlePanelClose}
-            />
+            {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+            <div className="w-[312px] shrink-0 flex gap-3">
+              <AppRail
+                activeSection={activeSection}
+                onSectionClick={handleSectionClick}
+              />
+              <AppPanel
+                activeSection={activeSection}
+                className="transition-opacity duration-200"
+              />
+            </div>
+
             <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading analytics...</p>
@@ -115,6 +112,7 @@ export default function AdminAnalyticsPage() {
 
   // Financial Analytics - MBO Payout calculations from API
   const financialData = financialDataRaw || {
+    theoreticalBudget: 0,
     theoreticalTargetPayout: 0,
     actualProjectedPayout: 0,
     savings: 0,
@@ -135,18 +133,20 @@ export default function AdminAnalyticsPage() {
         pageIcon={BarChart3}
         pageDescription="Metriche di performance e insights aggregati"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="space-y-6">
           {/* KPI Cards */}
@@ -374,7 +374,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-1">
-                    <div className="md3-headline-medium">€{financialData.theoreticalTargetPayout.toLocaleString()}</div>
+                    <div className="md3-headline-medium">€{(financialData.theoreticalTargetPayout || 0).toLocaleString()}</div>
                     <p className="md3-body-medium text-muted-foreground mt-1">Potenziale massimo payout</p>
                   </CardContent>
                 </Card>
@@ -387,7 +387,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-1">
-                    <div className="md3-headline-medium">€{financialData.actualProjectedPayout.toLocaleString()}</div>
+                    <div className="md3-headline-medium">€{(financialData.actualProjectedPayout || 0).toLocaleString()}</div>
                     <p className="md3-body-medium text-muted-foreground mt-1">Basato su performance reale</p>
                   </CardContent>
                 </Card>
@@ -400,7 +400,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-1">
-                    <div className="md3-headline-medium text-green-600">€{financialData.savings.toLocaleString()}</div>
+                    <div className="md3-headline-medium text-green-600">€{(financialData.savings || 0).toLocaleString()}</div>
                     <p className="md3-body-medium text-muted-foreground mt-1">Differenza target vs effettivo</p>
                   </CardContent>
                 </Card>
@@ -413,7 +413,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-1">
-                    <div className="md3-headline-medium text-green-600">{financialData.savingsPercentage}%</div>
+                    <div className="md3-headline-medium text-green-600">{(financialData.savingsPercentage || 0)}%</div>
                     <p className="md3-body-medium text-muted-foreground mt-1">Sul budget totale MBO</p>
                   </CardContent>
                 </Card>
@@ -497,14 +497,14 @@ export default function AdminAnalyticsPage() {
                         <tr className="border-t-2 font-bold">
                           <td className="p-2" colSpan={3}>TOTALE</td>
                           <td className="text-right p-2">
-                            €{financialData.theoreticalTargetPayout.toLocaleString()}
+                            €{(financialData.theoreticalTargetPayout || 0).toLocaleString()}
                           </td>
                           <td className="text-right p-2">-</td>
                           <td className="text-right p-2 text-green-600">
-                            €{financialData.actualProjectedPayout.toLocaleString()}
+                            €{(financialData.actualProjectedPayout || 0).toLocaleString()}
                           </td>
                           <td className="text-right p-2">
-                            -€{financialData.savings.toLocaleString()}
+                            -€{(financialData.savings || 0).toLocaleString()}
                           </td>
                         </tr>
                       </tfoot>
@@ -516,6 +516,60 @@ export default function AdminAnalyticsPage() {
           </Tabs>
           </div>
         </main>
+
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Analytics"
+            >
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">KPI Principali</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-lg bg-primary/10 text-center">
+                  <div className="text-lg font-bold text-primary">{overviewStats.totalObjectives}</div>
+                  <div className="text-xs text-muted-foreground">Obiettivi</div>
+                </div>
+                <div className="p-2 rounded-lg bg-green-500/10 text-center">
+                  <div className="text-lg font-bold text-green-600">{overviewStats.completedObjectives}</div>
+                  <div className="text-xs text-muted-foreground">Completati</div>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-500/10 text-center">
+                  <div className="text-lg font-bold text-blue-600">{overviewStats.totalEmployees}</div>
+                  <div className="text-xs text-muted-foreground">Dipendenti</div>
+                </div>
+                <div className="p-2 rounded-lg bg-purple-500/10 text-center">
+                  <div className="text-lg font-bold text-purple-600">{overviewStats.averageCompletion}%</div>
+                  <div className="text-xs text-muted-foreground">Media Completamento</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Finanziari</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Budget Teorico</span>
+                  <span className="font-semibold">€{(financialData.theoreticalBudget || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Proiezione Effettiva</span>
+                  <span className="font-semibold">€{(financialData.actualProjectedPayout || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Risparmio</span>
+                  <span className="font-semibold text-green-600">€{(financialData.savings || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Dashboard di analytics con metriche di performance, distribuzione obiettivi per dipartimento e analisi finanziaria MBO.
+              </p>
+            </div>
+          </AppActionsPanel>
+          )}
       </div>
     </div>
     </>

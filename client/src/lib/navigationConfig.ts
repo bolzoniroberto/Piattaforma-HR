@@ -8,6 +8,13 @@ import {
   Trash2,
   CheckCircle,
   Network,
+  UserCircle,
+  Award,
+  Calendar,
+  BarChart3,
+  ClipboardCheck,
+  TrendingUp,
+  UserCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,9 +31,24 @@ export const railNavigation: NavItem[] = [
   {
     id: "dashboard",
     title: "Dashboard",
-    url: "/",
     icon: LayoutDashboard,
     adminOnly: false,
+    children: [
+      {
+        id: "dashboard-mbo",
+        title: "Dashboard MBO",
+        url: "/",
+        icon: LayoutDashboard,
+        adminOnly: false,
+      },
+      {
+        id: "profilo",
+        title: "Profilo",
+        url: "/profilo",
+        icon: UserCircle,
+        adminOnly: false,
+      },
+    ],
   },
   {
     id: "anagrafica",
@@ -45,6 +67,13 @@ export const railNavigation: NavItem[] = [
         id: "settings",
         title: "Impostazioni Strutture",
         url: "/admin/settings",
+        icon: Settings,
+        adminOnly: true,
+      },
+      {
+        id: "custom-fields",
+        title: "Campi Personalizzati",
+        url: "/admin/custom-fields",
         icon: Settings,
         adminOnly: true,
       },
@@ -87,6 +116,86 @@ export const railNavigation: NavItem[] = [
     ],
   },
   {
+    id: "valutazione",
+    title: "Valutazione",
+    icon: ClipboardCheck,
+    adminOnly: false,
+    children: [
+      {
+        id: "self-assessment",
+        title: "Autovalutazione",
+        url: "/employee/self-assessment",
+        icon: FileText,
+        adminOnly: false,
+      },
+      {
+        id: "peer-feedback",
+        title: "Feedback 360°",
+        url: "/employee/peer-feedback",
+        icon: Users,
+        adminOnly: false,
+      },
+      {
+        id: "development-plan",
+        title: "Piano di Sviluppo",
+        url: "/employee/development-plan",
+        icon: TrendingUp,
+        adminOnly: false,
+      },
+    ],
+  },
+  {
+    id: "gestione-team",
+    title: "Gestione Team",
+    icon: UserCheck,
+    adminOnly: false,
+    children: [
+      {
+        id: "team-evaluations",
+        title: "Valutazioni Team",
+        url: "/manager/team-evaluations",
+        icon: Users,
+        adminOnly: false,
+      },
+      {
+        id: "team-development-plans",
+        title: "Piani di Sviluppo",
+        url: "/manager/development-plans",
+        icon: TrendingUp,
+        adminOnly: false,
+      },
+    ],
+  },
+  {
+    id: "competenze",
+    title: "Competenze",
+    icon: Award,
+    adminOnly: true,
+    children: [
+      {
+        id: "competencies-config",
+        title: "Gestione Competenze",
+        url: "/admin/competencies",
+        icon: Award,
+        adminOnly: true,
+      },
+      {
+        id: "evaluation-cycles",
+        title: "Cicli di Valutazione",
+        url: "/admin/evaluation-cycles",
+        icon: Calendar,
+        adminOnly: true,
+      },
+      {
+        id: "competencies-analytics",
+        title: "Analytics Competenze",
+        url: "/admin/competencies-analytics",
+        icon: BarChart3,
+        adminOnly: true,
+      },
+    ],
+  },
+  {
     id: "analytics",
     title: "Analytics",
     icon: PieChart,
@@ -104,8 +213,23 @@ export const railNavigation: NavItem[] = [
   {
     id: "organigramma",
     title: "Organigramma",
-    url: "/organigramma",
     icon: Network,
     adminOnly: false,
+    children: [
+      {
+        id: "organigramma-view",
+        title: "Organigramma",
+        url: "/organigramma",
+        icon: Network,
+        adminOnly: false,
+      },
+      {
+        id: "team",
+        title: "Team",
+        url: "/team",
+        icon: Users,
+        adminOnly: false,
+      },
+    ],
   },
 ];

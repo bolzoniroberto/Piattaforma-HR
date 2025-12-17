@@ -2,6 +2,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { competenciesStorage } from "./competenciesStorage";
 import { seed } from "./seed";
 
 // Use local auth in development and Railway production (disable Replit auth)
@@ -19,6 +20,17 @@ import {
   insertDocumentSchema,
   insertDocumentAcceptanceSchema,
   upsertUserSchema,
+  insertCustomFieldDefinitionSchema,
+  insertCustomFieldValueSchema,
+  insertCompetencyModelSchema,
+  insertCompetencySchema,
+  insertEvaluationCycleSchema,
+  insertSelfAssessmentSchema,
+  insertPeerFeedbackRequestSchema,
+  insertPeerFeedbackSchema,
+  insertManagerEvaluationSchema,
+  insertDevelopmentPlanSchema,
+  insertEvaluationNotificationSchema,
 } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -1478,6 +1490,795 @@ export async function registerRoutes(app: Express): Promise<Server> {
         employeePayouts: employeePayouts.slice(0, 10), // Top 10 employees
         departmentPayouts,
       });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ===============================================
+  // CUSTOM FIELDS ROUTES
+  // ===============================================
+
+  // Get all custom field definitions (active only for non-admins)
+  app.get("/api/custom-fields", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      const isAdminUser = user?.role === "admin";
+
+      const fields = await storage.getCustomFieldDefinitions(isAdminUser);
+      res.json(fields);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get single custom field definition
+  app.get("/api/custom-fields/:id", isAuthenticated, async (req, res) => {
+    try {
+      const field = await storage.getCustomFieldDefinition(req.params.id);
+      if (!field) {
+        return res.status(404).json({ message: "Custom field not found" });
+      }
+      res.json(field);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create custom field definition (admin only)
+  app.post("/api/custom-fields", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const data = insertCustomFieldDefinitionSchema.parse(req.body);
+
+      const field = await storage.createCustomFieldDefinition({
+        ...data,
+        createdBy: userId,
+      });
+
+      res.status(201).json(field);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update custom field definition (admin only)
+  app.patch("/api/custom-fields/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCustomFieldDefinitionSchema.partial().parse(req.body);
+      const field = await storage.updateCustomFieldDefinition(req.params.id, data);
+
+      if (!field) {
+        return res.status(404).json({ message: "Custom field not found" });
+      }
+
+      res.json(field);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Delete custom field definition (admin only)
+  app.delete("/api/custom-fields/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteCustomFieldDefinition(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get custom field values for a user
+  app.get("/api/users/:userId/custom-field-values", isAuthenticated, async (req, res) => {
+    try {
+      const requestingUserId = getUserId(req);
+      const targetUserId = req.params.userId;
+      const requestingUser = await storage.getUser(requestingUserId);
+
+      // Users can only view their own values unless they're admin
+      if (requestingUser?.role !== "admin" && requestingUserId !== targetUserId) {
+        return res.status(403).json({ message: "Forbidden - can only view own custom fields" });
+      }
+
+      const values = await storage.getCustomFieldValues(targetUserId);
+      res.json(values);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Set/update custom field value for a user
+  app.put("/api/users/:userId/custom-field-values/:fieldId", isAuthenticated, async (req, res) => {
+    try {
+      const requestingUserId = getUserId(req);
+      const targetUserId = req.params.userId;
+      const fieldId = req.params.fieldId;
+      const { value } = req.body;
+
+      const requestingUser = await storage.getUser(requestingUserId);
+
+      // Users can only update their own values unless they're admin
+      if (requestingUser?.role !== "admin" && requestingUserId !== targetUserId) {
+        return res.status(403).json({ message: "Forbidden - can only update own custom fields" });
+      }
+
+      const fieldValue = await storage.setCustomFieldValue({
+        fieldId,
+        userId: targetUserId,
+        value: value?.toString() || null,
+      });
+
+      res.json(fieldValue);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Bulk update custom field values for a user
+  app.post("/api/users/:userId/custom-field-values/bulk", isAuthenticated, async (req, res) => {
+    try {
+      const requestingUserId = getUserId(req);
+      const targetUserId = req.params.userId;
+      const { values } = req.body; // Array of { fieldId, value }
+
+      const requestingUser = await storage.getUser(requestingUserId);
+
+      // Users can only update their own values unless they're admin
+      if (requestingUser?.role !== "admin" && requestingUserId !== targetUserId) {
+        return res.status(403).json({ message: "Forbidden - can only update own custom fields" });
+      }
+
+      const results = [];
+      for (const item of values) {
+        const fieldValue = await storage.setCustomFieldValue({
+          fieldId: item.fieldId,
+          userId: targetUserId,
+          value: item.value?.toString() || null,
+        });
+        results.push(fieldValue);
+      }
+
+      res.json(results);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ============================================================================
+  // COMPETENCY MANAGEMENT ENDPOINTS
+  // ============================================================================
+
+  // -------------------- Admin: Competency Models --------------------
+
+  // Get all competency models
+  app.get("/api/admin/competency-models", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { personaType, isActive } = req.query;
+      const filters: any = {};
+      if (personaType) filters.personaType = personaType as string;
+      if (isActive !== undefined) filters.isActive = isActive === "true";
+
+      const models = await competenciesStorage.getCompetencyModels(filters);
+      res.json(models);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get single competency model
+  app.get("/api/admin/competency-models/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const model = await competenciesStorage.getCompetencyModel(req.params.id);
+      if (!model) {
+        return res.status(404).json({ message: "Competency model not found" });
+      }
+      res.json(model);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create competency model
+  app.post("/api/admin/competency-models", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const data = insertCompetencyModelSchema.parse({ ...req.body, createdBy: userId });
+      const model = await competenciesStorage.createCompetencyModel(data);
+      res.status(201).json(model);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update competency model
+  app.patch("/api/admin/competency-models/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCompetencyModelSchema.partial().parse(req.body);
+      const model = await competenciesStorage.updateCompetencyModel(req.params.id, data);
+      res.json(model);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Delete competency model
+  app.delete("/api/admin/competency-models/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await competenciesStorage.deleteCompetencyModel(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get competencies for a model
+  app.get("/api/admin/competency-models/:id/competencies", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const competencies = await competenciesStorage.getCompetencies({ modelId: req.params.id });
+      res.json(competencies);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Admin: Competencies --------------------
+
+  // Get all competencies
+  app.get("/api/admin/competencies", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { modelId, isTransversal } = req.query;
+      const filters: any = {};
+      if (modelId) filters.modelId = modelId as string;
+      if (isTransversal !== undefined) filters.isTransversal = isTransversal === "true";
+
+      const competencies = await competenciesStorage.getCompetencies(filters);
+      res.json(competencies);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get single competency
+  app.get("/api/admin/competencies/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const competency = await competenciesStorage.getCompetency(req.params.id);
+      if (!competency) {
+        return res.status(404).json({ message: "Competency not found" });
+      }
+      res.json(competency);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create competency
+  app.post("/api/admin/competencies", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCompetencySchema.parse(req.body);
+      const competency = await competenciesStorage.createCompetency(data);
+      res.status(201).json(competency);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update competency
+  app.patch("/api/admin/competencies/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCompetencySchema.partial().parse(req.body);
+      const competency = await competenciesStorage.updateCompetency(req.params.id, data);
+      res.json(competency);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Delete competency
+  app.delete("/api/admin/competencies/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await competenciesStorage.deleteCompetency(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Admin: Evaluation Cycles --------------------
+
+  // Get all evaluation cycles
+  app.get("/api/admin/evaluation-cycles", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { status, year } = req.query;
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (year) filters.year = parseInt(year as string);
+
+      const cycles = await competenciesStorage.getEvaluationCycles(filters);
+      res.json(cycles);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get single evaluation cycle
+  app.get("/api/admin/evaluation-cycles/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const cycle = await competenciesStorage.getEvaluationCycle(req.params.id);
+      if (!cycle) {
+        return res.status(404).json({ message: "Evaluation cycle not found" });
+      }
+      res.json(cycle);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create evaluation cycle
+  app.post("/api/admin/evaluation-cycles", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const data = insertEvaluationCycleSchema.parse({ ...req.body, createdBy: userId });
+      const cycle = await competenciesStorage.createEvaluationCycle(data);
+      res.status(201).json(cycle);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update evaluation cycle
+  app.patch("/api/admin/evaluation-cycles/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertEvaluationCycleSchema.partial().parse(req.body);
+      const cycle = await competenciesStorage.updateEvaluationCycle(req.params.id, data);
+      res.json(cycle);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update evaluation cycle status
+  app.patch("/api/admin/evaluation-cycles/:id/status", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status || !["draft", "active", "completed", "archived"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      const cycle = await competenciesStorage.updateEvaluationCycleStatus(req.params.id, status);
+      res.json(cycle);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Delete evaluation cycle
+  app.delete("/api/admin/evaluation-cycles/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await competenciesStorage.deleteEvaluationCycle(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Admin: Analytics --------------------
+
+  // Get competencies overview
+  app.get("/api/admin/analytics/competencies-overview", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.query;
+      if (!cycleId) {
+        return res.status(400).json({ message: "cycleId is required" });
+      }
+      const overview = await competenciesStorage.getCompetenciesOverview(cycleId as string);
+      res.json(overview);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get competencies by department
+  app.get("/api/admin/analytics/competencies-by-department", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.query;
+      if (!cycleId) {
+        return res.status(400).json({ message: "cycleId is required" });
+      }
+      const data = await competenciesStorage.getCompetenciesByDepartment(cycleId as string);
+      res.json(data);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get competencies by persona
+  app.get("/api/admin/analytics/competencies-by-persona", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.query;
+      if (!cycleId) {
+        return res.status(400).json({ message: "cycleId is required" });
+      }
+      const data = await competenciesStorage.getCompetenciesByPersona(cycleId as string);
+      res.json(data);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get process progress
+  app.get("/api/admin/analytics/competencies-progress", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.query;
+      if (!cycleId) {
+        return res.status(400).json({ message: "cycleId is required" });
+      }
+      const progress = await competenciesStorage.getProcessProgress(cycleId as string);
+      res.json(progress);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get ratings distribution
+  app.get("/api/admin/analytics/competencies-ratings-distribution", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.query;
+      if (!cycleId) {
+        return res.status(400).json({ message: "cycleId is required" });
+      }
+      const distribution = await competenciesStorage.getRatingsDistribution(cycleId as string);
+      res.json(distribution);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get development plans status
+  app.get("/api/admin/analytics/development-plans-status", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.query;
+      if (!cycleId) {
+        return res.status(400).json({ message: "cycleId is required" });
+      }
+      const status = await competenciesStorage.getDevelopmentPlansStatus(cycleId as string);
+      res.json(status);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Employee: My Competencies --------------------
+
+  // Get my competencies (based on my persona type)
+  app.get("/api/my-competencies", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      if (!user || !user.personaType) {
+        return res.status(400).json({ message: "User persona type not set" });
+      }
+
+      const competencies = await competenciesStorage.getCompetenciesForPersona(user.personaType);
+      res.json(competencies);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Employee: Self Assessments --------------------
+
+  // Get my self assessments for a cycle
+  app.get("/api/self-assessments/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const assessments = await competenciesStorage.getSelfAssessments(req.params.cycleId, userId);
+      res.json(assessments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create or update self assessment
+  app.post("/api/self-assessments", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const data = insertSelfAssessmentSchema.parse({ ...req.body, userId });
+      const assessment = await competenciesStorage.createOrUpdateSelfAssessment(data);
+      res.status(201).json(assessment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Submit self assessments (final submission)
+  app.post("/api/self-assessments/:cycleId/submit", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      await competenciesStorage.submitSelfAssessments(req.params.cycleId, userId);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Employee: Peer Feedback --------------------
+
+  // Get peer feedback requests I've received
+  app.get("/api/peer-feedback-requests/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const requests = await competenciesStorage.getPeerFeedbackRequests(req.params.cycleId, userId);
+      res.json(requests);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Request peer feedback from colleagues
+  app.post("/api/peer-feedback-requests", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { cycleId, peerUserIds } = req.body;
+      if (!cycleId || !peerUserIds || !Array.isArray(peerUserIds)) {
+        return res.status(400).json({ message: "cycleId and peerUserIds array are required" });
+      }
+      const requests = await competenciesStorage.createPeerFeedbackRequest(cycleId, userId, peerUserIds);
+      res.status(201).json(requests);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Provide peer feedback for a colleague
+  app.post("/api/peer-feedbacks", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const data = insertPeerFeedbackSchema.parse({ ...req.body, peerUserId: userId });
+      const feedback = await competenciesStorage.createPeerFeedback(data);
+      res.status(201).json(feedback);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get aggregated peer feedback I've received (anonymous)
+  app.get("/api/peer-feedbacks/:cycleId/received", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const feedback = await competenciesStorage.getAggregatedPeerFeedback(req.params.cycleId, userId);
+      res.json(feedback);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Employee: Development Plans --------------------
+
+  // Get my development plan for a cycle
+  app.get("/api/development-plans/:cycleId/mine", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const plan = await competenciesStorage.getDevelopmentPlan(req.params.cycleId, userId);
+      if (!plan) {
+        return res.status(404).json({ message: "Development plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update employee notes on development plan
+  app.patch("/api/development-plans/:id/employee-notes", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { employeeNotes } = req.body;
+
+      // Verify this plan belongs to the requesting user
+      const plan = await competenciesStorage.getDevelopmentPlanById(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ message: "Development plan not found" });
+      }
+      if (plan.employeeUserId !== userId) {
+        return res.status(403).json({ message: "Forbidden - not your development plan" });
+      }
+      // Can only edit notes if status is draft
+      if (plan.status !== "draft") {
+        return res.status(400).json({ message: "Cannot edit notes after plan is agreed" });
+      }
+
+      const updatedPlan = await competenciesStorage.updateDevelopmentPlan(req.params.id, { employeeNotes });
+      res.json(updatedPlan);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Manager: Team Evaluations --------------------
+
+  // Get team members to evaluate
+  app.get("/api/manager/team-members", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const teamMembers = await competenciesStorage.getTeamMembers(managerId);
+      res.json(teamMembers);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get employee's self assessment
+  app.get("/api/manager/employee/:userId/self-assessment/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { userId, cycleId } = req.params;
+      const assessments = await competenciesStorage.getSelfAssessments(cycleId, userId);
+      res.json(assessments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get employee's aggregated peer feedback
+  app.get("/api/manager/employee/:userId/peer-feedback/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { userId, cycleId } = req.params;
+      const feedback = await competenciesStorage.getAggregatedPeerFeedback(cycleId, userId);
+      res.json(feedback);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create or update manager evaluation
+  app.post("/api/manager/evaluations", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const data = insertManagerEvaluationSchema.parse({ ...req.body, managerUserId: managerId });
+      const evaluation = await competenciesStorage.createOrUpdateManagerEvaluation(data);
+      res.status(201).json(evaluation);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Submit manager evaluations (final submission)
+  app.post("/api/manager/evaluations/:cycleId/submit", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { employeeUserId } = req.body;
+      if (!employeeUserId) {
+        return res.status(400).json({ message: "employeeUserId is required" });
+      }
+
+      await competenciesStorage.submitManagerEvaluations(req.params.cycleId, employeeUserId, managerId);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Manager: Development Plans --------------------
+
+  // Get development plans for my team
+  app.get("/api/manager/development-plans/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const plans = await competenciesStorage.getDevelopmentPlansByManager(req.params.cycleId, managerId);
+      res.json(plans);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create development plan
+  app.post("/api/manager/development-plans", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const data = insertDevelopmentPlanSchema.parse({ ...req.body, managerUserId: managerId });
+      const plan = await competenciesStorage.createDevelopmentPlan(data);
+      res.status(201).json(plan);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update development plan
+  app.patch("/api/manager/development-plans/:id", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      // Verify this plan was created by the requesting manager
+      const plan = await competenciesStorage.getDevelopmentPlanById(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ message: "Development plan not found" });
+      }
+      if (plan.managerUserId !== managerId && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - not your development plan" });
+      }
+
+      const data = insertDevelopmentPlanSchema.partial().parse(req.body);
+      const updatedPlan = await competenciesStorage.updateDevelopmentPlan(req.params.id, data);
+      res.json(updatedPlan);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update development plan status
+  app.patch("/api/manager/development-plans/:id/status", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { status } = req.body;
+      if (!status || !["draft", "agreed", "in_progress", "completed"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      // Verify this plan was created by the requesting manager
+      const plan = await competenciesStorage.getDevelopmentPlanById(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ message: "Development plan not found" });
+      }
+      if (plan.managerUserId !== managerId && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - not your development plan" });
+      }
+
+      const updatedPlan = await competenciesStorage.updateDevelopmentPlanStatus(req.params.id, status);
+      res.json(updatedPlan);
     } catch (error) {
       handleError(res, error);
     }

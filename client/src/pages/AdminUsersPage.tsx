@@ -6,11 +6,12 @@ import AppActionsPanel from "@/components/AppActionsPanel";
 import AppHeader from "@/components/AppHeader";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Users, UserPlus, Target, Building, ChevronRight, Trash2, Edit2, Power, PowerOff } from "lucide-react";
+import { Search, Users, UserPlus, Target, Building, Trash2, Edit2, Power, PowerOff, ChevronRight } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -49,12 +50,13 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@shared/schema";
+import type { User, CustomFieldDefinition, CustomFieldValue } from "@shared/schema";
+import CustomFieldInput from "@/components/CustomFieldInput";
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
@@ -67,16 +69,9 @@ export default function AdminUsersPage() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const [formData, setFormData] = useState({
@@ -91,6 +86,7 @@ export default function AdminUsersPage() {
     mboPercentage: "25",
     role: "employee" as "employee" | "admin",
   });
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   // Paginated query with fallback
   const { data: paginatedData, isLoading } = useQuery<{ data: User[]; pagination: { page: number; limit: number; total: number; totalPages: number } } | User[]>({
@@ -137,6 +133,25 @@ export default function AdminUsersPage() {
   const { data: businessFunctions = [] } = useQuery<{ id: string; name: string }[]>({
     queryKey: ["/api/business-functions"],
     enabled: !!user,
+  });
+
+  // Fetch custom field definitions
+  const { data: customFields = [] } = useQuery<CustomFieldDefinition[]>({
+    queryKey: ["/api/custom-fields"],
+    enabled: !!user,
+  });
+
+  // Fetch user's custom field values when editing
+  const { data: userCustomFieldValues = [] } = useQuery<Array<CustomFieldValue & { field: CustomFieldDefinition }>>({
+    queryKey: [`/api/users/${editingUser?.id}/custom-field-values`],
+    enabled: !!editingUser && editingUser.id !== "new",
+    onSuccess: (data) => {
+      const values: Record<string, string> = {};
+      data.forEach((item) => {
+        values[item.fieldId] = item.value || "";
+      });
+      setCustomFieldValues(values);
+    },
   });
 
   const departments = useMemo(() => {
@@ -201,7 +216,18 @@ export default function AdminUsersPage() {
         mboPercentage: parseInt(formData.mboPercentage),
         role: formData.role,
       });
-      return res.json();
+      const newUser = await res.json();
+
+      // Save custom field values if any
+      if (Object.keys(customFieldValues).length > 0) {
+        const values = Object.entries(customFieldValues).map(([fieldId, value]) => ({
+          fieldId,
+          value,
+        }));
+        await apiRequest("POST", `/api/users/${newUser.id}/custom-field-values/bulk`, { values });
+      }
+
+      return newUser;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -232,7 +258,16 @@ export default function AdminUsersPage() {
         mboPercentage: parseInt(formData.mboPercentage),
         role: formData.role,
       });
-      return res.json();
+      const updatedUser = await res.json();
+
+      // Update custom field values if any
+      const values = Object.entries(customFieldValues).map(([fieldId, value]) => ({
+        fieldId,
+        value,
+      }));
+      await apiRequest("POST", `/api/users/${editingUser.id}/custom-field-values/bulk`, { values });
+
+      return updatedUser;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -304,6 +339,7 @@ export default function AdminUsersPage() {
       mboPercentage: "25",
       role: "employee",
     });
+    setCustomFieldValues({});
     setEditingUser(null);
   };
 
@@ -370,98 +406,27 @@ export default function AdminUsersPage() {
         pageIcon={Users}
         pageDescription="Visualizza e gestisci tutti gli utenti del sistema MBO"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
-        <div className="relative max-w-[1800px] mx-auto">
-          {/* Sidebar Level 1 - Navigation Rail */}
-          <div className={`absolute left-0 top-0 transition-opacity duration-200 ${isRailOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
+        <div className="flex gap-6 max-w-[1800px] mx-auto">
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
             <AppRail
               activeSection={activeSection}
               onSectionClick={handleSectionClick}
-              isOpen={true}
             />
-          </div>
-
-          {/* Sidebar Level 2 - Contextual Panel */}
-          <div className={`absolute left-[84px] top-0 transition-opacity duration-200 ${isPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <AppPanel
               activeSection={activeSection}
-              isOpen={true}
-              onClose={handlePanelClose}
+              className="transition-opacity duration-200"
             />
           </div>
 
-          {/* Main Content - Dynamic margin */}
-          <main className={`ml-[348px] ${isActionsPanelOpen ? 'mr-[264px]' : 'mr-0'} transition-[margin] duration-200 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]`} style={{ boxShadow: 'var(--shadow-2)' }}>
+          {/* Main Content - flex-1 grows naturally, NO margin transitions */}
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Utenti Totali</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <Users className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium" data-testid="stat-total-users">
-                      {stats.total}
-                    </div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Registrati nel sistema</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Dipendenti</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <Target className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium" data-testid="stat-employees">
-                      {stats.employees}
-                    </div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Utenti con ruolo employee</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Amministratori</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <UserPlus className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium" data-testid="stat-admins">
-                      {stats.admins}
-                    </div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Utenti con ruolo admin</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Dipartimenti</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <Building className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium" data-testid="stat-departments">
-                      {stats.departments}
-                    </div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Aree aziendali</p>
-                  </CardContent>
-                </Card>
-              </div>
-
               <Card className="md3-surface md3-motion-standard">
                 <CardHeader className="pb-4">
                   <div>
                     <CardTitle className="md3-title-large">Elenco Utenti</CardTitle>
-                    <CardDescription className="md3-body-medium mt-1">
-                      Gestisci tutti gli utenti del sistema
-                    </CardDescription>
                   </div>
                 </CardHeader>
                 
@@ -576,6 +541,30 @@ export default function AdminUsersPage() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Custom Fields Section */}
+                        {customFields.length > 0 && (
+                          <>
+                            <div className="md:col-span-2">
+                              <Separator className="my-4" />
+                              <h3 className="text-sm font-semibold mb-4">Informazioni Aggiuntive</h3>
+                            </div>
+                            {customFields
+                              .filter((field) => field.isActive)
+                              .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+                              .map((field) => (
+                                <div key={field.id}>
+                                  <CustomFieldInput
+                                    field={field}
+                                    value={customFieldValues[field.id] || ""}
+                                    onChange={(value) =>
+                                      setCustomFieldValues((prev) => ({ ...prev, [field.id]: value }))
+                                    }
+                                  />
+                                </div>
+                              ))}
+                          </>
+                        )}
                       </div>
                       <div className="flex gap-3 mt-6">
                         <Button
@@ -790,8 +779,8 @@ export default function AdminUsersPage() {
         </main>
 
           {/* Sidebar Level 3 - Actions Panel (destra) */}
-          <div className={`absolute right-0 top-0 transition-opacity duration-200 ${isActionsPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <AppActionsPanel isOpen={true} onClose={() => setIsActionsPanelOpen(false)} title="Gestione Utenti">
+          {isActionsPanelOpen && (
+            <AppActionsPanel isOpen={isActionsPanelOpen} onClose={() => setIsActionsPanelOpen(false)} title="Gestione Utenti">
               {/* Nuovo Utente */}
               <Button className="w-full gap-2" onClick={handleAddUser} data-testid="button-add-user-sidebar">
                 <UserPlus className="h-4 w-4" />
@@ -850,6 +839,31 @@ export default function AdminUsersPage() {
 
               <div className="border-t my-4" />
 
+              {/* Statistiche */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-total-users">
+                    <div className="text-lg font-bold text-primary">{stats.total}</div>
+                    <div className="text-xs text-muted-foreground">Utenti Totali</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-employees">
+                    <div className="text-lg font-bold text-primary">{stats.employees}</div>
+                    <div className="text-xs text-muted-foreground">Dipendenti</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-admins">
+                    <div className="text-lg font-bold text-primary">{stats.admins}</div>
+                    <div className="text-xs text-muted-foreground">Amministratori</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-departments">
+                    <div className="text-lg font-bold text-primary">{stats.departments}</div>
+                    <div className="text-xs text-muted-foreground">Dipartimenti</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t my-4" />
+
               {/* Info */}
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>Totale: <span className="font-medium text-foreground">{stats.total}</span> utenti</p>
@@ -858,7 +872,7 @@ export default function AdminUsersPage() {
                 )}
               </div>
             </AppActionsPanel>
-          </div>
+          )}
       </div>
     </div>
 

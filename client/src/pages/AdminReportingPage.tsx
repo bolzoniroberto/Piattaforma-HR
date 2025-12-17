@@ -4,11 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
 import AppHeader from "@/components/AppHeader";
+import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, BarChart3 } from "lucide-react";
 import {
   Table,
@@ -48,7 +50,7 @@ interface ObjectiveWithAssignments {
 export default function AdminReportingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [clusterFilter, setClusterFilter] = useState<string>("all");
@@ -60,16 +62,9 @@ export default function AdminReportingPage() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const { data: objectivesWithAssignments = [], isLoading } = useQuery<ObjectiveWithAssignments[]>({
@@ -207,18 +202,21 @@ export default function AdminReportingPage() {
         pageIcon={BarChart3}
         pageDescription="Gestisci la rendicontazione degli obiettivi assegnati"
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
+
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
           <div className="max-w-7xl mx-auto space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -276,45 +274,6 @@ export default function AdminReportingPage() {
                       <CardDescription>
                         Inserisci i valori di rendicontazione per ogni obiettivo
                       </CardDescription>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex gap-3 flex-wrap">
-                      <div className="flex-1 min-w-[250px]">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Cerca per titolo o descrizione..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
-                            data-testid="input-search"
-                          />
-                        </div>
-                      </div>
-                      <Select value={typeFilter} onValueChange={setTypeFilter}>
-                        <SelectTrigger className="w-[150px]" data-testid="select-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutti i tipi</SelectItem>
-                          <SelectItem value="numeric">Numerici</SelectItem>
-                          <SelectItem value="qualitative">Qualitativi</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={clusterFilter} onValueChange={setClusterFilter}>
-                        <SelectTrigger className="w-[200px]" data-testid="select-cluster">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutti i cluster</SelectItem>
-                          {clusters.map((cluster) => (
-                            <SelectItem key={cluster.id} value={cluster.id}>
-                              {cluster.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                 </CardHeader>
@@ -434,8 +393,90 @@ export default function AdminReportingPage() {
             </Card>
           </div>
         </main>
+
+          {/* AppActionsPanel - Right sidebar, conditional rendering OK */}
+          {isActionsPanelOpen && (
+            <AppActionsPanel
+              isOpen={isActionsPanelOpen}
+              onClose={() => setIsActionsPanelOpen(false)}
+              title="Rendicontazione"
+            >
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Cerca</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Titolo o descrizione..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-sidebar"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Tipo Obiettivo</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger data-testid="select-type-sidebar">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti i tipi</SelectItem>
+                  <SelectItem value="numeric">Numerici</SelectItem>
+                  <SelectItem value="qualitative">Qualitativi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Cluster</Label>
+              <Select value={clusterFilter} onValueChange={setClusterFilter}>
+                <SelectTrigger data-testid="select-cluster-sidebar">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti i cluster</SelectItem>
+                  {clusters.map((cluster) => (
+                    <SelectItem key={cluster.id} value={cluster.id}>
+                      {cluster.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="pt-4 border-t space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-lg bg-primary/10 text-center">
+                  <div className="text-lg font-bold text-primary">{stats.total}</div>
+                  <div className="text-xs text-muted-foreground">Totale</div>
+                </div>
+                <div className="p-2 rounded-lg bg-primary/10 text-center">
+                  <div className="text-lg font-bold text-primary">{stats.reported}</div>
+                  <div className="text-xs text-muted-foreground">Rendicontati</div>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-500/10 text-center">
+                  <div className="text-lg font-bold text-blue-600">{stats.numeric}</div>
+                  <div className="text-xs text-muted-foreground">Numerici</div>
+                </div>
+                <div className="p-2 rounded-lg bg-purple-500/10 text-center">
+                  <div className="text-lg font-bold text-purple-600">{stats.qualitative}</div>
+                  <div className="text-xs text-muted-foreground">Qualitativi</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Rendiconta i valori raggiunti per ciascun obiettivo. Gli obiettivi numerici vengono valutati automaticamente confrontando il valore rendicontato con il target.
+              </p>
+            </div>
+            </AppActionsPanel>
+          )}
+        </div>
       </div>
-    </div>
 
       <Dialog open={reportDialogOpen} onOpenChange={handleCloseReportDialog}>
         <DialogContent>

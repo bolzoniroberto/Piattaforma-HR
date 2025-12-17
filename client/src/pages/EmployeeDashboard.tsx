@@ -60,7 +60,7 @@ interface EnrichedObjective {
 export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
   const { toast } = useToast();
-  const { isRailOpen, activeSection, setActiveSection, isPanelOpen, setIsPanelOpen } = useRail();
+  const { activeSection, setActiveSection } = useRail();
   const [showRegulationModal, setShowRegulationModal] = useState(false);
   const [showRegulationDialog, setShowRegulationDialog] = useState(false);
 
@@ -243,16 +243,9 @@ export default function EmployeeDashboard() {
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
       setActiveSection(null);
-      setIsPanelOpen(false);
     } else {
       setActiveSection(sectionId);
-      setIsPanelOpen(true);
     }
-  };
-
-  const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setActiveSection(null);
   };
 
   const isLoading = userLoading || assignmentsLoading || documentsLoading;
@@ -803,23 +796,21 @@ export default function EmployeeDashboard() {
         pageIcon={LayoutDashboard}
         pageDescription={`Benvenuto, ${employee?.name || "Utente"}. Ecco il tuo progresso MBO.`}
       />
-      <div className="min-h-[calc(100vh-4rem)] bg-background p-6">
+      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* Sidebar Level 1 - Navigation Rail */}
-          <AppRail
-            activeSection={activeSection}
-            onSectionClick={handleSectionClick}
-            isOpen={isRailOpen}
-          />
+          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          <div className="w-[312px] shrink-0 flex gap-3">
+            <AppRail
+              activeSection={activeSection}
+              onSectionClick={handleSectionClick}
+            />
+            <AppPanel
+              activeSection={activeSection}
+              className="transition-opacity duration-200"
+            />
+          </div>
 
-          {/* Sidebar Level 2 - Contextual Panel */}
-          <AppPanel
-            activeSection={activeSection}
-            isOpen={isPanelOpen}
-            onClose={handlePanelClose}
-          />
-
-          {/* Main Content */}
+          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
             {regulationModal}
             {regulationViewDialog}

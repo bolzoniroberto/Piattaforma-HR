@@ -113,20 +113,18 @@ export default function OrgChart({ users, selectedUserId, onUserSelect, onUserCl
 
             {/* Container with horizontal line and reports */}
             <div className="relative">
-              {/* Horizontal Connector Line */}
-              {directReports.length > 1 && (
-                <div className="flex justify-center mb-8">
-                  <div className="relative h-0.5 bg-gradient-to-r from-transparent via-primary/60 to-transparent" style={{
-                    width: `${Math.min(directReports.length * 280, 1400)}px`,
-                  }}>
-                    {/* Center connection point */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary" />
-                  </div>
+              {/* Horizontal Connector Line - Solo sotto il responsabile */}
+              <div className="flex justify-center mb-12">
+                <div className="relative h-0.5 bg-gradient-to-r from-transparent via-primary/60 to-transparent" style={{
+                  width: `${Math.min(directReports.length * 150, 1400)}px`,
+                }}>
+                  {/* Center connection point */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary" />
                 </div>
-              )}
+              </div>
 
-              {/* Grid of Direct Reports with Better Spacing */}
-              <div className="flex flex-wrap justify-center gap-x-16 gap-y-12 px-4 max-w-7xl mx-auto">
+              {/* Grid of Direct Reports - Layout uniforme, 8 per riga */}
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-6 px-4 max-w-[1600px] mx-auto">
                 {directReports.map((report, index) => {
                   const hasSubReports = users.some((u) => u.managerId === report.id);
 
@@ -135,71 +133,72 @@ export default function OrgChart({ users, selectedUserId, onUserSelect, onUserCl
                       key={report.id}
                       className="relative flex flex-col items-center animate-in fade-in slide-in-from-bottom-4"
                       style={{
-                        animationDelay: `${index * 100}ms`,
+                        animationDelay: `${index * 50}ms`,
                         animationDuration: '500ms',
                         animationFillMode: 'backwards'
                       }}
                     >
-                      {/* Vertical Connector Line (individual per card) */}
-                      <div className="w-0.5 h-12 bg-gradient-to-b from-primary/40 to-transparent mb-4" />
-
-                      {/* Report Card */}
+                      {/* Report Card - Altezza fissa per uniformità */}
                       <Card
-                        className="relative w-64 shadow-lg transition-all duration-200 hover:shadow-xl bg-card border border-border"
+                        className="relative w-40 shadow-lg transition-all duration-200 hover:shadow-xl bg-card border border-border flex flex-col"
+                        style={{ minHeight: '180px' }}
                       >
                         {/* Badge conteggio sub-reports (top-right) */}
                         {hasSubReports && (
-                          <Badge className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center p-0 text-xs font-bold shadow-md hover:bg-primary/90">
+                          <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center p-0 text-xs font-bold shadow-md hover:bg-primary/90">
                             {users.filter((u) => u.managerId === report.id).length}
                           </Badge>
                         )}
 
-                        <CardContent className="p-6 pt-7">
-                          <div className="flex flex-col items-center">
-                            {/* Avatar */}
-                            <Avatar className="h-20 w-20 mb-4 border-2 border-primary/20">
-                              <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                        <CardContent className="p-4 pt-5 flex flex-col flex-1">
+                          <div className="flex flex-col items-center flex-1">
+                            {/* Avatar - Ridotto */}
+                            <Avatar className="h-14 w-14 mb-3 border-2 border-primary/20">
+                              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                                 {getInitials(report.firstName, report.lastName)}
                               </AvatarFallback>
                             </Avatar>
 
-                            {/* Nome (link cliccabile) */}
+                            {/* Nome (link cliccabile) - Font ridotto */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onUserClick?.(report);
                               }}
-                              className="text-primary hover:text-primary/80 font-semibold text-base mb-1 transition-colors text-center w-full"
+                              className="text-primary hover:text-primary/80 font-semibold text-sm mb-1 transition-colors text-center w-full leading-tight line-clamp-2"
                             >
                               {`${report.firstName || ""} ${report.lastName || ""}`.trim()}
                             </button>
 
-                            {/* Dipartimento */}
-                            <p className="text-sm text-muted-foreground text-center mb-2">
-                              {report.department || "Dipartimento non specificato"}
+                            {/* Dipartimento - Font ridotto */}
+                            <p className="text-xs text-muted-foreground text-center mb-2 line-clamp-1">
+                              {report.department || "N/A"}
                             </p>
 
-                            {/* Sede/Indirizzo con icona */}
+                            {/* Sede/Indirizzo con icona - Più compatto */}
                             {report.indirizzo && (
-                              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-3">
-                                <MapPin className="h-3 w-3" />
-                                <span className="truncate max-w-[200px]">{report.indirizzo}</span>
+                              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-2">
+                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate max-w-[120px]">{report.indirizzo}</span>
                               </div>
                             )}
 
-                            {/* Explore Button */}
+                            {/* Spacer - Spinge il pulsante in basso */}
+                            <div className="flex-1" />
+
+                            {/* Explore Button - Fisso in basso */}
                             {hasSubReports && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-full mt-2 gap-1.5 hover:bg-primary/10"
+                                className="w-full mt-auto gap-1 hover:bg-primary/10 h-7 text-xs"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onUserSelect?.(report.id);
                                 }}
                               >
-                                <ChevronDown className="h-4 w-4" />
-                                Esplora Team
+                                <ChevronDown className="h-3 w-3" />
+                                Esplora
                               </Button>
                             )}
                           </div>
