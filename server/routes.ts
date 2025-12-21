@@ -2856,6 +2856,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get team evaluations for a specific cycle
+  app.get("/api/manager/team-evaluations/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { cycleId } = req.params;
+      const teamEvaluations = await competenciesStorage.getTeamEvaluations(cycleId, managerId);
+      res.json(teamEvaluations);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // Get employee's self assessment
   app.get("/api/manager/employee/:userId/self-assessment/:cycleId", isAuthenticated, async (req, res) => {
     try {

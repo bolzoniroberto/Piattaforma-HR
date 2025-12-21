@@ -913,6 +913,80 @@ export class CompetenciesStorage {
     }
   }
 
+  async getTeamEvaluations(cycleId: string, managerId: string): Promise<any[]> {
+    try {
+      // Get all users who report to this manager
+      const teamMembers = await db
+        .select()
+        .from(users)
+        .where(eq(users.managerId, managerId));
+
+      // For each team member, get their evaluation status for this cycle
+      const teamEvaluations = await Promise.all(
+        teamMembers.map(async (member) => {
+          // Check if has self assessment
+          const selfAssessments = await db
+            .select()
+            .from(selfAssessments)
+            .where(
+              and(
+                eq(selfAssessments.cycleId, cycleId),
+                eq(selfAssessments.userId, member.id)
+              )
+            );
+
+          const hasSelfAssessment = selfAssessments.length > 0 && selfAssessments.some(sa => sa.submittedAt !== null);
+
+          // Get aggregated peer feedback count
+          const peerFeedbacks = await db
+            .select()
+            .from(peerFeedbacks)
+            .where(
+              and(
+                eq(peerFeedbacks.cycleId, cycleId),
+                eq(peerFeedbacks.targetUserId, member.id)
+              )
+            );
+
+          const peerFeedbackCount = peerFeedbacks.length > 0
+            ? [...new Set(peerFeedbacks.map(pf => pf.requestorUserId))].length
+            : 0;
+
+          // Check manager evaluation status
+          const managerEvals = await db
+            .select()
+            .from(managerEvaluations)
+            .where(
+              and(
+                eq(managerEvaluations.cycleId, cycleId),
+                eq(managerEvaluations.employeeUserId, member.id),
+                eq(managerEvaluations.managerUserId, managerId)
+              )
+            );
+
+          const hasManagerEvaluation = managerEvals.length > 0;
+          const isManagerEvaluationSubmitted = managerEvals.some(me => me.submittedAt !== null);
+
+          return {
+            userId: member.id,
+            userName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
+            userDepartment: member.department,
+            personaType: member.personaType,
+            hasSelfAssessment,
+            peerFeedbackCount,
+            hasManagerEvaluation,
+            isManagerEvaluationSubmitted,
+          };
+        })
+      );
+
+      return teamEvaluations;
+    } catch (error) {
+      console.error("Error getting team evaluations:", error);
+      throw error;
+    }
+  }
+
   async getDevelopmentPlanById(id: string): Promise<DevelopmentPlan | undefined> {
     try {
       const plan = await db
