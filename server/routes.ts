@@ -79,7 +79,11 @@ function getUserId(req: Request): string {
 
 // Helper for error handling
 function handleError(res: any, error: unknown) {
-  console.error("Error:", error);
+  try {
+    console.error("Error:", error instanceof Error ? error.message : String(error));
+  } catch (e) {
+    console.error("Error occurred (logging failed)");
+  }
   if (error instanceof ZodError) {
     return res.status(400).json({ message: "Validation error", errors: error.errors });
   }
