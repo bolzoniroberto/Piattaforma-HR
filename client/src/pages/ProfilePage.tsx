@@ -69,8 +69,9 @@ export default function ProfilePage() {
       // Invalidate all queries that contain user data to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ prefix: "/api/orgchart" });
+      queryClient.invalidateQueries({ queryKey: ["/api/orgchart"] });
       queryClient.invalidateQueries({ queryKey: ["/api/manager/team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/team-evaluations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/peer-feedback-requests/sent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/peer-feedback-requests/received"] });
     },
