@@ -15,6 +15,7 @@ import RegulationPage from "@/pages/RegulationPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
+import AdminUserProfilePage from "@/pages/AdminUserProfilePage";
 import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
 import AdminAssignmentsBulkPage from "@/pages/AdminAssignmentsBulkPage";
 import AdminClearAllAssignmentsPage from "@/pages/AdminClearAllAssignmentsPage";
@@ -101,6 +102,11 @@ function Router() {
       <Route path="/admin/users" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminUsersPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/users/:codiceFiscale" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminUserProfilePage />
         </ProtectedRoute>
       )} />
       <Route path="/admin/assignments/:userId" component={() => (

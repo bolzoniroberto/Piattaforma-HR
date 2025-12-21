@@ -64,6 +64,18 @@ interface SavedAssessment {
   submittedAt: string | null;
 }
 
+interface OverallSelfAssessment {
+  id: string;
+  cycleId: string;
+  userId: string;
+  overallRating: number;
+  overallComment: string;
+  strengths: string | null;
+  areasForImprovement: string | null;
+  goals: string | null;
+  submittedAt: string | null;
+}
+
 const RATING_LABELS = {
   1: "Insufficiente",
   2: "Base",
@@ -79,6 +91,13 @@ export default function EmployeeSelfAssessmentPage() {
   const [selectedCycle, setSelectedCycle] = useState<string>("");
   const [assessments, setAssessments] = useState<Record<string, SelfAssessment>>({});
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [overallAssessment, setOverallAssessment] = useState({
+    overallRating: 0,
+    overallComment: "",
+    strengths: "",
+    areasForImprovement: "",
+    goals: "",
+  });
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -119,6 +138,22 @@ export default function EmployeeSelfAssessmentPage() {
     enabled: !!selectedCycle,
   });
 
+  // Fetch existing overall self assessment
+  const { data: savedOverallAssessment } = useQuery<OverallSelfAssessment>({
+    queryKey: ["/api/overall-self-assessment", selectedCycle],
+    queryFn: async () => {
+      if (!selectedCycle) return null;
+      try {
+        const res = await apiRequest("GET", `/api/overall-self-assessment/${selectedCycle}`);
+        return res.json();
+      } catch (error) {
+        // 404 is expected if no overall assessment exists yet
+        return null;
+      }
+    },
+    enabled: !!selectedCycle,
+  });
+
   // Load saved assessments into state
   useState(() => {
     const loaded: Record<string, SelfAssessment> = {};
@@ -130,6 +165,19 @@ export default function EmployeeSelfAssessmentPage() {
       };
     });
     setAssessments(loaded);
+  });
+
+  // Load saved overall assessment into state
+  useState(() => {
+    if (savedOverallAssessment) {
+      setOverallAssessment({
+        overallRating: savedOverallAssessment.overallRating,
+        overallComment: savedOverallAssessment.overallComment,
+        strengths: savedOverallAssessment.strengths || "",
+        areasForImprovement: savedOverallAssessment.areasForImprovement || "",
+        goals: savedOverallAssessment.goals || "",
+      });
+    }
   });
 
   const isSubmitted = savedAssessments.some(sa => sa.submittedAt !== null);
@@ -147,7 +195,12 @@ export default function EmployeeSelfAssessmentPage() {
   const completedCompetencies = Object.keys(assessments).filter(
     key => assessments[key]?.rating > 0 && assessments[key]?.comment.trim() !== ""
   ).length;
-  const progressPercent = totalCompetencies > 0 ? (completedCompetencies / totalCompetencies) * 100 : 0;
+  const isOverallAssessmentComplete = overallAssessment.overallRating > 0 && overallAssessment.overallComment.trim() !== "";
+
+  // Total tasks: individual competencies + overall assessment
+  const totalTasks = totalCompetencies + 1;
+  const completedTasks = completedCompetencies + (isOverallAssessmentComplete ? 1 : 0);
+  const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
   const handleRatingChange = (competencyId: string, rating: number) => {
     setAssessments(prev => ({
@@ -178,6 +231,7 @@ export default function EmployeeSelfAssessmentPage() {
         a => a.rating > 0 && a.comment.trim() !== ""
       );
 
+      // Save individual competency assessments
       await Promise.all(
         assessmentsArray.map(assessment =>
           apiRequest("POST", "/api/self-assessments", {
@@ -186,9 +240,18 @@ export default function EmployeeSelfAssessmentPage() {
           })
         )
       );
+
+      // Save overall assessment if it has any content
+      if (overallAssessment.overallRating > 0 || overallAssessment.overallComment.trim() !== "") {
+        await apiRequest("POST", "/api/overall-self-assessment", {
+          cycleId: selectedCycle,
+          ...overallAssessment,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/self-assessments", selectedCycle] });
+      queryClient.invalidateQueries({ queryKey: ["/api/overall-self-assessment", selectedCycle] });
       toast({
         title: "Bozza salvata",
         description: "Le tue autovalutazioni sono state salvate come bozza.",
@@ -208,7 +271,7 @@ export default function EmployeeSelfAssessmentPage() {
     mutationFn: async () => {
       const assessmentsArray = Object.values(assessments);
 
-      // First save all assessments
+      // First save all individual assessments
       await Promise.all(
         assessmentsArray.map(assessment =>
           apiRequest("POST", "/api/self-assessments", {
@@ -218,11 +281,21 @@ export default function EmployeeSelfAssessmentPage() {
         )
       );
 
-      // Then submit
-      await apiRequest("POST", `/api/self-assessments/${selectedCycle}/submit`, {});
+      // Save overall assessment
+      await apiRequest("POST", "/api/overall-self-assessment", {
+        cycleId: selectedCycle,
+        ...overallAssessment,
+      });
+
+      // Then submit both
+      await Promise.all([
+        apiRequest("POST", `/api/self-assessments/${selectedCycle}/submit`, {}),
+        apiRequest("POST", `/api/overall-self-assessment/${selectedCycle}/submit`, {}),
+      ]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/self-assessments", selectedCycle] });
+      queryClient.invalidateQueries({ queryKey: ["/api/overall-self-assessment", selectedCycle] });
       toast({
         title: "Autovalutazione inviata",
         description: "La tua autovalutazione è stata inviata con successo.",
@@ -247,6 +320,14 @@ export default function EmployeeSelfAssessmentPage() {
       toast({
         title: "Attenzione",
         description: "Devi completare tutte le competenze prima di inviare l'autovalutazione.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!isOverallAssessmentComplete) {
+      toast({
+        title: "Attenzione",
+        description: "Devi completare la valutazione generale prima di inviare l'autovalutazione.",
         variant: "destructive",
       });
       return;
@@ -443,6 +524,117 @@ export default function EmployeeSelfAssessmentPage() {
                     })}
                   </div>
 
+                  {/* Overall Self Assessment */}
+                  <Card className={isOverallAssessmentComplete ? "border-green-200 border-2" : "border-primary border-2"}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CardTitle className="text-lg">Valutazione Generale Complessiva</CardTitle>
+                            {isOverallAssessmentComplete && <CheckCircle className="h-5 w-5 text-green-600" />}
+                          </div>
+                          <CardDescription>
+                            Fornisci una valutazione generale del tuo percorso professionale, includendo punti di forza, aree di miglioramento e obiettivi futuri
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Overall Rating */}
+                      <div className="space-y-2">
+                        <Label>Valutazione Complessiva (1-5) <span className="text-destructive">*</span></Label>
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((rating) => (
+                            <Button
+                              key={rating}
+                              type="button"
+                              variant={overallAssessment.overallRating === rating ? "default" : "outline"}
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => setOverallAssessment(prev => ({ ...prev, overallRating: rating }))}
+                              disabled={isSubmitted}
+                            >
+                              <Star
+                                className={`h-4 w-4 mr-1 ${
+                                  overallAssessment.overallRating === rating ? "fill-current" : ""
+                                }`}
+                              />
+                              {rating}
+                            </Button>
+                          ))}
+                        </div>
+                        {overallAssessment.overallRating > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {RATING_LABELS[overallAssessment.overallRating as keyof typeof RATING_LABELS]}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Overall Comment */}
+                      <div className="space-y-2">
+                        <Label htmlFor="overall-comment">
+                          Commento Generale <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                          id="overall-comment"
+                          placeholder="Fornisci una valutazione generale del tuo percorso professionale..."
+                          value={overallAssessment.overallComment}
+                          onChange={(e) => setOverallAssessment(prev => ({ ...prev, overallComment: e.target.value }))}
+                          rows={4}
+                          disabled={isSubmitted}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {overallAssessment.overallComment.length} caratteri
+                        </p>
+                      </div>
+
+                      {/* Strengths */}
+                      <div className="space-y-2">
+                        <Label htmlFor="strengths">
+                          Punti di Forza
+                        </Label>
+                        <Textarea
+                          id="strengths"
+                          placeholder="Descrivi i tuoi principali punti di forza..."
+                          value={overallAssessment.strengths}
+                          onChange={(e) => setOverallAssessment(prev => ({ ...prev, strengths: e.target.value }))}
+                          rows={3}
+                          disabled={isSubmitted}
+                        />
+                      </div>
+
+                      {/* Areas for Improvement */}
+                      <div className="space-y-2">
+                        <Label htmlFor="areas-for-improvement">
+                          Aree di Miglioramento
+                        </Label>
+                        <Textarea
+                          id="areas-for-improvement"
+                          placeholder="Identifica le aree in cui desideri migliorare..."
+                          value={overallAssessment.areasForImprovement}
+                          onChange={(e) => setOverallAssessment(prev => ({ ...prev, areasForImprovement: e.target.value }))}
+                          rows={3}
+                          disabled={isSubmitted}
+                        />
+                      </div>
+
+                      {/* Goals */}
+                      <div className="space-y-2">
+                        <Label htmlFor="goals">
+                          Obiettivi Futuri
+                        </Label>
+                        <Textarea
+                          id="goals"
+                          placeholder="Definisci i tuoi obiettivi professionali per il futuro..."
+                          value={overallAssessment.goals}
+                          onChange={(e) => setOverallAssessment(prev => ({ ...prev, goals: e.target.value }))}
+                          rows={3}
+                          disabled={isSubmitted}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* Action Buttons */}
                   {!isSubmitted && (
                     <div className="flex gap-3 justify-end sticky bottom-6 bg-background/80 backdrop-blur-sm p-4 rounded-lg border">
@@ -459,6 +651,7 @@ export default function EmployeeSelfAssessmentPage() {
                         disabled={
                           submitMutation.isPending ||
                           completedCompetencies < totalCompetencies ||
+                          !isOverallAssessmentComplete ||
                           !isInPhase
                         }
                       >
@@ -526,7 +719,7 @@ export default function EmployeeSelfAssessmentPage() {
               Sei sicuro di voler inviare la tua autovalutazione? Una volta inviata, non potrai più modificarla.
               <br />
               <br />
-              Hai completato {completedCompetencies} su {totalCompetencies} competenze.
+              Hai completato {completedCompetencies} su {totalCompetencies} competenze e la valutazione generale complessiva.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

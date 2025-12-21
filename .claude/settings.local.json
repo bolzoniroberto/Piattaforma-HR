@@ -26,7 +26,19 @@
       "Bash(git checkout:*)",
       "Bash(chmod:*)",
       "Bash(/Users/robertobolzoni/MBO/remove-toggle-buttons.sh)",
-      "Bash(perl:*)"
+      "Bash(perl:*)",
+      "Bash(npm view:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(ls:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(wc:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(if [ -n \"$DATABASE_URL\" ])",
+      "Bash(then echo \"DATABASE_URL è impostato\")",
+      "Bash(else echo \"DATABASE_URL non è impostato - verifico .env\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

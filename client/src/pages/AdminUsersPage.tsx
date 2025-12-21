@@ -2,24 +2,19 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppRail from "@/components/AppRail";
 import AppPanel from "@/components/AppPanel";
-import AppActionsPanel from "@/components/AppActionsPanel";
 import AppHeader from "@/components/AppHeader";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Users, UserPlus, Target, Building, Trash2, Edit2, Power, PowerOff, ChevronRight } from "lucide-react";
+import { Search, Users, UserPlus, Eye, Trash2, Power, PowerOff } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
 } from "@/components/ui/pagination";
 import {
   Table,
@@ -45,26 +40,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, CustomFieldDefinition, CustomFieldValue } from "@shared/schema";
-import CustomFieldInput from "@/components/CustomFieldInput";
+import type { User } from "@shared/schema";
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { activeSection, setActiveSection, isPanelOpen, isActionsPanelOpen, setIsActionsPanelOpen } = useRail();
+  const [, navigate] = useLocation();
+  const { activeSection, setActiveSection } = useRail();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [page, setPage] = useState(1);
-  const limit = 5; // Ridotto a 5 per testare la paginazione con dataset piccoli
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
+  const [quickCreateData, setQuickCreateData] = useState({
+    codiceFiscale: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
+  const limit = 5;
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -74,101 +81,59 @@ export default function AdminUsersPage() {
     }
   };
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    codiceFiscale: "",
-    department: "",
-    cdc: "",
-    managerId: "",
-    ral: "",
-    mboPercentage: "25",
-    role: "employee" as "employee" | "admin",
-  });
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
-
-  // Paginated query with fallback
-  const { data: paginatedData, isLoading } = useQuery<{ data: User[]; pagination: { page: number; limit: number; total: number; totalPages: number } } | User[]>({
+  // Paginated query
+  const { data: paginatedData, isLoading } = useQuery<{
+    data: User[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  } | User[]>({
     queryKey: ["/api/users", { page, limit }],
     queryFn: async () => {
       const response = await fetch(`/api/users?page=${page}&limit=${limit}`, {
-        credentials: 'include',
+        credentials: "include",
       });
       return response.json();
     },
     enabled: !!user,
   });
 
-  // Separate query for all users (for statistics)
+  // All users for stats and filters
   const { data: allUsersForStats = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
     queryFn: async () => {
-      const response = await fetch(`/api/users`, {
-        credentials: 'include',
+      const response = await fetch("/api/users", {
+        credentials: "include",
       });
       return response.json();
     },
     enabled: !!user,
   });
 
-  // Handle both paginated and non-paginated responses
   const allUsers = useMemo(() => {
     if (!paginatedData) return [];
-    // Check if it's paginated response
-    if ('data' in paginatedData && Array.isArray(paginatedData.data)) {
+    if ("data" in paginatedData && Array.isArray(paginatedData.data)) {
       return paginatedData.data;
     }
-    // Fallback for non-paginated (array response)
     return paginatedData as User[];
   }, [paginatedData]);
 
   const pagination = useMemo(() => {
-    if (paginatedData && 'pagination' in paginatedData) {
+    if (paginatedData && "pagination" in paginatedData) {
       return paginatedData.pagination;
     }
     return null;
   }, [paginatedData]);
 
-  const { data: businessFunctions = [] } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["/api/business-functions"],
-    enabled: !!user,
-  });
-
-  // Fetch custom field definitions
-  const { data: customFields = [] } = useQuery<CustomFieldDefinition[]>({
-    queryKey: ["/api/custom-fields"],
-    enabled: !!user,
-  });
-
-  // Fetch user's custom field values when editing
-  const { data: userCustomFieldValues = [] } = useQuery<Array<CustomFieldValue & { field: CustomFieldDefinition }>>({
-    queryKey: [`/api/users/${editingUser?.id}/custom-field-values`],
-    enabled: !!editingUser && editingUser.id !== "new",
-    onSuccess: (data) => {
-      const values: Record<string, string> = {};
-      data.forEach((item) => {
-        values[item.fieldId] = item.value || "";
-      });
-      setCustomFieldValues(values);
-    },
-  });
-
   const departments = useMemo(() => {
-    // Get departments from business functions first, then from existing users
     const depts = new Set<string>();
-    businessFunctions.forEach((bf) => {
-      if (bf.name) depts.add(bf.name);
-    });
     allUsersForStats.forEach((u) => {
       if (u.department) depts.add(u.department);
     });
     return Array.from(depts).sort();
-  }, [allUsersForStats, businessFunctions]);
+  }, [allUsersForStats]);
 
   const filteredUsers = useMemo(() => {
     let filtered = allUsers;
-    
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -179,15 +144,15 @@ export default function AdminUsersPage() {
           u.department?.toLowerCase().includes(query)
       );
     }
-    
+
     if (roleFilter !== "all") {
       filtered = filtered.filter((u) => u.role === roleFilter);
     }
-    
+
     if (departmentFilter !== "all") {
       filtered = filtered.filter((u) => u.department === departmentFilter);
     }
-    
+
     return filtered;
   }, [allUsers, searchQuery, roleFilter, departmentFilter]);
 
@@ -202,83 +167,36 @@ export default function AdminUsersPage() {
     };
   }, [allUsersForStats, departments]);
 
-  const createUserMutation = useMutation({
+  const quickCreateMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/users", {
         id: undefined,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        codiceFiscale: formData.codiceFiscale || null,
-        department: formData.department,
-        cdc: formData.cdc || null,
-        ral: formData.ral ? parseFloat(formData.ral) : null,
-        mboPercentage: parseInt(formData.mboPercentage),
-        role: formData.role,
+        firstName: quickCreateData.firstName,
+        lastName: quickCreateData.lastName,
+        email: quickCreateData.email,
+        codiceFiscale: quickCreateData.codiceFiscale || null,
+        role: "employee",
       });
       const newUser = await res.json();
-
-      // Save custom field values if any
-      if (Object.keys(customFieldValues).length > 0) {
-        const values = Object.entries(customFieldValues).map(([fieldId, value]) => ({
-          fieldId,
-          value,
-        }));
-        await apiRequest("POST", `/api/users/${newUser.id}/custom-field-values/bulk`, { values });
-      }
-
       return newUser;
     },
-    onSuccess: () => {
+    onSuccess: (newUser) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Utente creato con successo" });
-      setIsCreatingNew(false);
-      resetForm();
+      toast({ title: "Dipendente creato con successo" });
+      setIsQuickCreateOpen(false);
+      setQuickCreateData({
+        codiceFiscale: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+      });
+      // Redirect to profile page
+      navigate(`/admin/users/${newUser.codiceFiscale || newUser.id}`);
     },
     onError: (error) => {
       toast({
         title: "Errore",
-        description: error instanceof Error ? error.message : "Impossibile creare l'utente",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: async () => {
-      if (!editingUser) throw new Error("No user selected");
-      const res = await apiRequest("PATCH", `/api/users/${editingUser.id}`, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        codiceFiscale: formData.codiceFiscale || null,
-        department: formData.department,
-        cdc: formData.cdc || null,
-        ral: formData.ral ? parseFloat(formData.ral) : null,
-        mboPercentage: parseInt(formData.mboPercentage),
-        role: formData.role,
-      });
-      const updatedUser = await res.json();
-
-      // Update custom field values if any
-      const values = Object.entries(customFieldValues).map(([fieldId, value]) => ({
-        fieldId,
-        value,
-      }));
-      await apiRequest("POST", `/api/users/${editingUser.id}/custom-field-values/bulk`, { values });
-
-      return updatedUser;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Utente aggiornato con successo" });
-      setEditingUser(null);
-      resetForm();
-    },
-    onError: (error) => {
-      toast({
-        title: "Errore",
-        description: error instanceof Error ? error.message : "Impossibile aggiornare l'utente",
+        description: error instanceof Error ? error.message : "Impossibile creare il dipendente",
         variant: "destructive",
       });
     },
@@ -305,10 +223,10 @@ export default function AdminUsersPage() {
 
   const toggleUserActiveMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const user = allUsers.find(u => u.id === userId);
-      if (!user) throw new Error("User not found");
+      const u = allUsers.find((user) => user.id === userId);
+      if (!u) throw new Error("User not found");
       const res = await apiRequest("PATCH", `/api/users/${userId}`, {
-        isActive: !user.isActive,
+        isActive: !u.isActive,
       });
       return res.json();
     },
@@ -326,54 +244,14 @@ export default function AdminUsersPage() {
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      codiceFiscale: "",
-      department: "",
-      cdc: "",
-      managerId: "",
-      ral: "",
-      mboPercentage: "25",
-      role: "employee",
-    });
-    setCustomFieldValues({});
-    setEditingUser(null);
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    const f = firstName?.[0] || "";
+    const l = lastName?.[0] || "";
+    return (f + l).toUpperCase() || "?";
   };
 
-  const handleAddUser = () => {
-    resetForm();
-    setIsCreatingNew(true);
-    setEditingUser(null);
-  };
-
-  const handleEditUser = (u: User) => {
-    setEditingUser(u);
-    setIsCreatingNew(false);
-    setFormData({
-      firstName: u.firstName || "",
-      lastName: u.lastName || "",
-      email: u.email || "",
-      codiceFiscale: u.codiceFiscale || "",
-      department: u.department || "",
-      cdc: u.cdc || "",
-      managerId: u.managerId || "",
-      ral: u.ral ? u.ral.toString() : "",
-      mboPercentage: u.mboPercentage?.toString() || "25",
-      role: (u.role as "employee" | "admin") || "employee",
-    });
-  };
-
-  const handleCancelEdit = () => {
-    resetForm();
-    setEditingUser(null);
-    setIsCreatingNew(false);
-  };
-
-  const handleSaveUser = () => {
-    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+  const handleQuickCreate = () => {
+    if (!quickCreateData.firstName.trim() || !quickCreateData.lastName.trim() || !quickCreateData.email.trim()) {
       toast({
         title: "Errore",
         description: "Nome, cognome ed email sono obbligatori",
@@ -381,24 +259,13 @@ export default function AdminUsersPage() {
       });
       return;
     }
-
-    if (editingUser) {
-      updateUserMutation.mutate();
-    } else {
-      createUserMutation.mutate();
-    }
-  };
-
-  const getInitials = (firstName?: string | null, lastName?: string | null) => {
-    const f = firstName?.[0] || "";
-    const l = lastName?.[0] || "";
-    return (f + l).toUpperCase() || "?";
+    quickCreateMutation.mutate();
   };
 
   return (
     <>
       <AppHeader
-        userName={user?.name || "Amministratore"}
+        userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Amministratore" : "Amministratore"}
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}
@@ -408,494 +275,322 @@ export default function AdminUsersPage() {
       />
       <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
         <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
+          {/* SIDEBAR CONTAINER */}
           <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
+            <AppRail activeSection={activeSection} onSectionClick={handleSectionClick} />
+            <AppPanel activeSection={activeSection} className="transition-opacity duration-200" />
           </div>
 
-          {/* Main Content - flex-1 grows naturally, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          {/* Main Content */}
+          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: "var(--shadow-2)" }}>
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Totale Utenti</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.total}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Dipendenti</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.employees}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Admin</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.admins}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Dipartimenti</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.departments}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Users List Card */}
               <Card className="md3-surface md3-motion-standard">
-                <CardHeader className="pb-4">
+                <CardHeader className="pb-4 flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="md3-title-large">Elenco Utenti</CardTitle>
+                    <CardDescription>Visualizza e gestisci i dipendenti</CardDescription>
                   </div>
+                  <Button onClick={() => setIsQuickCreateOpen(true)} className="gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Nuovo Dipendente
+                  </Button>
                 </CardHeader>
-                
-                {/* In-page form for creating/editing user */}
-                {(isCreatingNew || editingUser) && (
-                  <Card className="mb-6 border-primary/30">
-                    <CardHeader>
-                      <CardTitle>
-                        {editingUser ? "Modifica Utente" : "Aggiungi Nuovo Utente"}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="firstName">Nome</Label>
-                          <Input
-                            id="firstName"
-                            value={formData.firstName}
-                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                            data-testid="input-first-name"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="lastName">Cognome</Label>
-                          <Input
-                            id="lastName"
-                            value={formData.lastName}
-                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                            data-testid="input-last-name"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="email">Email</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            data-testid="input-email"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="codiceFiscale">Codice Fiscale</Label>
-                          <Input
-                            id="codiceFiscale"
-                            value={formData.codiceFiscale}
-                            onChange={(e) => setFormData({ ...formData, codiceFiscale: e.target.value })}
-                            placeholder="Es: BNCRSS80A01F205O"
-                            data-testid="input-codice-fiscale"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="department">Dipartimento</Label>
-                          <Select 
-                            value={formData.department} 
-                            onValueChange={(value) => setFormData({ ...formData, department: value })}
-                          >
-                            <SelectTrigger id="department" data-testid="select-department">
-                              <SelectValue placeholder="Seleziona dipartimento" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {departments.map((dept) => (
-                                <SelectItem key={dept} value={dept}>
-                                  {dept}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="cdc">CDC (Centro di Costo)</Label>
-                          <Input
-                            id="cdc"
-                            value={formData.cdc}
-                            onChange={(e) => setFormData({ ...formData, cdc: e.target.value })}
-                            placeholder="Es: CDC001"
-                            data-testid="input-cdc"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="ral">RAL (€)</Label>
-                          <Input
-                            id="ral"
-                            type="number"
-                            value={formData.ral}
-                            onChange={(e) => setFormData({ ...formData, ral: e.target.value })}
-                            data-testid="input-ral"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="mboPercentage">MBO % (multiplo di 5)</Label>
-                          <Input
-                            id="mboPercentage"
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="5"
-                            value={formData.mboPercentage}
-                            onChange={(e) => setFormData({ ...formData, mboPercentage: e.target.value })}
-                            data-testid="input-mbo-percentage"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="role">Ruolo</Label>
-                          <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as "employee" | "admin" })}>
-                            <SelectTrigger id="role" data-testid="select-role">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="employee">Dipendente</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
 
-                        {/* Custom Fields Section */}
-                        {customFields.length > 0 && (
-                          <>
-                            <div className="md:col-span-2">
-                              <Separator className="my-4" />
-                              <h3 className="text-sm font-semibold mb-4">Informazioni Aggiuntive</h3>
-                            </div>
-                            {customFields
-                              .filter((field) => field.isActive)
-                              .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
-                              .map((field) => (
-                                <div key={field.id}>
-                                  <CustomFieldInput
-                                    field={field}
-                                    value={customFieldValues[field.id] || ""}
-                                    onChange={(value) =>
-                                      setCustomFieldValues((prev) => ({ ...prev, [field.id]: value }))
-                                    }
-                                  />
-                                </div>
-                              ))}
-                          </>
-                        )}
+                <CardContent className="space-y-4">
+                  {/* Filters */}
+                  <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                      <Label htmlFor="search" className="text-xs text-muted-foreground mb-2 block">
+                        Ricerca
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="search"
+                          placeholder="Nome, email, dipartimento..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-8"
+                        />
                       </div>
-                      <div className="flex gap-3 mt-6">
-                        <Button
-                          onClick={handleSaveUser}
-                          disabled={createUserMutation.isPending || updateUserMutation.isPending}
-                          data-testid="button-save-user"
-                        >
-                          {createUserMutation.isPending || updateUserMutation.isPending ? "Salvataggio..." : "Salva"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={handleCancelEdit}
-                          data-testid="button-cancel-edit"
-                        >
-                          Annulla
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <CardContent>
-                  {isLoading ? (
-                    <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
-                  ) : filteredUsers.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Nessun utente trovato
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
+                    <div>
+                      <Label htmlFor="role-filter" className="text-xs text-muted-foreground mb-2 block">
+                        Ruolo
+                      </Label>
+                      <Select value={roleFilter} onValueChange={setRoleFilter}>
+                        <SelectTrigger id="role-filter" className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti i ruoli</SelectItem>
+                          <SelectItem value="employee">Dipendente</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="dept-filter" className="text-xs text-muted-foreground mb-2 block">
+                        Dipartimento
+                      </Label>
+                      <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                        <SelectTrigger id="dept-filter" className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti</SelectItem>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Users Table */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Utente</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Ruolo</TableHead>
+                        <TableHead>Dipartimento</TableHead>
+                        <TableHead>Stato</TableHead>
+                        <TableHead className="text-right">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
                         <TableRow>
-                          <TableHead>Utente</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Dipartimento</TableHead>
-                          <TableHead>Ruolo</TableHead>
-                          <TableHead className="text-right">Azioni</TableHead>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            Caricamento...
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredUsers.map((u) => (
-                          <TableRow key={u.id} data-testid={`row-user-${u.id}`}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  {u.profileImageUrl && (
-                                    <AvatarImage src={u.profileImageUrl} alt={u.firstName || ""} />
-                                  )}
-                                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                    {getInitials(u.firstName, u.lastName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {u.firstName} {u.lastName}
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {u.email || "-"}
-                            </TableCell>
-                            <TableCell>
-                              {u.department ? (
-                                <Badge variant="outline">{u.department}</Badge>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
+                      ) : filteredUsers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            Nessun utente trovato
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredUsers.map((u) => (
+                          <TableRow key={u.id}>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                                  {u.role === "admin" ? "Admin" : "Dipendente"}
-                                </Badge>
-                                {!u.isActive && (
-                                  <Badge variant="outline" className="bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800">
-                                    Disattivato
-                                  </Badge>
-                                )}
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={u.profileImageUrl || undefined} />
+                                  <AvatarFallback>{getInitials(u.firstName, u.lastName)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {u.firstName} {u.lastName}
+                                  </span>
+                                  {u.codiceFiscale && <span className="text-xs text-muted-foreground">{u.codiceFiscale}</span>}
+                                </div>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right flex items-center justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleEditUser(u)}
-                                data-testid={`button-edit-user-${u.id}`}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
+                            <TableCell className="text-sm">{u.email}</TableCell>
+                            <TableCell>
+                              <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role === "admin" ? "Admin" : "Dipendente"}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{u.department || "-"}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => toggleUserActiveMutation.mutate(u.id)}
                                 disabled={toggleUserActiveMutation.isPending}
-                                title={u.isActive ? "Disattiva" : "Attiva"}
-                                data-testid={`button-toggle-user-${u.id}`}
                               >
                                 {u.isActive ? (
-                                  <Power className="h-4 w-4 text-amber-600" />
+                                  <Power className="h-4 w-4 text-green-600" />
                                 ) : (
-                                  <PowerOff className="h-4 w-4 text-gray-400" />
+                                  <PowerOff className="h-4 w-4 text-red-600" />
                                 )}
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
+                            </TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Link href={`/admin/users/${u.codiceFiscale || u.id}`}>
+                                <Button size="sm" variant="ghost">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => setDeleteUserId(u.id)}
-                                data-testid={`button-delete-user-${u.id}`}
+                                disabled={deleteUserMutation.isPending}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
-                              <Link href={`/admin/assignments/${u.id}`}>
-                                <Button variant="ghost" size="sm" data-testid={`button-assign-${u.id}`}>
-                                  Assegna
-                                  <ChevronRight className="ml-1 h-4 w-4" />
-                                </Button>
-                              </Link>
                             </TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    </div>
-                  )}
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
 
                   {/* Pagination */}
-                  {pagination && (
-                    <div className="flex flex-col md:flex-row items-center justify-between py-4 gap-4">
-                      <div className="text-sm text-muted-foreground">
-                        Mostrando {((page - 1) * limit) + 1}-{Math.min(page * limit, pagination.total)} di {pagination.total} utenti
-                      </div>
-
-                      {pagination.totalPages > 1 && (
-                      <Pagination>
-                        <PaginationContent>
-                          <PaginationItem>
-                            <PaginationPrevious
-                              onClick={() => setPage(p => Math.max(1, p - 1))}
-                              className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                            />
-                          </PaginationItem>
-
-                          {/* First page */}
-                          {page > 2 && (
-                            <>
-                              <PaginationItem>
-                                <PaginationLink onClick={() => setPage(1)} className="cursor-pointer">
-                                  1
-                                </PaginationLink>
-                              </PaginationItem>
-                              {page > 3 && <PaginationEllipsis />}
-                            </>
-                          )}
-
-                          {/* Previous page */}
-                          {page > 1 && (
-                            <PaginationItem>
-                              <PaginationLink onClick={() => setPage(page - 1)} className="cursor-pointer">
-                                {page - 1}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )}
-
-                          {/* Current page */}
-                          <PaginationItem>
-                            <PaginationLink isActive className="cursor-default">
-                              {page}
+                  {pagination && pagination.totalPages > 1 && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                          >
+                            Precedente
+                          </Button>
+                        </PaginationItem>
+                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              isActive={p === page}
+                              onClick={() => setPage(p)}
+                            >
+                              {p}
                             </PaginationLink>
                           </PaginationItem>
-
-                          {/* Next page */}
-                          {page < pagination.totalPages && (
-                            <PaginationItem>
-                              <PaginationLink onClick={() => setPage(page + 1)} className="cursor-pointer">
-                                {page + 1}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )}
-
-                          {/* Last page */}
-                          {page < pagination.totalPages - 1 && (
-                            <>
-                              {page < pagination.totalPages - 2 && <PaginationEllipsis />}
-                              <PaginationItem>
-                                <PaginationLink onClick={() => setPage(pagination.totalPages)} className="cursor-pointer">
-                                  {pagination.totalPages}
-                                </PaginationLink>
-                              </PaginationItem>
-                            </>
-                          )}
-
-                          <PaginationItem>
-                            <PaginationNext
-                              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
-                              className={page >= pagination.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                            />
-                          </PaginationItem>
-                        </PaginationContent>
-                      </Pagination>
-                      )}
-
-                      <div className="text-sm text-muted-foreground">
-                        Pagina {page} di {pagination.totalPages}
-                      </div>
-                    </div>
+                        ))}
+                        <PaginationItem>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(Math.min(pagination.totalPages, page + 1))}
+                            disabled={page === pagination.totalPages}
+                          >
+                            Prossima
+                          </Button>
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
                   )}
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-
-          {/* Sidebar Level 3 - Actions Panel (destra) */}
-          {isActionsPanelOpen && (
-            <AppActionsPanel isOpen={isActionsPanelOpen} onClose={() => setIsActionsPanelOpen(false)} title="Gestione Utenti">
-              {/* Nuovo Utente */}
-              <Button className="w-full gap-2" onClick={handleAddUser} data-testid="button-add-user-sidebar">
-                <UserPlus className="h-4 w-4" />
-                Nuovo Utente
-              </Button>
-
-              <div className="border-t my-4" />
-
-              {/* Filtri */}
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs font-medium">Cerca</Label>
-                  <div className="relative mt-1.5">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Nome, email..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                      data-testid="input-search-users-sidebar"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-xs font-medium">Ruolo</Label>
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="mt-1.5" data-testid="select-role-filter-sidebar">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti i ruoli</SelectItem>
-                      <SelectItem value="employee">Dipendente</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-xs font-medium">Dipartimento</Label>
-                  <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                    <SelectTrigger className="mt-1.5" data-testid="select-department-filter-sidebar">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti i dipartimenti</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="border-t my-4" />
-
-              {/* Statistiche */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Statistiche</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-total-users">
-                    <div className="text-lg font-bold text-primary">{stats.total}</div>
-                    <div className="text-xs text-muted-foreground">Utenti Totali</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-employees">
-                    <div className="text-lg font-bold text-primary">{stats.employees}</div>
-                    <div className="text-xs text-muted-foreground">Dipendenti</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-admins">
-                    <div className="text-lg font-bold text-primary">{stats.admins}</div>
-                    <div className="text-xs text-muted-foreground">Amministratori</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-primary/10 text-center" data-testid="stat-departments">
-                    <div className="text-lg font-bold text-primary">{stats.departments}</div>
-                    <div className="text-xs text-muted-foreground">Dipartimenti</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t my-4" />
-
-              {/* Info */}
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>Totale: <span className="font-medium text-foreground">{stats.total}</span> utenti</p>
-                {pagination && (
-                  <p>Pagina <span className="font-medium text-foreground">{page}</span> di <span className="font-medium text-foreground">{pagination.totalPages}</span></p>
-                )}
-              </div>
-            </AppActionsPanel>
-          )}
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
 
-      <AlertDialog open={deleteUserId !== null} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+      {/* Quick Create Dialog */}
+      <Dialog open={isQuickCreateOpen} onOpenChange={setIsQuickCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuovo Dipendente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="qc-cf">Codice Fiscale *</Label>
+              <Input
+                id="qc-cf"
+                value={quickCreateData.codiceFiscale}
+                onChange={(e) => setQuickCreateData({ ...quickCreateData, codiceFiscale: e.target.value })}
+                placeholder="Es: BNCRSS80A01F205O"
+              />
+            </div>
+            <div>
+              <Label htmlFor="qc-name">Nome *</Label>
+              <Input
+                id="qc-name"
+                value={quickCreateData.firstName}
+                onChange={(e) => setQuickCreateData({ ...quickCreateData, firstName: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="qc-surname">Cognome *</Label>
+              <Input
+                id="qc-surname"
+                value={quickCreateData.lastName}
+                onChange={(e) => setQuickCreateData({ ...quickCreateData, lastName: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="qc-email">Email *</Label>
+              <Input
+                id="qc-email"
+                type="email"
+                value={quickCreateData.email}
+                onChange={(e) => setQuickCreateData({ ...quickCreateData, email: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsQuickCreateOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleQuickCreate} disabled={quickCreateMutation.isPending}>
+              {quickCreateMutation.isPending ? "Creazione..." : "Crea e continua"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => !open && setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare l'utente?</AlertDialogTitle>
+            <AlertDialogTitle>Elimina Utente</AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione non può essere annullata. L'utente sarà eliminato definitivamente.
+              Sei sicuro di voler eliminare questo utente? L'azione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex gap-4">
+          <div className="flex gap-2 justify-end">
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteUserId && deleteUserMutation.mutate(deleteUserId)}
+              onClick={() => {
+                if (deleteUserId) deleteUserMutation.mutate(deleteUserId);
+              }}
               disabled={deleteUserMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteUserMutation.isPending ? "Eliminazione..." : "Elimina"}
             </AlertDialogAction>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Actions Panel */}
+      {/* AppActionsPanel is managed by RailContext */}
     </>
   );
 }

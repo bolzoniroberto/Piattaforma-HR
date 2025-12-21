@@ -32,9 +32,10 @@ export const users = pgTable("users", {
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
-  codiceFiscale: varchar("codice_fiscale"), // Tax ID
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).unique(), // Tax ID - FK to persona
+  matricola: varchar("matricola", { length: 50 }).unique(), // Employee code - for quick lookup
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // employee or admin
+  role: varchar("role").notNull().default("employee"), // employee, admin, or hr
   department: varchar("department"),
   cdc: varchar("cdc"), // Centro di Costo (Cost Center)
   managerId: varchar("manager_id").references((): any => users.id, { onDelete: "set null" }), // Manager/responsabile
@@ -48,7 +49,10 @@ export const users = pgTable("users", {
   citta: varchar("citta"), // City
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_users_codice_fiscale").on(table.codiceFiscale),
+  index("idx_users_matricola").on(table.matricola),
+]);
 
 const baseUpsertUserSchema = createInsertSchema(users).pick({
   id: true,
@@ -96,6 +100,7 @@ export type User = typeof users.$inferSelect;
 // Persona - Dati Anagrafici Base
 export const persona = pgTable("persona", {
   codiceFiscale: varchar("codice_fiscale", { length: 16 }).primaryKey(),
+  matricola: varchar("matricola", { length: 50 }).unique(),
   cognome: varchar("cognome").notNull(),
   nome: varchar("nome").notNull(),
   dataNascita: timestamp("data_nascita"),
@@ -103,7 +108,9 @@ export const persona = pgTable("persona", {
   cittadinanza: varchar("cittadinanza"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_persona_matricola").on(table.matricola),
+]);
 
 export const insertPersonaSchema = createInsertSchema(persona).omit({
   createdAt: true,
@@ -155,9 +162,18 @@ export const organizzazione = pgTable("organizzazione", {
   area: varchar("area"),
   sottoArea: varchar("sotto_area"),
   unitaOrganizzativa: varchar("unita_organizzativa"),
+  // Sede di lavoro
+  sedeId: varchar("sede_id").references(() => sedi.id),
+  dataDecorrenzaSede: timestamp("data_decorrenza_sede"),
+  // Altri campi
+  sindacato: varchar("sindacato", { length: 100 }),
+  configurazioneOrarioId: varchar("configurazione_orario_id").references(() => configurazioniOrario.id),
+  configurazioneTimbraFirmaId: varchar("configurazione_timbra_firma_id").references(() => configurazioniOrario.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_organizzazione_sede").on(table.sedeId).where(sql`${table.sedeId} IS NOT NULL`),
+]);
 
 export const insertOrganizzazioneSchema = createInsertSchema(organizzazione).omit({
   id: true,
@@ -172,27 +188,45 @@ export type Organizzazione = typeof organizzazione.$inferSelect;
 export const contratti = pgTable("contratti", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  matricola: varchar("matricola", { length: 50 }), // Riferimento a persona.matricola
   // Date contrattuali
   dataAssunzione: timestamp("data_assunzione"),
+  dataAssunzioneGruppo: timestamp("data_assunzione_gruppo"),
   dataFineRapporto: timestamp("data_fine_rapporto"),
   dataCessazione: timestamp("data_cessazione"),
+  dataScadenzaPosizioneLavorativa: timestamp("data_scadenza_posizione_lavorativa"),
+  dataScadenzaContrattoTermine: timestamp("data_scadenza_contratto_termine"),
   // Tipologia contratto
   codiceContratto: varchar("codice_contratto"),
   descrizioneContratto: varchar("descrizione_contratto"),
   tipologiaContrattoTermine: varchar("tipologia_contratto_termine"),
+  causaleAssunzioneId: varchar("causale_assunzione_id").references(() => causaliAssunzione.id),
   // Classificazione
   qualifica: varchar("qualifica"),
   livello: varchar("livello"),
   jobTitle: varchar("job_title"),
+  ccnlId: varchar("ccnl_id").references(() => ccnl.id),
+  livelloContrattualeId: varchar("livello_contrattuale_id").references(() => livelliContrattuali.id),
   // Part-time
   partTimeCodice: varchar("part_time_codice"),
   partTimePercentuale: integer("part_time_percentuale"),
+  descrizionePartTime: varchar("descrizione_part_time", { length: 255 }),
   partTimeDataInizio: timestamp("part_time_data_inizio"),
   partTimeDataFine: timestamp("part_time_data_fine"),
+  // Categoria protetta
+  categoriaProtettaId: varchar("categoria_protetta_id").references(() => categorieProtette.id),
+  // Altri
+  aziendaProvenienza: varchar("azienda_provenienza", { length: 255 }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_contratti_matricola").on(table.matricola),
+  index("idx_contratti_ccnl").on(table.ccnlId),
+  index("idx_contratti_livello").on(table.livelloContrattualeId),
+  index("idx_contratti_ccnl_livello").on(table.ccnlId, table.livelloContrattualeId).where(sql`${table.isActive} = true`),
+  index("idx_contratti_categoria_protetta").on(table.categoriaProtettaId).where(sql`${table.categoriaProtettaId} IS NOT NULL`),
+]);
 
 export const insertContrattiSchema = createInsertSchema(contratti).omit({
   id: true,
@@ -253,7 +287,9 @@ export const ruoli = pgTable("ruoli", {
   mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_ruoli_hierarchy").on(table.responsabileDirettoCf, table.codiceFiscale).where(sql`${table.responsabileDirettoCf} IS NOT NULL`),
+]);
 
 export const insertRuoliSchema = createInsertSchema(ruoli).omit({
   id: true,
@@ -263,6 +299,184 @@ export const insertRuoliSchema = createInsertSchema(ruoli).omit({
 
 export type InsertRuoli = z.infer<typeof insertRuoliSchema>;
 export type Ruoli = typeof ruoli.$inferSelect;
+
+// ==============================================
+// ANAGRAFICA LOOKUP TABLES
+// ==============================================
+
+// Sedi - Anagrafica Sedi di Lavoro
+export const sedi = pgTable("sedi", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceSede: varchar("codice_sede", { length: 50 }).unique().notNull(),
+  descrizioneSede: varchar("descrizione_sede", { length: 255 }).notNull(),
+  comune: varchar("comune", { length: 100 }),
+  indirizzo: text("indirizzo"),
+  cap: varchar("cap", { length: 10 }),
+  provincia: varchar("provincia", { length: 2 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSediSchema = createInsertSchema(sedi).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSedi = z.infer<typeof insertSediSchema>;
+export type Sedi = typeof sedi.$inferSelect;
+
+// CCNL - Contratti Collettivi Nazionali Lavoro
+export const ccnl = pgTable("ccnl", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceCcnl: varchar("codice_ccnl", { length: 50 }).unique().notNull(),
+  descrizioneCcnl: varchar("descrizione_ccnl", { length: 255 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCcnlSchema = createInsertSchema(ccnl).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCcnl = z.infer<typeof insertCcnlSchema>;
+export type Ccnl = typeof ccnl.$inferSelect;
+
+// Livelli Contrattuali - Livelli per CCNL
+export const livelliContrattuali = pgTable("livelli_contrattuali", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ccnlId: varchar("ccnl_id").notNull().references(() => ccnl.id, { onDelete: "cascade" }),
+  codiceLivello: varchar("codice_livello", { length: 50 }).notNull(),
+  descrizioneLivello: varchar("descrizione_livello", { length: 255 }).notNull(),
+  ordinamento: integer("ordinamento").default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueCcnlLivello: uniqueIndex("unique_ccnl_livello").on(table.ccnlId, table.codiceLivello),
+}));
+
+export const insertLivelliContrattualiSchema = createInsertSchema(livelliContrattuali).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLivelliContrattuali = z.infer<typeof insertLivelliContrattualiSchema>;
+export type LivelliContrattuali = typeof livelliContrattuali.$inferSelect;
+
+// Categorie Protette - Categorie L.68/99
+export const categorieProtette = pgTable("categorie_protette", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codice: varchar("codice", { length: 50 }).unique().notNull(),
+  descrizione: varchar("descrizione", { length: 255 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCategorieProtetteSchema = createInsertSchema(categorieProtette).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCategorieProtette = z.infer<typeof insertCategorieProtetteSchema>;
+export type CategorieProtette = typeof categorieProtette.$inferSelect;
+
+// Configurazioni Orario - Tipologie Orario e Timbratura
+export const configurazioniOrario = pgTable("configurazioni_orario", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codice: varchar("codice", { length: 50 }).unique().notNull(),
+  tipo: varchar("tipo", { length: 50 }).notNull(), // "tipo_orario" o "timbra_firma"
+  descrizione: varchar("descrizione", { length: 255 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertConfigurazioniOrarioSchema = createInsertSchema(configurazioniOrario).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  tipo: z.enum(["tipo_orario", "timbra_firma"]),
+});
+
+export type InsertConfigurazioniOrario = z.infer<typeof insertConfigurazioniOrarioSchema>;
+export type ConfigurazioniOrario = typeof configurazioniOrario.$inferSelect;
+
+// Causali Assunzione
+export const causaliAssunzione = pgTable("causali_assunzione", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codice: varchar("codice", { length: 50 }).unique().notNull(),
+  descrizione: text("descrizione").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCausaliAssunzioneSchema = createInsertSchema(causaliAssunzione).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCausaliAssunzione = z.infer<typeof insertCausaliAssunzioneSchema>;
+export type CausaliAssunzione = typeof causaliAssunzione.$inferSelect;
+
+// Smart Working Storico - Storico Smart Working
+export const smartWorkingStorico = pgTable("smart_working_storico", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  tipologiaSmartWorking: varchar("tipologia_smart_working", { length: 100 }).notNull(),
+  dataDecorrenza: timestamp("data_decorrenza").notNull(),
+  dataScadenza: timestamp("data_scadenza"),
+  isCurrent: boolean("is_current").notNull().default(true),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_sw_storico_cf").on(table.codiceFiscale),
+  index("idx_sw_storico_current").on(table.codiceFiscale, table.isCurrent).where(sql`${table.isCurrent} = true`),
+]);
+
+export const insertSmartWorkingStoricoSchema = createInsertSchema(smartWorkingStorico).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSmartWorkingStorico = z.infer<typeof insertSmartWorkingStoricoSchema>;
+export type SmartWorkingStorico = typeof smartWorkingStorico.$inferSelect;
+
+// Livelli Contrattuali Storico - Storico Cambi Livello
+export const livelliContrattualiStorico = pgTable("livelli_contrattuali_storico", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contrattoId: varchar("contratto_id").notNull().references(() => contratti.id, { onDelete: "cascade" }),
+  livelloContrattualeId: varchar("livello_contrattuale_id").references(() => livelliContrattuali.id),
+  dataDecorrenza: timestamp("data_decorrenza").notNull(),
+  dataFine: timestamp("data_fine"),
+  isCurrent: boolean("is_current").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_livelli_storico_contratto").on(table.contrattoId),
+  index("idx_livelli_storico_current").on(table.contrattoId, table.isCurrent).where(sql`${table.isCurrent} = true`),
+]);
+
+export const insertLivelliContrattualiStoricoSchema = createInsertSchema(livelliContrattualiStorico).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLivelliContrattualiStorico = z.infer<typeof insertLivelliContrattualiStoricoSchema>;
+export type LivelliContrattualiStorico = typeof livelliContrattualiStorico.$inferSelect;
 
 // Indicator Clusters for objectives
 export const indicatorClusters = pgTable("indicator_clusters", {
@@ -545,6 +759,7 @@ export const personaRelations = relations(persona, ({ one, many }) => ({
     fields: [persona.codiceFiscale],
     references: [ruoli.codiceFiscale],
   }),
+  smartWorkingStorico: many(smartWorkingStorico),
 }));
 
 export const contattiRelations = relations(contatti, ({ one }) => ({
@@ -559,13 +774,44 @@ export const organizzazioneRelations = relations(organizzazione, ({ one }) => ({
     fields: [organizzazione.codiceFiscale],
     references: [persona.codiceFiscale],
   }),
+  sede: one(sedi, {
+    fields: [organizzazione.sedeId],
+    references: [sedi.id],
+  }),
+  configurazioneOrario: one(configurazioniOrario, {
+    fields: [organizzazione.configurazioneOrarioId],
+    references: [configurazioniOrario.id],
+    relationName: "configurazione_orario",
+  }),
+  configurazioneTimbraFirma: one(configurazioniOrario, {
+    fields: [organizzazione.configurazioneTimbraFirmaId],
+    references: [configurazioniOrario.id],
+    relationName: "configurazione_timbra",
+  }),
 }));
 
-export const contrattiRelations = relations(contratti, ({ one }) => ({
+export const contrattiRelations = relations(contratti, ({ one, many }) => ({
   persona: one(persona, {
     fields: [contratti.codiceFiscale],
     references: [persona.codiceFiscale],
   }),
+  ccnl: one(ccnl, {
+    fields: [contratti.ccnlId],
+    references: [ccnl.id],
+  }),
+  livelloContrattuale: one(livelliContrattuali, {
+    fields: [contratti.livelloContrattualeId],
+    references: [livelliContrattuali.id],
+  }),
+  causaleAssunzione: one(causaliAssunzione, {
+    fields: [contratti.causaleAssunzioneId],
+    references: [causaliAssunzione.id],
+  }),
+  categoriaProtetta: one(categorieProtette, {
+    fields: [contratti.categoriaProtettaId],
+    references: [categorieProtette.id],
+  }),
+  livelliStorico: many(livelliContrattualiStorico),
 }));
 
 export const compensationRelations = relations(compensation, ({ one }) => ({
@@ -591,6 +837,59 @@ export const ruoliRelations = relations(ruoli, ({ one }) => ({
   reportsTo: one(persona, {
     fields: [ruoli.reportsToCf],
     references: [persona.codiceFiscale],
+  }),
+}));
+
+// ==============================================
+// ANAGRAFICA LOOKUP TABLES RELATIONS
+// ==============================================
+
+export const sediRelations = relations(sedi, ({ many }) => ({
+  organizzazioni: many(organizzazione),
+}));
+
+export const ccnlRelations = relations(ccnl, ({ many }) => ({
+  livelli: many(livelliContrattuali),
+  contratti: many(contratti),
+}));
+
+export const livelliContrattualiRelations = relations(livelliContrattuali, ({ one, many }) => ({
+  ccnl: one(ccnl, {
+    fields: [livelliContrattuali.ccnlId],
+    references: [ccnl.id],
+  }),
+  contratti: many(contratti),
+  storico: many(livelliContrattualiStorico),
+}));
+
+export const categorieProtetteRelations = relations(categorieProtette, ({ many }) => ({
+  contratti: many(contratti),
+}));
+
+export const configurazioniOrarioRelations = relations(configurazioniOrario, ({ many }) => ({
+  organizzazioniOrario: many(organizzazione, { relationName: "configurazione_orario" }),
+  organizzazioniTimbra: many(organizzazione, { relationName: "configurazione_timbra" }),
+}));
+
+export const causaliAssunzioneRelations = relations(causaliAssunzione, ({ many }) => ({
+  contratti: many(contratti),
+}));
+
+export const smartWorkingStoricoRelations = relations(smartWorkingStorico, ({ one }) => ({
+  persona: one(persona, {
+    fields: [smartWorkingStorico.codiceFiscale],
+    references: [persona.codiceFiscale],
+  }),
+}));
+
+export const livelliContrattualiStoricoRelations = relations(livelliContrattualiStorico, ({ one }) => ({
+  contratto: one(contratti, {
+    fields: [livelliContrattualiStorico.contrattoId],
+    references: [contratti.id],
+  }),
+  livelloContrattuale: one(livelliContrattuali, {
+    fields: [livelliContrattualiStorico.livelloContrattualeId],
+    references: [livelliContrattuali.id],
   }),
 }));
 
@@ -702,6 +1001,36 @@ export const insertCompetencyModelSchema = createInsertSchema(competencyModels).
 export type InsertCompetencyModel = z.infer<typeof insertCompetencyModelSchema>;
 export type CompetencyModel = typeof competencyModels.$inferSelect;
 
+// User Competency Model Assignments - Associates users with competency models
+export const userCompetencyModelAssignments = pgTable("user_competency_model_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyModelId: varchar("competency_model_id").notNull().references(() => competencyModels.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedBy: varchar("assigned_by").references(() => users.id, { onDelete: "set null" }),
+  validFrom: timestamp("valid_from").notNull().defaultNow(),
+  validTo: timestamp("valid_to"),
+  isCurrent: boolean("is_current").notNull().default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueUserModelCurrent: uniqueIndex("unique_user_model_current").on(table.userId, table.competencyModelId, table.isCurrent),
+}));
+
+export const insertUserCompetencyModelAssignmentSchema = createInsertSchema(userCompetencyModelAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  assignedAt: true,
+}).extend({
+  validFrom: z.union([z.string(), z.date()]).transform(val => new Date(val)),
+  validTo: z.union([z.string(), z.date(), z.null()]).transform(val => val ? new Date(val) : null).nullable().optional(),
+});
+
+export type InsertUserCompetencyModelAssignment = z.infer<typeof insertUserCompetencyModelAssignmentSchema>;
+export type UserCompetencyModelAssignment = typeof userCompetencyModelAssignments.$inferSelect;
+
 // Competencies - Individual competency definitions
 export const competencies = pgTable("competencies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -758,6 +1087,16 @@ export const insertEvaluationCycleSchema = createInsertSchema(evaluationCycles).
   updatedAt: true,
 }).extend({
   status: z.enum(["draft", "active", "completed", "archived"]).default("draft"),
+  createdBy: z.string().optional(),
+  // Convert date strings to Date objects, handle empty strings and null values
+  selfAssessmentStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  selfAssessmentEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  peerFeedbackStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  peerFeedbackEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  managerEvaluationStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  managerEvaluationEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  feedbackDeliveryStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  feedbackDeliveryEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
 });
 
 export type InsertEvaluationCycle = z.infer<typeof insertEvaluationCycleSchema>;
@@ -789,6 +1128,36 @@ export const insertSelfAssessmentSchema = createInsertSchema(selfAssessments).om
 
 export type InsertSelfAssessment = z.infer<typeof insertSelfAssessmentSchema>;
 export type SelfAssessment = typeof selfAssessments.$inferSelect;
+
+// Overall Self Assessments - General overall evaluation for the cycle
+export const overallSelfAssessments = pgTable("overall_self_assessments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  overallRating: integer("overall_rating").notNull(), // 1-5
+  overallComment: text("overall_comment").notNull(),
+  strengths: text("strengths"), // Punti di forza
+  areasForImprovement: text("areas_for_improvement"), // Aree di miglioramento
+  goals: text("goals"), // Obiettivi futuri
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueCycleUser: uniqueIndex("unique_overall_self_assessment").on(table.cycleId, table.userId),
+}));
+
+export const insertOverallSelfAssessmentSchema = createInsertSchema(overallSelfAssessments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+}).extend({
+  overallRating: z.number().int().min(1).max(5),
+  overallComment: z.string().min(1, "Overall comment cannot be empty"),
+});
+
+export type InsertOverallSelfAssessment = z.infer<typeof insertOverallSelfAssessmentSchema>;
+export type OverallSelfAssessment = typeof overallSelfAssessments.$inferSelect;
 
 // Peer Feedback Requests - 360 degree feedback requests
 export const peerFeedbackRequests = pgTable("peer_feedback_requests", {
@@ -952,6 +1321,22 @@ export const competencyModelsRelations = relations(competencyModels, ({ one, man
     references: [users.id],
   }),
   competencies: many(competencies),
+  userAssignments: many(userCompetencyModelAssignments),
+}));
+
+export const userCompetencyModelAssignmentsRelations = relations(userCompetencyModelAssignments, ({ one }) => ({
+  user: one(users, {
+    fields: [userCompetencyModelAssignments.userId],
+    references: [users.id],
+  }),
+  competencyModel: one(competencyModels, {
+    fields: [userCompetencyModelAssignments.competencyModelId],
+    references: [competencyModels.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [userCompetencyModelAssignments.assignedBy],
+    references: [users.id],
+  }),
 }));
 
 export const competenciesRelations = relations(competencies, ({ one, many }) => ({
@@ -989,6 +1374,17 @@ export const selfAssessmentsRelations = relations(selfAssessments, ({ one }) => 
   competency: one(competencies, {
     fields: [selfAssessments.competencyId],
     references: [competencies.id],
+  }),
+}));
+
+export const overallSelfAssessmentsRelations = relations(overallSelfAssessments, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [overallSelfAssessments.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  user: one(users, {
+    fields: [overallSelfAssessments.userId],
+    references: [users.id],
   }),
 }));
 

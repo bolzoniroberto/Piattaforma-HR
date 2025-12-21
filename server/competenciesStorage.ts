@@ -8,6 +8,8 @@ import {
   managerEvaluations,
   developmentPlans,
   evaluationNotifications,
+  userCompetencyModelAssignments,
+  overallSelfAssessments,
   users,
   type CompetencyModel,
   type InsertCompetencyModel,
@@ -27,6 +29,10 @@ import {
   type InsertDevelopmentPlan,
   type EvaluationNotification,
   type InsertEvaluationNotification,
+  type UserCompetencyModelAssignment,
+  type InsertUserCompetencyModelAssignment,
+  type OverallSelfAssessment,
+  type InsertOverallSelfAssessment,
   type User,
 } from "@shared/schema";
 import { db } from "./db";
@@ -130,6 +136,19 @@ export class CompetenciesStorage {
       return result[0];
     } catch (error) {
       console.error(`Error getting competency ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getCompetenciesByModelId(modelId: string): Promise<Competency[]> {
+    try {
+      return await db
+        .select()
+        .from(competencies)
+        .where(eq(competencies.modelId, modelId))
+        .orderBy(competencies.displayOrder);
+    } catch (error) {
+      console.error(`Error getting competencies for model ${modelId}:`, error);
       throw error;
     }
   }
@@ -875,6 +894,210 @@ export class CompetenciesStorage {
       return plan[0];
     } catch (error) {
       console.error("Error getting development plan by id:", error);
+      throw error;
+    }
+  }
+
+  // ==============================================
+  // USER COMPETENCY MODEL ASSIGNMENTS
+  // ==============================================
+
+  async getUserCompetencyModelAssignments(userId: string): Promise<(UserCompetencyModelAssignment & { competencyModel: CompetencyModel })[]> {
+    try {
+      const assignments = await db
+        .select({
+          id: userCompetencyModelAssignments.id,
+          userId: userCompetencyModelAssignments.userId,
+          competencyModelId: userCompetencyModelAssignments.competencyModelId,
+          assignedAt: userCompetencyModelAssignments.assignedAt,
+          assignedBy: userCompetencyModelAssignments.assignedBy,
+          validFrom: userCompetencyModelAssignments.validFrom,
+          validTo: userCompetencyModelAssignments.validTo,
+          isCurrent: userCompetencyModelAssignments.isCurrent,
+          notes: userCompetencyModelAssignments.notes,
+          createdAt: userCompetencyModelAssignments.createdAt,
+          updatedAt: userCompetencyModelAssignments.updatedAt,
+          competencyModel: competencyModels,
+        })
+        .from(userCompetencyModelAssignments)
+        .leftJoin(competencyModels, eq(userCompetencyModelAssignments.competencyModelId, competencyModels.id))
+        .where(eq(userCompetencyModelAssignments.userId, userId))
+        .orderBy(desc(userCompetencyModelAssignments.assignedAt));
+
+      return assignments as (UserCompetencyModelAssignment & { competencyModel: CompetencyModel })[];
+    } catch (error) {
+      console.error("Error getting user competency model assignments:", error);
+      throw error;
+    }
+  }
+
+  async getCurrentUserCompetencyModelAssignment(userId: string): Promise<(UserCompetencyModelAssignment & { competencyModel: CompetencyModel }) | undefined> {
+    try {
+      const assignment = await db
+        .select({
+          id: userCompetencyModelAssignments.id,
+          userId: userCompetencyModelAssignments.userId,
+          competencyModelId: userCompetencyModelAssignments.competencyModelId,
+          assignedAt: userCompetencyModelAssignments.assignedAt,
+          assignedBy: userCompetencyModelAssignments.assignedBy,
+          validFrom: userCompetencyModelAssignments.validFrom,
+          validTo: userCompetencyModelAssignments.validTo,
+          isCurrent: userCompetencyModelAssignments.isCurrent,
+          notes: userCompetencyModelAssignments.notes,
+          createdAt: userCompetencyModelAssignments.createdAt,
+          updatedAt: userCompetencyModelAssignments.updatedAt,
+          competencyModel: competencyModels,
+        })
+        .from(userCompetencyModelAssignments)
+        .leftJoin(competencyModels, eq(userCompetencyModelAssignments.competencyModelId, competencyModels.id))
+        .where(
+          and(
+            eq(userCompetencyModelAssignments.userId, userId),
+            eq(userCompetencyModelAssignments.isCurrent, true)
+          )
+        )
+        .limit(1);
+
+      return assignment[0] as (UserCompetencyModelAssignment & { competencyModel: CompetencyModel }) | undefined;
+    } catch (error) {
+      console.error("Error getting current user competency model assignment:", error);
+      throw error;
+    }
+  }
+
+  async createUserCompetencyModelAssignment(data: InsertUserCompetencyModelAssignment): Promise<UserCompetencyModelAssignment> {
+    try {
+      // If this is marked as current, set all other assignments for this user to not current
+      if (data.isCurrent) {
+        await db
+          .update(userCompetencyModelAssignments)
+          .set({ isCurrent: false, updatedAt: new Date() })
+          .where(eq(userCompetencyModelAssignments.userId, data.userId));
+      }
+
+      const [assignment] = await db
+        .insert(userCompetencyModelAssignments)
+        .values(data)
+        .returning();
+
+      return assignment;
+    } catch (error) {
+      console.error("Error creating user competency model assignment:", error);
+      throw error;
+    }
+  }
+
+  async updateUserCompetencyModelAssignment(id: string, data: Partial<InsertUserCompetencyModelAssignment>): Promise<UserCompetencyModelAssignment | undefined> {
+    try {
+      // If updating to current, set all other assignments for this user to not current
+      if (data.isCurrent) {
+        const existing = await db
+          .select()
+          .from(userCompetencyModelAssignments)
+          .where(eq(userCompetencyModelAssignments.id, id))
+          .limit(1);
+
+        if (existing[0]) {
+          await db
+            .update(userCompetencyModelAssignments)
+            .set({ isCurrent: false, updatedAt: new Date() })
+            .where(eq(userCompetencyModelAssignments.userId, existing[0].userId));
+        }
+      }
+
+      const [assignment] = await db
+        .update(userCompetencyModelAssignments)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(userCompetencyModelAssignments.id, id))
+        .returning();
+
+      return assignment;
+    } catch (error) {
+      console.error("Error updating user competency model assignment:", error);
+      throw error;
+    }
+  }
+
+  async deleteUserCompetencyModelAssignment(id: string): Promise<void> {
+    try {
+      await db
+        .delete(userCompetencyModelAssignments)
+        .where(eq(userCompetencyModelAssignments.id, id));
+    } catch (error) {
+      console.error("Error deleting user competency model assignment:", error);
+      throw error;
+    }
+  }
+
+  // ==============================================
+  // OVERALL SELF ASSESSMENTS
+  // ==============================================
+
+  async getOverallSelfAssessment(cycleId: string, userId: string): Promise<OverallSelfAssessment | undefined> {
+    try {
+      const result = await db
+        .select()
+        .from(overallSelfAssessments)
+        .where(and(
+          eq(overallSelfAssessments.cycleId, cycleId),
+          eq(overallSelfAssessments.userId, userId)
+        ))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error(`Error getting overall self assessment for cycle ${cycleId} and user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async createOrUpdateOverallSelfAssessment(data: InsertOverallSelfAssessment): Promise<OverallSelfAssessment> {
+    try {
+      // Check if assessment already exists
+      const existing = await this.getOverallSelfAssessment(data.cycleId, data.userId);
+
+      if (existing) {
+        // Update existing assessment
+        const [updated] = await db
+          .update(overallSelfAssessments)
+          .set({
+            ...data,
+            updatedAt: new Date(),
+            // Don't change submittedAt unless explicitly provided
+            submittedAt: data.submittedAt ?? existing.submittedAt
+          })
+          .where(eq(overallSelfAssessments.id, existing.id))
+          .returning();
+        return updated;
+      } else {
+        // Create new assessment
+        const [created] = await db
+          .insert(overallSelfAssessments)
+          .values(data)
+          .returning();
+        return created;
+      }
+    } catch (error) {
+      console.error("Error creating or updating overall self assessment:", error);
+      throw error;
+    }
+  }
+
+  async submitOverallSelfAssessment(cycleId: string, userId: string): Promise<void> {
+    try {
+      const existing = await this.getOverallSelfAssessment(cycleId, userId);
+      if (!existing) {
+        throw new Error("Overall self assessment not found");
+      }
+
+      await db
+        .update(overallSelfAssessments)
+        .set({
+          submittedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(overallSelfAssessments.id, existing.id));
+    } catch (error) {
+      console.error(`Error submitting overall self assessment for cycle ${cycleId} and user ${userId}:`, error);
       throw error;
     }
   }

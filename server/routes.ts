@@ -4,6 +4,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { competenciesStorage } from "./competenciesStorage";
 import { seed } from "./seed";
+import { db } from "./db";
+import { sedi, ccnl, livelliContrattuali, categorieProtette, configurazioniOrario, causaliAssunzione } from "@shared/schema";
+import { eq, and, asc, desc } from "drizzle-orm";
 
 // Use local auth in development and Railway production (disable Replit auth)
 // Replit OAuth is not available in Railway deployment
@@ -26,11 +29,19 @@ import {
   insertCompetencySchema,
   insertEvaluationCycleSchema,
   insertSelfAssessmentSchema,
+  insertOverallSelfAssessmentSchema,
   insertPeerFeedbackRequestSchema,
   insertPeerFeedbackSchema,
   insertManagerEvaluationSchema,
   insertDevelopmentPlanSchema,
   insertEvaluationNotificationSchema,
+  insertUserCompetencyModelAssignmentSchema,
+  insertSediSchema,
+  insertCcnlSchema,
+  insertLivelliContrattualiSchema,
+  insertCategorieProtetteSchema,
+  insertConfigurazioniOrarioSchema,
+  insertCausaliAssunzioneSchema,
 } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -1784,6 +1795,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -------------------- Employee: Evaluation Cycles --------------------
+
+  // Get active evaluation cycles for employees
+  app.get("/api/evaluation-cycles/active", isAuthenticated, async (req, res) => {
+    try {
+      const cycles = await competenciesStorage.getEvaluationCycles({ status: "active" });
+      res.json(cycles);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // -------------------- Admin: Evaluation Cycles --------------------
 
   // Get all evaluation cycles
@@ -1947,18 +1970,362 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -------------------- Lookup Tables (Anagrafica) --------------------
+
+  // SEDI - Locations
+  app.get("/api/admin/sedi", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(sedi).orderBy(desc(sedi.updatedAt));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/sedi/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(sedi).where(eq(sedi.id, req.params.id));
+      if (!result.length) {
+        return res.status(404).json({ message: "Sede not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/sedi", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertSediSchema.parse(req.body);
+      const result = await db.insert(sedi).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/sedi/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertSediSchema.partial().parse(req.body);
+      const result = await db.update(sedi).set(data).where(eq(sedi.id, req.params.id)).returning();
+      if (!result.length) {
+        return res.status(404).json({ message: "Sede not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/sedi/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(sedi).where(eq(sedi.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // CCNL - Collective Labor Agreements
+  app.get("/api/admin/ccnl", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(ccnl).orderBy(desc(ccnl.updatedAt));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/ccnl/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(ccnl).where(eq(ccnl.id, req.params.id));
+      if (!result.length) {
+        return res.status(404).json({ message: "CCNL not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/ccnl", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCcnlSchema.parse(req.body);
+      const result = await db.insert(ccnl).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/ccnl/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCcnlSchema.partial().parse(req.body);
+      const result = await db.update(ccnl).set(data).where(eq(ccnl.id, req.params.id)).returning();
+      if (!result.length) {
+        return res.status(404).json({ message: "CCNL not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/ccnl/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(ccnl).where(eq(ccnl.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // LIVELLI CONTRATTUALI - Contract Levels (filtered by CCNL)
+  app.get("/api/admin/livelli-contrattuali", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ccnlId } = req.query;
+      let query = db.select().from(livelliContrattuali);
+
+      if (ccnlId) {
+        query = query.where(eq(livelliContrattuali.ccnlId, ccnlId as string));
+      }
+
+      const result = await query.orderBy(asc(livelliContrattuali.ordinamento), desc(livelliContrattuali.updatedAt));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/livelli-contrattuali/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(livelliContrattuali).where(eq(livelliContrattuali.id, req.params.id));
+      if (!result.length) {
+        return res.status(404).json({ message: "Livello contrattuale not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/livelli-contrattuali", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertLivelliContrattualiSchema.parse(req.body);
+      const result = await db.insert(livelliContrattuali).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/livelli-contrattuali/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertLivelliContrattualiSchema.partial().parse(req.body);
+      const result = await db.update(livelliContrattuali).set(data).where(eq(livelliContrattuali.id, req.params.id)).returning();
+      if (!result.length) {
+        return res.status(404).json({ message: "Livello contrattuale not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/livelli-contrattuali/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(livelliContrattuali).where(eq(livelliContrattuali.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // CATEGORIE PROTETTE - Protected Categories
+  app.get("/api/admin/categorie-protette", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(categorieProtette).orderBy(desc(categorieProtette.updatedAt));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/categorie-protette/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(categorieProtette).where(eq(categorieProtette.id, req.params.id));
+      if (!result.length) {
+        return res.status(404).json({ message: "Categoria protetta not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/categorie-protette", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCategorieProtetteSchema.parse(req.body);
+      const result = await db.insert(categorieProtette).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/categorie-protette/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCategorieProtetteSchema.partial().parse(req.body);
+      const result = await db.update(categorieProtette).set(data).where(eq(categorieProtette.id, req.params.id)).returning();
+      if (!result.length) {
+        return res.status(404).json({ message: "Categoria protetta not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/categorie-protette/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(categorieProtette).where(eq(categorieProtette.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // CONFIGURAZIONI ORARIO - Time Configurations (tipo_orario or timbra_firma)
+  app.get("/api/admin/configurazioni-orario", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { tipo } = req.query;
+      let query = db.select().from(configurazioniOrario);
+
+      if (tipo) {
+        query = query.where(eq(configurazioniOrario.tipo, tipo as string));
+      }
+
+      const result = await query.orderBy(desc(configurazioniOrario.updatedAt));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/configurazioni-orario/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(configurazioniOrario).where(eq(configurazioniOrario.id, req.params.id));
+      if (!result.length) {
+        return res.status(404).json({ message: "Configurazione orario not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/configurazioni-orario", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertConfigurazioniOrarioSchema.parse(req.body);
+      const result = await db.insert(configurazioniOrario).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/configurazioni-orario/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertConfigurazioniOrarioSchema.partial().parse(req.body);
+      const result = await db.update(configurazioniOrario).set(data).where(eq(configurazioniOrario.id, req.params.id)).returning();
+      if (!result.length) {
+        return res.status(404).json({ message: "Configurazione orario not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/configurazioni-orario/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(configurazioniOrario).where(eq(configurazioniOrario.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // CAUSALI ASSUNZIONE - Hiring Reasons
+  app.get("/api/admin/causali-assunzione", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(causaliAssunzione).orderBy(desc(causaliAssunzione.updatedAt));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/admin/causali-assunzione/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db.select().from(causaliAssunzione).where(eq(causaliAssunzione.id, req.params.id));
+      if (!result.length) {
+        return res.status(404).json({ message: "Causale assunzione not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/causali-assunzione", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCausaliAssunzioneSchema.parse(req.body);
+      const result = await db.insert(causaliAssunzione).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.patch("/api/admin/causali-assunzione/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertCausaliAssunzioneSchema.partial().parse(req.body);
+      const result = await db.update(causaliAssunzione).set(data).where(eq(causaliAssunzione.id, req.params.id)).returning();
+      if (!result.length) {
+        return res.status(404).json({ message: "Causale assunzione not found" });
+      }
+      res.json(result[0]);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/causali-assunzione/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(causaliAssunzione).where(eq(causaliAssunzione.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // -------------------- Employee: My Competencies --------------------
 
   // Get my competencies (based on my persona type)
   app.get("/api/my-competencies", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const user = await storage.getUser(userId);
-      if (!user || !user.personaType) {
-        return res.status(400).json({ message: "User persona type not set" });
+
+      // Get user's current competency model assignment
+      const assignment = await competenciesStorage.getCurrentUserCompetencyModelAssignment(userId);
+
+      if (!assignment || !assignment.competencyModelId) {
+        return res.status(400).json({ message: "No competency model assigned to user" });
       }
 
-      const competencies = await competenciesStorage.getCompetenciesForPersona(user.personaType);
+      // Get competencies for the assigned model
+      const competencies = await competenciesStorage.getCompetenciesByModelId(assignment.competencyModelId);
       res.json(competencies);
     } catch (error) {
       handleError(res, error);
@@ -1995,6 +2362,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       await competenciesStorage.submitSelfAssessments(req.params.cycleId, userId);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // -------------------- Employee: Overall Self Assessment --------------------
+
+  // Get overall self assessment for a cycle
+  app.get("/api/overall-self-assessment/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const assessment = await competenciesStorage.getOverallSelfAssessment(req.params.cycleId, userId);
+      if (!assessment) {
+        return res.status(404).json({ message: "Overall self assessment not found" });
+      }
+      res.json(assessment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Create or update overall self assessment
+  app.post("/api/overall-self-assessment", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const data = insertOverallSelfAssessmentSchema.parse({ ...req.body, userId });
+      const assessment = await competenciesStorage.createOrUpdateOverallSelfAssessment(data);
+      res.status(201).json(assessment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Submit overall self assessment
+  app.post("/api/overall-self-assessment/:cycleId/submit", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      await competenciesStorage.submitOverallSelfAssessment(req.params.cycleId, userId);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
@@ -2279,6 +2685,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedPlan = await competenciesStorage.updateDevelopmentPlanStatus(req.params.id, status);
       res.json(updatedPlan);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ==============================================
+  // USER COMPETENCY MODEL ASSIGNMENTS
+  // ==============================================
+
+  // Get all competency model assignments for a user
+  app.get("/api/users/:userId/competency-assignments", isAuthenticated, async (req, res) => {
+    try {
+      const assignments = await competenciesStorage.getUserCompetencyModelAssignments(req.params.userId);
+      res.json(assignments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get current (active) competency model assignment for a user
+  app.get("/api/users/:userId/competency-assignments/current", isAuthenticated, async (req, res) => {
+    try {
+      const assignment = await competenciesStorage.getCurrentUserCompetencyModelAssignment(req.params.userId);
+      res.json(assignment || null);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Assign a competency model to a user
+  app.post("/api/users/:userId/competency-assignments", isAdmin, async (req, res) => {
+    try {
+      const assignedBy = getUserId(req);
+      const data = insertUserCompetencyModelAssignmentSchema.parse({
+        ...req.body,
+        userId: req.params.userId,
+        assignedBy,
+      });
+      const assignment = await competenciesStorage.createUserCompetencyModelAssignment(data);
+      res.status(201).json(assignment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Update a competency model assignment
+  app.patch("/api/users/:userId/competency-assignments/:assignmentId", isAdmin, async (req, res) => {
+    try {
+      const data = insertUserCompetencyModelAssignmentSchema.partial().parse(req.body);
+      const assignment = await competenciesStorage.updateUserCompetencyModelAssignment(req.params.assignmentId, data);
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      res.json(assignment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Delete a competency model assignment
+  app.delete("/api/users/:userId/competency-assignments/:assignmentId", isAdmin, async (req, res) => {
+    try {
+      await competenciesStorage.deleteUserCompetencyModelAssignment(req.params.assignmentId);
+      res.status(204).send();
     } catch (error) {
       handleError(res, error);
     }

@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2 } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2, MapPin, FileText, ShieldCheck, Clock, Briefcase } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -70,6 +70,46 @@ interface BusinessFunction {
   secondoLivelloId?: string;
 }
 
+interface SedeLavoro {
+  id: string;
+  codiceSede: string;
+  descrizioneSede: string;
+  comune?: string;
+  provincia?: string;
+  indirizzo?: string;
+  cap?: string;
+  isActive: boolean;
+}
+
+interface Ccnl {
+  id: string;
+  codiceCcnl: string;
+  descrizioneCcnl: string;
+  isActive: boolean;
+}
+
+interface CategoriaProtetta {
+  id: string;
+  codice: string;
+  descrizione: string;
+  isActive: boolean;
+}
+
+interface ConfigurazioneOrario {
+  id: string;
+  codice: string;
+  tipo: "tipo_orario" | "timbra_firma";
+  descrizione: string;
+  isActive: boolean;
+}
+
+interface CausaleAssunzione {
+  id: string;
+  codice: string;
+  descrizione: string;
+  isActive: boolean;
+}
+
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -81,7 +121,20 @@ export default function AdminSettingsPage() {
   const [editingCalc, setEditingCalc] = useState<CalculationType | null>(null);
   const [editingBusiness, setEditingBusiness] = useState<BusinessFunction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleteType, setDeleteType] = useState<"cluster" | "calc" | "business" | null>(null);
+  const [deleteType, setDeleteType] = useState<"cluster" | "calc" | "business" | "sede" | "ccnl" | "categoria" | "orario" | "causale" | null>(null);
+
+  // Nuovi stati per i 5 tab anagrafica
+  const [openSedeDialog, setOpenSedeDialog] = useState(false);
+  const [openCcnlDialog, setOpenCcnlDialog] = useState(false);
+  const [openCategoriaDialog, setOpenCategoriaDialog] = useState(false);
+  const [openOrarioDialog, setOpenOrarioDialog] = useState(false);
+  const [openCausaleDialog, setOpenCausaleDialog] = useState(false);
+
+  const [editingSede, setEditingSede] = useState<SedeLavoro | null>(null);
+  const [editingCcnl, setEditingCcnl] = useState<Ccnl | null>(null);
+  const [editingCategoria, setEditingCategoria] = useState<CategoriaProtetta | null>(null);
+  const [editingOrario, setEditingOrario] = useState<ConfigurazioneOrario | null>(null);
+  const [editingCausale, setEditingCausale] = useState<CausaleAssunzione | null>(null);
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -94,6 +147,13 @@ export default function AdminSettingsPage() {
   const [clusterForm, setClusterForm] = useState({ name: "", description: "" });
   const [calcForm, setCalcForm] = useState({ name: "", description: "", formula: "" });
   const [businessForm, setBusinessForm] = useState({ name: "", description: "", primoLivelloId: "", secondoLivelloId: "" });
+
+  // Nuovi form state per anagrafica
+  const [sedeForm, setSedeForm] = useState({ codiceSede: "", descrizioneSede: "", comune: "", provincia: "", indirizzo: "", cap: "", isActive: true });
+  const [ccnlForm, setCcnlForm] = useState({ codiceCcnl: "", descrizioneCcnl: "", isActive: true });
+  const [categoriaForm, setCategoriaForm] = useState({ codice: "", descrizione: "", isActive: true });
+  const [orarioForm, setOrarioForm] = useState({ codice: "", tipo: "tipo_orario" as "tipo_orario" | "timbra_firma", descrizione: "", isActive: true });
+  const [causaleForm, setCausaleForm] = useState({ codice: "", descrizione: "", isActive: true });
 
   // Queries
   const { data: clusters = [], isLoading: clusterLoading } = useQuery<IndicatorCluster[]>({
@@ -108,6 +168,37 @@ export default function AdminSettingsPage() {
 
   const { data: businessFunctions = [], isLoading: businessLoading } = useQuery<BusinessFunction[]>({
     queryKey: ["/api/business-functions"],
+    enabled: !!user,
+  });
+
+  // Nuove queries per anagrafica
+  const { data: sedi = [], isLoading: sediLoading } = useQuery<SedeLavoro[]>({
+    queryKey: ["/api/admin/sedi"],
+    enabled: !!user,
+  });
+
+  const { data: ccnls = [], isLoading: ccnlsLoading } = useQuery<Ccnl[]>({
+    queryKey: ["/api/admin/ccnl"],
+    enabled: !!user,
+  });
+
+  const { data: categorieProtette = [], isLoading: categorieLoading } = useQuery<CategoriaProtetta[]>({
+    queryKey: ["/api/admin/categorie-protette"],
+    enabled: !!user && user.role === "admin",
+  });
+
+  const { data: tipiOrario = [], isLoading: tipiOrarioLoading } = useQuery<ConfigurazioneOrario[]>({
+    queryKey: ["/api/admin/configurazioni-orario", { tipo: "tipo_orario" }],
+    enabled: !!user,
+  });
+
+  const { data: timbraFirma = [], isLoading: timbraFirmaLoading } = useQuery<ConfigurazioneOrario[]>({
+    queryKey: ["/api/admin/configurazioni-orario", { tipo: "timbra_firma" }],
+    enabled: !!user,
+  });
+
+  const { data: causaliAssunzione = [], isLoading: causaliLoading } = useQuery<CausaleAssunzione[]>({
+    queryKey: ["/api/admin/causali-assunzione"],
     enabled: !!user,
   });
 
@@ -234,6 +325,211 @@ export default function AdminSettingsPage() {
     },
   });
 
+  // Mutations - Sedi di Lavoro
+  const createSedeMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/sedi", sedeForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sedi"] });
+      setSedeForm({ codiceSede: "", descrizioneSede: "", comune: "", provincia: "", indirizzo: "", cap: "", isActive: true });
+      setOpenSedeDialog(false);
+      toast({ title: "Successo", description: "Sede creata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nella creazione della sede", variant: "destructive" });
+    },
+  });
+
+  const updateSedeMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/admin/sedi/${editingSede?.id}`, sedeForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sedi"] });
+      setSedeForm({ codiceSede: "", descrizioneSede: "", comune: "", provincia: "", indirizzo: "", cap: "", isActive: true });
+      setEditingSede(null);
+      setOpenSedeDialog(false);
+      toast({ title: "Successo", description: "Sede aggiornata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'aggiornamento della sede", variant: "destructive" });
+    },
+  });
+
+  const deleteSedeMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/sedi/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sedi"] });
+      setDeleteId(null);
+      setDeleteType(null);
+      toast({ title: "Successo", description: "Sede eliminata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'eliminazione della sede", variant: "destructive" });
+    },
+  });
+
+  // Mutations - CCNL
+  const createCcnlMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/ccnl", ccnlForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ccnl"] });
+      setCcnlForm({ codiceCcnl: "", descrizioneCcnl: "", isActive: true });
+      setOpenCcnlDialog(false);
+      toast({ title: "Successo", description: "CCNL creato con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nella creazione del CCNL", variant: "destructive" });
+    },
+  });
+
+  const updateCcnlMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/admin/ccnl/${editingCcnl?.id}`, ccnlForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ccnl"] });
+      setCcnlForm({ codiceCcnl: "", descrizioneCcnl: "", isActive: true });
+      setEditingCcnl(null);
+      setOpenCcnlDialog(false);
+      toast({ title: "Successo", description: "CCNL aggiornato con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'aggiornamento del CCNL", variant: "destructive" });
+    },
+  });
+
+  const deleteCcnlMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/ccnl/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ccnl"] });
+      setDeleteId(null);
+      setDeleteType(null);
+      toast({ title: "Successo", description: "CCNL eliminato con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'eliminazione del CCNL", variant: "destructive" });
+    },
+  });
+
+  // Mutations - Categorie Protette
+  const createCategoriaMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/categorie-protette", categoriaForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/categorie-protette"] });
+      setCategoriaForm({ codice: "", descrizione: "", isActive: true });
+      setOpenCategoriaDialog(false);
+      toast({ title: "Successo", description: "Categoria protetta creata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nella creazione della categoria protetta", variant: "destructive" });
+    },
+  });
+
+  const updateCategoriaMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/admin/categorie-protette/${editingCategoria?.id}`, categoriaForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/categorie-protette"] });
+      setCategoriaForm({ codice: "", descrizione: "", isActive: true });
+      setEditingCategoria(null);
+      setOpenCategoriaDialog(false);
+      toast({ title: "Successo", description: "Categoria protetta aggiornata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'aggiornamento della categoria protetta", variant: "destructive" });
+    },
+  });
+
+  const deleteCategoriaMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/categorie-protette/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/categorie-protette"] });
+      setDeleteId(null);
+      setDeleteType(null);
+      toast({ title: "Successo", description: "Categoria protetta eliminata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'eliminazione della categoria protetta", variant: "destructive" });
+    },
+  });
+
+  // Mutations - Configurazioni Orario
+  const createOrarioMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/admin/configurazioni-orario?tipo=${orarioForm.tipo}`, orarioForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/configurazioni-orario"] });
+      setOrarioForm({ codice: "", tipo: "tipo_orario", descrizione: "", isActive: true });
+      setOpenOrarioDialog(false);
+      toast({ title: "Successo", description: "Configurazione orario creata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nella creazione della configurazione orario", variant: "destructive" });
+    },
+  });
+
+  const updateOrarioMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/admin/configurazioni-orario/${editingOrario?.id}?tipo=${orarioForm.tipo}`, orarioForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/configurazioni-orario"] });
+      setOrarioForm({ codice: "", tipo: "tipo_orario", descrizione: "", isActive: true });
+      setEditingOrario(null);
+      setOpenOrarioDialog(false);
+      toast({ title: "Successo", description: "Configurazione orario aggiornata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'aggiornamento della configurazione orario", variant: "destructive" });
+    },
+  });
+
+  const deleteOrarioMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/configurazioni-orario/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/configurazioni-orario"] });
+      setDeleteId(null);
+      setDeleteType(null);
+      toast({ title: "Successo", description: "Configurazione orario eliminata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'eliminazione della configurazione orario", variant: "destructive" });
+    },
+  });
+
+  // Mutations - Causali Assunzione
+  const createCausaleMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/causali-assunzione", causaleForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/causali-assunzione"] });
+      setCausaleForm({ codice: "", descrizione: "", isActive: true });
+      setOpenCausaleDialog(false);
+      toast({ title: "Successo", description: "Causale assunzione creata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nella creazione della causale assunzione", variant: "destructive" });
+    },
+  });
+
+  const updateCausaleMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/admin/causali-assunzione/${editingCausale?.id}`, causaleForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/causali-assunzione"] });
+      setCausaleForm({ codice: "", descrizione: "", isActive: true });
+      setEditingCausale(null);
+      setOpenCausaleDialog(false);
+      toast({ title: "Successo", description: "Causale assunzione aggiornata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'aggiornamento della causale assunzione", variant: "destructive" });
+    },
+  });
+
+  const deleteCausaleMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/causali-assunzione/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/causali-assunzione"] });
+      setDeleteId(null);
+      setDeleteType(null);
+      toast({ title: "Successo", description: "Causale assunzione eliminata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'eliminazione della causale assunzione", variant: "destructive" });
+    },
+  });
+
   const handleEditCluster = (cluster: IndicatorCluster) => {
     setEditingCluster(cluster);
     setClusterForm({ name: cluster.name, description: cluster.description || "" });
@@ -293,6 +589,104 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleEditSede = (sede: SedeLavoro) => {
+    setEditingSede(sede);
+    setSedeForm({
+      codiceSede: sede.codiceSede,
+      descrizioneSede: sede.descrizioneSede,
+      comune: sede.comune || "",
+      provincia: sede.provincia || "",
+      indirizzo: sede.indirizzo || "",
+      cap: sede.cap || "",
+      isActive: sede.isActive
+    });
+    setOpenSedeDialog(true);
+  };
+
+  const handleEditCcnl = (ccnl: Ccnl) => {
+    setEditingCcnl(ccnl);
+    setCcnlForm({ codiceCcnl: ccnl.codiceCcnl, descrizioneCcnl: ccnl.descrizioneCcnl, isActive: ccnl.isActive });
+    setOpenCcnlDialog(true);
+  };
+
+  const handleEditCategoria = (categoria: CategoriaProtetta) => {
+    setEditingCategoria(categoria);
+    setCategoriaForm({ codice: categoria.codice, descrizione: categoria.descrizione, isActive: categoria.isActive });
+    setOpenCategoriaDialog(true);
+  };
+
+  const handleEditOrario = (orario: ConfigurazioneOrario) => {
+    setEditingOrario(orario);
+    setOrarioForm({ codice: orario.codice, tipo: orario.tipo, descrizione: orario.descrizione, isActive: orario.isActive });
+    setOpenOrarioDialog(true);
+  };
+
+  const handleEditCausale = (causale: CausaleAssunzione) => {
+    setEditingCausale(causale);
+    setCausaleForm({ codice: causale.codice, descrizione: causale.descrizione, isActive: causale.isActive });
+    setOpenCausaleDialog(true);
+  };
+
+  const handleSaveSede = () => {
+    if (!sedeForm.codiceSede.trim() || !sedeForm.descrizioneSede.trim()) {
+      toast({ title: "Errore", description: "Codice e descrizione sono obbligatori", variant: "destructive" });
+      return;
+    }
+    if (editingSede) {
+      updateSedeMutation.mutate();
+    } else {
+      createSedeMutation.mutate();
+    }
+  };
+
+  const handleSaveCcnl = () => {
+    if (!ccnlForm.codiceCcnl.trim() || !ccnlForm.descrizioneCcnl.trim()) {
+      toast({ title: "Errore", description: "Codice e descrizione sono obbligatori", variant: "destructive" });
+      return;
+    }
+    if (editingCcnl) {
+      updateCcnlMutation.mutate();
+    } else {
+      createCcnlMutation.mutate();
+    }
+  };
+
+  const handleSaveCategoria = () => {
+    if (!categoriaForm.codice.trim() || !categoriaForm.descrizione.trim()) {
+      toast({ title: "Errore", description: "Codice e descrizione sono obbligatori", variant: "destructive" });
+      return;
+    }
+    if (editingCategoria) {
+      updateCategoriaMutation.mutate();
+    } else {
+      createCategoriaMutation.mutate();
+    }
+  };
+
+  const handleSaveOrario = () => {
+    if (!orarioForm.codice.trim() || !orarioForm.descrizione.trim()) {
+      toast({ title: "Errore", description: "Codice e descrizione sono obbligatori", variant: "destructive" });
+      return;
+    }
+    if (editingOrario) {
+      updateOrarioMutation.mutate();
+    } else {
+      createOrarioMutation.mutate();
+    }
+  };
+
+  const handleSaveCausale = () => {
+    if (!causaleForm.codice.trim() || !causaleForm.descrizione.trim()) {
+      toast({ title: "Errore", description: "Codice e descrizione sono obbligatori", variant: "destructive" });
+      return;
+    }
+    if (editingCausale) {
+      updateCausaleMutation.mutate();
+    } else {
+      createCausaleMutation.mutate();
+    }
+  };
+
   const handleDeleteConfirm = () => {
     if (!deleteId || !deleteType) return;
     if (deleteType === "cluster") {
@@ -301,6 +695,16 @@ export default function AdminSettingsPage() {
       deleteCalcMutation.mutate(deleteId);
     } else if (deleteType === "business") {
       deleteBusinessMutation.mutate(deleteId);
+    } else if (deleteType === "sede") {
+      deleteSedeMutation.mutate(deleteId);
+    } else if (deleteType === "ccnl") {
+      deleteCcnlMutation.mutate(deleteId);
+    } else if (deleteType === "categoria") {
+      deleteCategoriaMutation.mutate(deleteId);
+    } else if (deleteType === "orario") {
+      deleteOrarioMutation.mutate(deleteId);
+    } else if (deleteType === "causale") {
+      deleteCausaleMutation.mutate(deleteId);
     }
   };
 
@@ -371,10 +775,17 @@ export default function AdminSettingsPage() {
               </div>
 
               <Tabs defaultValue="clusters" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-8">
                   <TabsTrigger value="clusters">Indicatori</TabsTrigger>
                   <TabsTrigger value="calculations">Tipi di Calcolo</TabsTrigger>
                   <TabsTrigger value="business">Funzioni Aziendali</TabsTrigger>
+                  <TabsTrigger value="sedi">Sedi di Lavoro</TabsTrigger>
+                  <TabsTrigger value="ccnl">CCNL</TabsTrigger>
+                  {user?.role === "admin" && (
+                    <TabsTrigger value="categorie-protette">Categorie Protette</TabsTrigger>
+                  )}
+                  <TabsTrigger value="configurazioni-orario">Configurazioni Orario</TabsTrigger>
+                  <TabsTrigger value="causali-assunzione">Causali Assunzione</TabsTrigger>
                 </TabsList>
 
                 {/* Clusters Tab */}
@@ -718,6 +1129,730 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+
+                {/* Sedi di Lavoro Tab */}
+                <TabsContent value="sedi" className="mt-6">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
+                      <div>
+                        <CardTitle>Sedi di Lavoro</CardTitle>
+                        <CardDescription>Gestisci le sedi di lavoro aziendali</CardDescription>
+                      </div>
+                      <Dialog open={openSedeDialog} onOpenChange={setOpenSedeDialog}>
+                        <DialogTrigger asChild>
+                          <Button onClick={() => { setEditingSede(null); setSedeForm({ codiceSede: "", descrizioneSede: "", comune: "", provincia: "", indirizzo: "", cap: "", isActive: true }); }}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Nuova Sede
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>{editingSede ? "Modifica Sede" : "Nuova Sede di Lavoro"}</DialogTitle>
+                            <DialogDescription>
+                              Compila i dettagli della sede di lavoro
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="sede-codice">Codice Sede *</Label>
+                              <Input
+                                id="sede-codice"
+                                value={sedeForm.codiceSede}
+                                onChange={(e) => setSedeForm({ ...sedeForm, codiceSede: e.target.value })}
+                                placeholder="Es: MI01"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="sede-descrizione">Descrizione *</Label>
+                              <Input
+                                id="sede-descrizione"
+                                value={sedeForm.descrizioneSede}
+                                onChange={(e) => setSedeForm({ ...sedeForm, descrizioneSede: e.target.value })}
+                                placeholder="Es: Milano Centro"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="sede-comune">Comune</Label>
+                              <Input
+                                id="sede-comune"
+                                value={sedeForm.comune}
+                                onChange={(e) => setSedeForm({ ...sedeForm, comune: e.target.value })}
+                                placeholder="Es: Milano"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="sede-provincia">Provincia</Label>
+                              <Input
+                                id="sede-provincia"
+                                value={sedeForm.provincia}
+                                onChange={(e) => setSedeForm({ ...sedeForm, provincia: e.target.value })}
+                                placeholder="Es: MI"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Label htmlFor="sede-indirizzo">Indirizzo</Label>
+                              <Input
+                                id="sede-indirizzo"
+                                value={sedeForm.indirizzo}
+                                onChange={(e) => setSedeForm({ ...sedeForm, indirizzo: e.target.value })}
+                                placeholder="Es: Via Roma, 123"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="sede-cap">CAP</Label>
+                              <Input
+                                id="sede-cap"
+                                value={sedeForm.cap}
+                                onChange={(e) => setSedeForm({ ...sedeForm, cap: e.target.value })}
+                                placeholder="Es: 20100"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="sede-active"
+                                checked={sedeForm.isActive}
+                                onChange={(e) => setSedeForm({ ...sedeForm, isActive: e.target.checked })}
+                                className="h-4 w-4"
+                              />
+                              <Label htmlFor="sede-active">Attivo</Label>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={handleSaveSede}
+                              disabled={createSedeMutation.isPending || updateSedeMutation.isPending}
+                            >
+                              {createSedeMutation.isPending || updateSedeMutation.isPending ? "Salvataggio..." : "Salva"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </CardHeader>
+                    <CardContent>
+                      {sediLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                      ) : sedi.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">Nessuna sede trovata</div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Codice</TableHead>
+                              <TableHead>Descrizione</TableHead>
+                              <TableHead>Comune</TableHead>
+                              <TableHead>Provincia</TableHead>
+                              <TableHead>Stato</TableHead>
+                              <TableHead className="w-32">Azioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sedi.map((sede) => (
+                              <TableRow key={sede.id}>
+                                <TableCell className="font-medium">{sede.codiceSede}</TableCell>
+                                <TableCell>{sede.descrizioneSede}</TableCell>
+                                <TableCell>{sede.comune || "-"}</TableCell>
+                                <TableCell>{sede.provincia || "-"}</TableCell>
+                                <TableCell>
+                                  <span className={sede.isActive ? "text-green-600" : "text-gray-400"}>
+                                    {sede.isActive ? "Attivo" : "Inattivo"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="flex flex-nowrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditSede(sede)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => { setDeleteId(sede.id); setDeleteType("sede"); }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* CCNL Tab */}
+                <TabsContent value="ccnl" className="mt-6">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
+                      <div>
+                        <CardTitle>CCNL</CardTitle>
+                        <CardDescription>Gestisci i Contratti Collettivi Nazionali di Lavoro</CardDescription>
+                      </div>
+                      <Dialog open={openCcnlDialog} onOpenChange={setOpenCcnlDialog}>
+                        <DialogTrigger asChild>
+                          <Button onClick={() => { setEditingCcnl(null); setCcnlForm({ codiceCcnl: "", descrizioneCcnl: "", isActive: true }); }}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Nuovo CCNL
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>{editingCcnl ? "Modifica CCNL" : "Nuovo CCNL"}</DialogTitle>
+                            <DialogDescription>
+                              Compila i dettagli del Contratto Collettivo Nazionale
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="ccnl-codice">Codice CCNL *</Label>
+                              <Input
+                                id="ccnl-codice"
+                                value={ccnlForm.codiceCcnl}
+                                onChange={(e) => setCcnlForm({ ...ccnlForm, codiceCcnl: e.target.value })}
+                                placeholder="Es: COMMERCIO"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="ccnl-descrizione">Descrizione *</Label>
+                              <Input
+                                id="ccnl-descrizione"
+                                value={ccnlForm.descrizioneCcnl}
+                                onChange={(e) => setCcnlForm({ ...ccnlForm, descrizioneCcnl: e.target.value })}
+                                placeholder="Es: CCNL Commercio e Terziario"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="ccnl-active"
+                                checked={ccnlForm.isActive}
+                                onChange={(e) => setCcnlForm({ ...ccnlForm, isActive: e.target.checked })}
+                                className="h-4 w-4"
+                              />
+                              <Label htmlFor="ccnl-active">Attivo</Label>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={handleSaveCcnl}
+                              disabled={createCcnlMutation.isPending || updateCcnlMutation.isPending}
+                            >
+                              {createCcnlMutation.isPending || updateCcnlMutation.isPending ? "Salvataggio..." : "Salva"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </CardHeader>
+                    <CardContent>
+                      {ccnlsLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                      ) : ccnls.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">Nessun CCNL trovato</div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Codice</TableHead>
+                              <TableHead>Descrizione</TableHead>
+                              <TableHead>Stato</TableHead>
+                              <TableHead className="w-32">Azioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {ccnls.map((ccnl) => (
+                              <TableRow key={ccnl.id}>
+                                <TableCell className="font-medium">{ccnl.codiceCcnl}</TableCell>
+                                <TableCell>{ccnl.descrizioneCcnl}</TableCell>
+                                <TableCell>
+                                  <span className={ccnl.isActive ? "text-green-600" : "text-gray-400"}>
+                                    {ccnl.isActive ? "Attivo" : "Inattivo"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="flex flex-nowrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditCcnl(ccnl)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => { setDeleteId(ccnl.id); setDeleteType("ccnl"); }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Categorie Protette Tab - SOLO ADMIN */}
+                {user?.role === "admin" && (
+                  <TabsContent value="categorie-protette" className="mt-6">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between gap-4">
+                        <div>
+                          <CardTitle>Categorie Protette (L.68/99)</CardTitle>
+                          <CardDescription>Gestisci le categorie protette ai sensi della Legge 68/99</CardDescription>
+                        </div>
+                        <Dialog open={openCategoriaDialog} onOpenChange={setOpenCategoriaDialog}>
+                          <DialogTrigger asChild>
+                            <Button onClick={() => { setEditingCategoria(null); setCategoriaForm({ codice: "", descrizione: "", isActive: true }); }}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Nuova Categoria
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>{editingCategoria ? "Modifica Categoria Protetta" : "Nuova Categoria Protetta"}</DialogTitle>
+                              <DialogDescription>
+                                Compila i dettagli della categoria protetta
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label htmlFor="categoria-codice">Codice *</Label>
+                                <Input
+                                  id="categoria-codice"
+                                  value={categoriaForm.codice}
+                                  onChange={(e) => setCategoriaForm({ ...categoriaForm, codice: e.target.value })}
+                                  placeholder="Es: ART1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="categoria-descrizione">Descrizione *</Label>
+                                <Input
+                                  id="categoria-descrizione"
+                                  value={categoriaForm.descrizione}
+                                  onChange={(e) => setCategoriaForm({ ...categoriaForm, descrizione: e.target.value })}
+                                  placeholder="Es: Art. 1 - Disabili"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id="categoria-active"
+                                  checked={categoriaForm.isActive}
+                                  onChange={(e) => setCategoriaForm({ ...categoriaForm, isActive: e.target.checked })}
+                                  className="h-4 w-4"
+                                />
+                                <Label htmlFor="categoria-active">Attivo</Label>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                onClick={handleSaveCategoria}
+                                disabled={createCategoriaMutation.isPending || updateCategoriaMutation.isPending}
+                              >
+                                {createCategoriaMutation.isPending || updateCategoriaMutation.isPending ? "Salvataggio..." : "Salva"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </CardHeader>
+                      <CardContent>
+                        {categorieLoading ? (
+                          <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                        ) : categorieProtette.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">Nessuna categoria trovata</div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Codice</TableHead>
+                                <TableHead>Descrizione</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead className="w-32">Azioni</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {categorieProtette.map((categoria) => (
+                                <TableRow key={categoria.id}>
+                                  <TableCell className="font-medium">{categoria.codice}</TableCell>
+                                  <TableCell>{categoria.descrizione}</TableCell>
+                                  <TableCell>
+                                    <span className={categoria.isActive ? "text-green-600" : "text-gray-400"}>
+                                      {categoria.isActive ? "Attivo" : "Inattivo"}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="flex flex-nowrap gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditCategoria(categoria)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => { setDeleteId(categoria.id); setDeleteType("categoria"); }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
+
+                {/* Configurazioni Orario Tab - CON SOTTOTAB */}
+                <TabsContent value="configurazioni-orario" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Configurazioni Orario</CardTitle>
+                      <CardDescription>Gestisci i tipi orario e le modalità di timbratura/firma</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Tabs defaultValue="tipo_orario" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="tipo_orario">Tipo Orario</TabsTrigger>
+                          <TabsTrigger value="timbra_firma">Timbra/Firma</TabsTrigger>
+                        </TabsList>
+
+                        {/* Sottotab Tipo Orario */}
+                        <TabsContent value="tipo_orario" className="mt-6">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">Tipo Orario</h3>
+                            <Dialog open={openOrarioDialog && orarioForm.tipo === "tipo_orario"} onOpenChange={(open) => { setOpenOrarioDialog(open); if (!open) setOrarioForm({ ...orarioForm, tipo: "tipo_orario" }); }}>
+                              <DialogTrigger asChild>
+                                <Button onClick={() => { setEditingOrario(null); setOrarioForm({ codice: "", tipo: "tipo_orario", descrizione: "", isActive: true }); }}>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Nuovo Tipo Orario
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>{editingOrario ? "Modifica Tipo Orario" : "Nuovo Tipo Orario"}</DialogTitle>
+                                  <DialogDescription>
+                                    Compila i dettagli del tipo orario
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="orario-codice">Codice *</Label>
+                                    <Input
+                                      id="orario-codice"
+                                      value={orarioForm.codice}
+                                      onChange={(e) => setOrarioForm({ ...orarioForm, codice: e.target.value })}
+                                      placeholder="Es: FT"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="orario-descrizione">Descrizione *</Label>
+                                    <Input
+                                      id="orario-descrizione"
+                                      value={orarioForm.descrizione}
+                                      onChange={(e) => setOrarioForm({ ...orarioForm, descrizione: e.target.value })}
+                                      placeholder="Es: Full Time"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id="orario-active"
+                                      checked={orarioForm.isActive}
+                                      onChange={(e) => setOrarioForm({ ...orarioForm, isActive: e.target.checked })}
+                                      className="h-4 w-4"
+                                    />
+                                    <Label htmlFor="orario-active">Attivo</Label>
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button
+                                    onClick={handleSaveOrario}
+                                    disabled={createOrarioMutation.isPending || updateOrarioMutation.isPending}
+                                  >
+                                    {createOrarioMutation.isPending || updateOrarioMutation.isPending ? "Salvataggio..." : "Salva"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                          {tipiOrarioLoading ? (
+                            <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                          ) : tipiOrario.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">Nessun tipo orario trovato</div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Codice</TableHead>
+                                  <TableHead>Descrizione</TableHead>
+                                  <TableHead>Stato</TableHead>
+                                  <TableHead className="w-32">Azioni</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {tipiOrario.map((orario) => (
+                                  <TableRow key={orario.id}>
+                                    <TableCell className="font-medium">{orario.codice}</TableCell>
+                                    <TableCell>{orario.descrizione}</TableCell>
+                                    <TableCell>
+                                      <span className={orario.isActive ? "text-green-600" : "text-gray-400"}>
+                                        {orario.isActive ? "Attivo" : "Inattivo"}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="flex flex-nowrap gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEditOrario(orario)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => { setDeleteId(orario.id); setDeleteType("orario"); }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </TabsContent>
+
+                        {/* Sottotab Timbra/Firma */}
+                        <TabsContent value="timbra_firma" className="mt-6">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">Timbra/Firma</h3>
+                            <Dialog open={openOrarioDialog && orarioForm.tipo === "timbra_firma"} onOpenChange={(open) => { setOpenOrarioDialog(open); if (!open) setOrarioForm({ ...orarioForm, tipo: "timbra_firma" }); }}>
+                              <DialogTrigger asChild>
+                                <Button onClick={() => { setEditingOrario(null); setOrarioForm({ codice: "", tipo: "timbra_firma", descrizione: "", isActive: true }); }}>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Nuova Modalità
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>{editingOrario ? "Modifica Modalità Timbra/Firma" : "Nuova Modalità Timbra/Firma"}</DialogTitle>
+                                  <DialogDescription>
+                                    Compila i dettagli della modalità di timbratura/firma
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="timbra-codice">Codice *</Label>
+                                    <Input
+                                      id="timbra-codice"
+                                      value={orarioForm.codice}
+                                      onChange={(e) => setOrarioForm({ ...orarioForm, codice: e.target.value })}
+                                      placeholder="Es: BADGE"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="timbra-descrizione">Descrizione *</Label>
+                                    <Input
+                                      id="timbra-descrizione"
+                                      value={orarioForm.descrizione}
+                                      onChange={(e) => setOrarioForm({ ...orarioForm, descrizione: e.target.value })}
+                                      placeholder="Es: Badge Elettronico"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id="timbra-active"
+                                      checked={orarioForm.isActive}
+                                      onChange={(e) => setOrarioForm({ ...orarioForm, isActive: e.target.checked })}
+                                      className="h-4 w-4"
+                                    />
+                                    <Label htmlFor="timbra-active">Attivo</Label>
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button
+                                    onClick={handleSaveOrario}
+                                    disabled={createOrarioMutation.isPending || updateOrarioMutation.isPending}
+                                  >
+                                    {createOrarioMutation.isPending || updateOrarioMutation.isPending ? "Salvataggio..." : "Salva"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                          {timbraFirmaLoading ? (
+                            <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                          ) : timbraFirma.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">Nessuna modalità trovata</div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Codice</TableHead>
+                                  <TableHead>Descrizione</TableHead>
+                                  <TableHead>Stato</TableHead>
+                                  <TableHead className="w-32">Azioni</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {timbraFirma.map((modalita) => (
+                                  <TableRow key={modalita.id}>
+                                    <TableCell className="font-medium">{modalita.codice}</TableCell>
+                                    <TableCell>{modalita.descrizione}</TableCell>
+                                    <TableCell>
+                                      <span className={modalita.isActive ? "text-green-600" : "text-gray-400"}>
+                                        {modalita.isActive ? "Attivo" : "Inattivo"}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="flex flex-nowrap gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEditOrario(modalita)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => { setDeleteId(modalita.id); setDeleteType("orario"); }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Causali Assunzione Tab */}
+                <TabsContent value="causali-assunzione" className="mt-6">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between gap-4">
+                      <div>
+                        <CardTitle>Causali Assunzione</CardTitle>
+                        <CardDescription>Gestisci le causali di assunzione</CardDescription>
+                      </div>
+                      <Dialog open={openCausaleDialog} onOpenChange={setOpenCausaleDialog}>
+                        <DialogTrigger asChild>
+                          <Button onClick={() => { setEditingCausale(null); setCausaleForm({ codice: "", descrizione: "", isActive: true }); }}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Nuova Causale
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>{editingCausale ? "Modifica Causale" : "Nuova Causale Assunzione"}</DialogTitle>
+                            <DialogDescription>
+                              Compila i dettagli della causale di assunzione
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="causale-codice">Codice *</Label>
+                              <Input
+                                id="causale-codice"
+                                value={causaleForm.codice}
+                                onChange={(e) => setCausaleForm({ ...causaleForm, codice: e.target.value })}
+                                placeholder="Es: TEMPO_IND"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="causale-descrizione">Descrizione *</Label>
+                              <Input
+                                id="causale-descrizione"
+                                value={causaleForm.descrizione}
+                                onChange={(e) => setCausaleForm({ ...causaleForm, descrizione: e.target.value })}
+                                placeholder="Es: Tempo Indeterminato"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="causale-active"
+                                checked={causaleForm.isActive}
+                                onChange={(e) => setCausaleForm({ ...causaleForm, isActive: e.target.checked })}
+                                className="h-4 w-4"
+                              />
+                              <Label htmlFor="causale-active">Attivo</Label>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={handleSaveCausale}
+                              disabled={createCausaleMutation.isPending || updateCausaleMutation.isPending}
+                            >
+                              {createCausaleMutation.isPending || updateCausaleMutation.isPending ? "Salvataggio..." : "Salva"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </CardHeader>
+                    <CardContent>
+                      {causaliLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
+                      ) : causaliAssunzione.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">Nessuna causale trovata</div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Codice</TableHead>
+                              <TableHead>Descrizione</TableHead>
+                              <TableHead>Stato</TableHead>
+                              <TableHead className="w-32">Azioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {causaliAssunzione.map((causale) => (
+                              <TableRow key={causale.id}>
+                                <TableCell className="font-medium">{causale.codice}</TableCell>
+                                <TableCell>{causale.descrizione}</TableCell>
+                                <TableCell>
+                                  <span className={causale.isActive ? "text-green-600" : "text-gray-400"}>
+                                    {causale.isActive ? "Attivo" : "Inattivo"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="flex flex-nowrap gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditCausale(causale)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => { setDeleteId(causale.id); setDeleteType("causale"); }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
               </Tabs>
 
               {/* Delete Confirmation Dialog */}
@@ -731,7 +1866,16 @@ export default function AdminSettingsPage() {
                   </AlertDialogHeader>
                   <AlertDialogAction
                     onClick={handleDeleteConfirm}
-                    disabled={deleteClusterMutation.isPending || deleteCalcMutation.isPending || deleteBusinessMutation.isPending}
+                    disabled={
+                      deleteClusterMutation.isPending ||
+                      deleteCalcMutation.isPending ||
+                      deleteBusinessMutation.isPending ||
+                      deleteSedeMutation.isPending ||
+                      deleteCcnlMutation.isPending ||
+                      deleteCategoriaMutation.isPending ||
+                      deleteOrarioMutation.isPending ||
+                      deleteCausaleMutation.isPending
+                    }
                     data-testid="button-confirm-delete"
                   >
                     Elimina
