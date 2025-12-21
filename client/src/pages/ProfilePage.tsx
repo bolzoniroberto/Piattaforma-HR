@@ -67,7 +67,7 @@ export default function ProfilePage() {
       });
       setIsEditing(false);
       // Invalidate auth user query to refresh data
-      queryClient.invalidateQueries({ queryKey: ["auth-user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
     onError: (error: any) => {
       console.error("Update error:", error);
