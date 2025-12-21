@@ -1,4 +1,4 @@
-import { Bell, User, Settings, LogOut, Menu, LucideIcon } from "lucide-react";
+import { Bell, User, Settings, LogOut, LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useRail } from "@/contexts/RailContext";
 import logoPath from "@assets/image_1764169863444.png";
 import { ReactNode } from "react";
 
@@ -22,7 +19,6 @@ interface AppHeaderProps {
   userName?: string;
   userRole?: string;
   notificationCount?: number;
-  showSidebarTrigger?: boolean;
   pageTitle?: string;
   pageIcon?: LucideIcon;
   pageDescription?: string;
@@ -33,15 +29,12 @@ export default function AppHeader({
   userName = "Mario Rossi",
   userRole = "Dipendente",
   notificationCount = 0,
-  showSidebarTrigger = false,
   pageTitle,
   pageIcon: PageIcon,
   pageDescription,
   pageBadge
 }: AppHeaderProps) {
   const { user } = useAuth();
-  const isMobile = useIsMobile();
-  const { toggleRail } = useRail();
 
   const handleLogout = async () => {
     // Clear demo mode
@@ -68,19 +61,6 @@ export default function AppHeader({
   return (
     <header className="h-16 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50" style={{boxShadow: 'var(--shadow-2)'}}>
       <div className="flex items-center gap-3 md:gap-4">
-        {showSidebarTrigger && !isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleRail}
-            className="h-10 w-10 md3-state-layer rounded-full"
-            data-testid="button-rail-toggle"
-            aria-label="Toggle navigation rail"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        )}
-        {showSidebarTrigger && isMobile && <SidebarTrigger data-testid="button-sidebar-toggle" />}
         <div className="flex items-center gap-3">
           <img src={logoPath} alt="Piattaforma HR" className="h-6 md:h-7" />
           <h1 className="md3-title-large text-foreground hidden sm:block">
