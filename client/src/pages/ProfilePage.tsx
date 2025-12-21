@@ -67,13 +67,23 @@ export default function ProfilePage() {
       });
       setIsEditing(false);
       // Invalidate all queries that contain user data to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/orgchart"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/manager/team-members"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/manager/team-evaluations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/peer-feedback-requests/sent"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/peer-feedback-requests/received"] });
+      // Use predicate to match any query key that starts with these endpoints
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return (
+            key === "/api/auth/user" ||
+            key === "/api/users" ||
+            key === "/api/orgchart" ||
+            key === "/api/manager/team-members" ||
+            (typeof key === "string" && (
+              key.startsWith("/api/manager/team-evaluations") ||
+              key.startsWith("/api/peer-feedback-requests") ||
+              key.startsWith("/api/manager/employee")
+            ))
+          );
+        },
+      });
     },
     onError: (error: any) => {
       console.error("Update error:", error);
