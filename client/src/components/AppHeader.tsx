@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import logoPath from "@assets/image_1764169863444.png";
 import { ReactNode } from "react";
 
@@ -35,6 +36,7 @@ export default function AppHeader({
   pageBadge
 }: AppHeaderProps) {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const handleLogout = async () => {
     // Clear demo mode
