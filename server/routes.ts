@@ -5,8 +5,22 @@ import { storage } from "./storage";
 import { competenciesStorage } from "./competenciesStorage";
 import { seed } from "./seed";
 import { db } from "./db";
-import { sedi, ccnl, livelliContrattuali, categorieProtette, configurazioniOrario, causaliAssunzione } from "@shared/schema";
-import { eq, and, asc, desc } from "drizzle-orm";
+import {
+  sedi,
+  ccnl,
+  livelliContrattuali,
+  categorieProtette,
+  configurazioniOrario,
+  causaliAssunzione,
+  persona,
+  contatti,
+  organizzazione,
+  contratti,
+  compensation,
+  ruoli,
+  smartWorkingStorico
+} from "@shared/schema";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
 
 // Use local auth in development and Railway production (disable Replit auth)
 // Replit OAuth is not available in Railway deployment
@@ -42,6 +56,13 @@ import {
   insertCategorieProtetteSchema,
   insertConfigurazioniOrarioSchema,
   insertCausaliAssunzioneSchema,
+  insertPersonaSchema,
+  insertContattiSchema,
+  insertOrganizzazioneSchema,
+  insertContrattiSchema,
+  insertCompensationSchema,
+  insertRuoliSchema,
+  insertSmartWorkingStoricoSchema,
 } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -2305,6 +2326,322 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await db.delete(causaliAssunzione).where(eq(causaliAssunzione.id, req.params.id));
       res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ==============================================
+  // ANAGRAFICA ENDPOINTS - Phase 3
+  // ==============================================
+
+  // 1. GET /api/admin/anagrafica/:codiceFiscale - Fetch complete employee data
+  app.get("/api/admin/anagrafica/:codiceFiscale", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { codiceFiscale } = req.params;
+
+      // Fetch persona
+      const personaData = await db.select().from(persona).where(eq(persona.codiceFiscale, codiceFiscale));
+      if (!personaData.length) {
+        return res.status(404).json({ message: "Persona not found" });
+      }
+
+      // Fetch related data
+      const [contattiData, orgData, contrattiData, compensationData, ruoliData, swData] = await Promise.all([
+        db.select().from(contatti).where(eq(contatti.codiceFiscale, codiceFiscale)),
+        db.select().from(organizzazione).where(eq(organizzazione.codiceFiscale, codiceFiscale)),
+        db.select().from(contratti).where(eq(contratti.codiceFiscale, codiceFiscale)).orderBy(desc(contratti.createdAt)).limit(1),
+        db.select().from(compensation).where(and(eq(compensation.codiceFiscale, codiceFiscale), eq(compensation.isCurrent, true))).limit(1),
+        db.select().from(ruoli).where(eq(ruoli.codiceFiscale, codiceFiscale)),
+        db.select().from(smartWorkingStorico).where(eq(smartWorkingStorico.codiceFiscale, codiceFiscale)).orderBy(desc(smartWorkingStorico.dataDecorrenza)),
+      ]);
+
+      const result = {
+        persona: personaData[0],
+        contatti: contattiData[0] || null,
+        organizzazione: orgData[0] || null,
+        contratto: contrattiData[0] || null,
+        compensation: compensationData[0] || null,
+        ruoli: ruoliData[0] || null,
+        smartWorking: swData || [],
+      };
+
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 2. POST /api/admin/anagrafica - Create new employee
+  app.post("/api/admin/anagrafica", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { persona: personaPayload, contatti: contattiPayload, organizzazione: orgPayload, contratto: contrattoPayload, compensation: compensationPayload, ruoli: ruoliPayload } = req.body;
+
+      // Validate CF required
+      if (!personaPayload?.codiceFiscale) {
+        return res.status(400).json({ message: "Codice Fiscale is required" });
+      }
+
+      // Check if persona already exists
+      const existing = await db.select().from(persona).where(eq(persona.codiceFiscale, personaPayload.codiceFiscale));
+      if (existing.length > 0) {
+        return res.status(409).json({ message: "Persona with this Codice Fiscale already exists" });
+      }
+
+      // Insert persona
+      const personaValidated = insertPersonaSchema.parse(personaPayload);
+      const [newPersona] = await db.insert(persona).values(personaValidated).returning();
+
+      // Insert related data if provided
+      let newContatti = null;
+      let newOrg = null;
+      let newContratto = null;
+      let newCompensation = null;
+      let newRuoli = null;
+
+      if (contattiPayload) {
+        const contattiValidated = insertContattiSchema.parse({ ...contattiPayload, codiceFiscale: newPersona.codiceFiscale });
+        [newContatti] = await db.insert(contatti).values(contattiValidated).returning();
+      }
+
+      if (orgPayload) {
+        const orgValidated = insertOrganizzazioneSchema.parse({ ...orgPayload, codiceFiscale: newPersona.codiceFiscale });
+        [newOrg] = await db.insert(organizzazione).values(orgValidated).returning();
+      }
+
+      if (contrattoPayload) {
+        const contrattoValidated = insertContrattiSchema.parse({ ...contrattoPayload, codiceFiscale: newPersona.codiceFiscale, matricola: newPersona.matricola });
+        [newContratto] = await db.insert(contratti).values(contrattoValidated).returning();
+      }
+
+      if (compensationPayload) {
+        const compensationValidated = insertCompensationSchema.parse({ ...compensationPayload, codiceFiscale: newPersona.codiceFiscale });
+        [newCompensation] = await db.insert(compensation).values(compensationValidated).returning();
+      }
+
+      if (ruoliPayload) {
+        const ruoliValidated = insertRuoliSchema.parse({ ...ruoliPayload, codiceFiscale: newPersona.codiceFiscale });
+        [newRuoli] = await db.insert(ruoli).values(ruoliValidated).returning();
+      }
+
+      res.status(201).json({
+        persona: newPersona,
+        contatti: newContatti,
+        organizzazione: newOrg,
+        contratto: newContratto,
+        compensation: newCompensation,
+        ruoli: newRuoli,
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 3. PUT /api/admin/anagrafica/:codiceFiscale - Update complete employee data (transactional)
+  app.put("/api/admin/anagrafica/:codiceFiscale", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { codiceFiscale } = req.params;
+      const { persona: personaPayload, contatti: contattiPayload, organizzazione: orgPayload, contratto: contrattoPayload, compensation: compensationPayload, ruoli: ruoliPayload } = req.body;
+
+      // Check if persona exists
+      const existing = await db.select().from(persona).where(eq(persona.codiceFiscale, codiceFiscale));
+      if (!existing.length) {
+        return res.status(404).json({ message: "Persona not found" });
+      }
+
+      // Update persona
+      let updatedPersona = existing[0];
+      if (personaPayload) {
+        const personaValidated = insertPersonaSchema.partial().parse(personaPayload);
+        [updatedPersona] = await db.update(persona).set({ ...personaValidated, updatedAt: new Date() }).where(eq(persona.codiceFiscale, codiceFiscale)).returning();
+      }
+
+      // Update or insert contatti
+      let updatedContatti = null;
+      if (contattiPayload) {
+        const existingContatti = await db.select().from(contatti).where(eq(contatti.codiceFiscale, codiceFiscale));
+        const contattiValidated = insertContattiSchema.partial().parse({ ...contattiPayload, codiceFiscale });
+
+        if (existingContatti.length > 0) {
+          [updatedContatti] = await db.update(contatti).set({ ...contattiValidated, updatedAt: new Date() }).where(eq(contatti.codiceFiscale, codiceFiscale)).returning();
+        } else {
+          const fullValidated = insertContattiSchema.parse({ ...contattiPayload, codiceFiscale });
+          [updatedContatti] = await db.insert(contatti).values(fullValidated).returning();
+        }
+      }
+
+      // Update or insert organizzazione
+      let updatedOrg = null;
+      if (orgPayload) {
+        const existingOrg = await db.select().from(organizzazione).where(eq(organizzazione.codiceFiscale, codiceFiscale));
+        const orgValidated = insertOrganizzazioneSchema.partial().parse({ ...orgPayload, codiceFiscale });
+
+        if (existingOrg.length > 0) {
+          [updatedOrg] = await db.update(organizzazione).set({ ...orgValidated, updatedAt: new Date() }).where(eq(organizzazione.codiceFiscale, codiceFiscale)).returning();
+        } else {
+          const fullValidated = insertOrganizzazioneSchema.parse({ ...orgPayload, codiceFiscale });
+          [updatedOrg] = await db.insert(organizzazione).values(fullValidated).returning();
+        }
+      }
+
+      // Update or insert contratto (latest one)
+      let updatedContratto = null;
+      if (contrattoPayload) {
+        const existingContratto = await db.select().from(contratti).where(eq(contratti.codiceFiscale, codiceFiscale)).orderBy(desc(contratti.createdAt)).limit(1);
+        const contrattoValidated = insertContrattiSchema.partial().parse({ ...contrattoPayload, codiceFiscale, matricola: updatedPersona.matricola });
+
+        if (existingContratto.length > 0) {
+          [updatedContratto] = await db.update(contratti).set({ ...contrattoValidated, updatedAt: new Date() }).where(eq(contratti.id, existingContratto[0].id)).returning();
+        } else {
+          const fullValidated = insertContrattiSchema.parse({ ...contrattoPayload, codiceFiscale, matricola: updatedPersona.matricola });
+          [updatedContratto] = await db.insert(contratti).values(fullValidated).returning();
+        }
+      }
+
+      // Update or insert compensation (current one)
+      let updatedCompensation = null;
+      if (compensationPayload) {
+        const existingCompensation = await db.select().from(compensation).where(and(eq(compensation.codiceFiscale, codiceFiscale), eq(compensation.isCurrent, true))).limit(1);
+        const compensationValidated = insertCompensationSchema.partial().parse({ ...compensationPayload, codiceFiscale });
+
+        if (existingCompensation.length > 0) {
+          [updatedCompensation] = await db.update(compensation).set({ ...compensationValidated, updatedAt: new Date() }).where(eq(compensation.id, existingCompensation[0].id)).returning();
+        } else {
+          const fullValidated = insertCompensationSchema.parse({ ...compensationPayload, codiceFiscale, isCurrent: true });
+          [updatedCompensation] = await db.insert(compensation).values(fullValidated).returning();
+        }
+      }
+
+      // Update or insert ruoli
+      let updatedRuoli = null;
+      if (ruoliPayload) {
+        const existingRuoli = await db.select().from(ruoli).where(eq(ruoli.codiceFiscale, codiceFiscale));
+        const ruoliValidated = insertRuoliSchema.partial().parse({ ...ruoliPayload, codiceFiscale });
+
+        if (existingRuoli.length > 0) {
+          [updatedRuoli] = await db.update(ruoli).set({ ...ruoliValidated, updatedAt: new Date() }).where(eq(ruoli.codiceFiscale, codiceFiscale)).returning();
+        } else {
+          const fullValidated = insertRuoliSchema.parse({ ...ruoliPayload, codiceFiscale });
+          [updatedRuoli] = await db.insert(ruoli).values(fullValidated).returning();
+        }
+      }
+
+      res.json({
+        persona: updatedPersona,
+        contatti: updatedContatti,
+        organizzazione: updatedOrg,
+        contratto: updatedContratto,
+        compensation: updatedCompensation,
+        ruoli: updatedRuoli,
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 4. GET /api/admin/persone - List of people for autocomplete
+  app.get("/api/admin/persone", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await db
+        .select({
+          codiceFiscale: persona.codiceFiscale,
+          matricola: persona.matricola,
+          cognome: persona.cognome,
+          nome: persona.nome,
+          email: contatti.email,
+        })
+        .from(persona)
+        .leftJoin(contatti, eq(persona.codiceFiscale, contatti.codiceFiscale))
+        .orderBy(asc(persona.cognome), asc(persona.nome));
+
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 5. POST /api/admin/smart-working - Add smart working period
+  app.post("/api/admin/smart-working", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertSmartWorkingStoricoSchema.parse(req.body);
+
+      // If this is marked as current, set all other periods for this CF as not current
+      if (data.isCurrent) {
+        await db.update(smartWorkingStorico)
+          .set({ isCurrent: false, updatedAt: new Date() })
+          .where(and(
+            eq(smartWorkingStorico.codiceFiscale, data.codiceFiscale),
+            eq(smartWorkingStorico.isCurrent, true)
+          ));
+      }
+
+      const [newPeriod] = await db.insert(smartWorkingStorico).values(data).returning();
+      res.status(201).json(newPeriod);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 6. PATCH /api/admin/smart-working/:id - Update smart working period
+  app.patch("/api/admin/smart-working/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertSmartWorkingStoricoSchema.partial().parse(req.body);
+
+      // If setting as current, unset other current periods for the same CF
+      if (data.isCurrent === true) {
+        const existing = await db.select().from(smartWorkingStorico).where(eq(smartWorkingStorico.id, req.params.id));
+        if (existing.length > 0) {
+          await db.update(smartWorkingStorico)
+            .set({ isCurrent: false, updatedAt: new Date() })
+            .where(and(
+              eq(smartWorkingStorico.codiceFiscale, existing[0].codiceFiscale),
+              eq(smartWorkingStorico.isCurrent, true)
+            ));
+        }
+      }
+
+      const [updated] = await db.update(smartWorkingStorico)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(smartWorkingStorico.id, req.params.id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Smart working period not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 7. DELETE /api/admin/smart-working/:id - Delete smart working period
+  app.delete("/api/admin/smart-working/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await db.delete(smartWorkingStorico).where(eq(smartWorkingStorico.id, req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // 8. PATCH /api/admin/smart-working/:id/close - Close smart working period
+  app.patch("/api/admin/smart-working/:id/close", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const [updated] = await db.update(smartWorkingStorico)
+        .set({
+          dataScadenza: new Date(),
+          isCurrent: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(smartWorkingStorico.id, req.params.id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Smart working period not found" });
+      }
+
+      res.json(updated);
     } catch (error) {
       handleError(res, error);
     }
