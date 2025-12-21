@@ -345,7 +345,7 @@ export default function EmployeeSelfAssessmentPage() {
   return (
     <>
       <AppHeader
-        userName={user?.name || "Dipendente"}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Dipendente"}
         userRole={user?.role === "admin" ? "Amministratore" : "Dipendente"}
         notificationCount={0}
         showSidebarTrigger={true}

@@ -153,6 +153,36 @@ export class CompetenciesStorage {
     }
   }
 
+  async getCompetenciesByUserId(userId: string): Promise<Competency[]> {
+    try {
+      // Get the current competency model assignment for the user
+      const assignment = await db
+        .select()
+        .from(userCompetencyModelAssignments)
+        .where(
+          and(
+            eq(userCompetencyModelAssignments.userId, userId),
+            eq(userCompetencyModelAssignments.isCurrent, true)
+          )
+        )
+        .limit(1);
+
+      if (assignment.length === 0) {
+        return [];
+      }
+
+      // Get all competencies for the assigned model
+      return await db
+        .select()
+        .from(competencies)
+        .where(eq(competencies.modelId, assignment[0].competencyModelId))
+        .orderBy(competencies.displayOrder);
+    } catch (error) {
+      console.error(`Error getting competencies for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
   async createCompetency(data: InsertCompetency): Promise<Competency> {
     try {
       const result = await db.insert(competencies).values(data).returning();

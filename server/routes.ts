@@ -2892,6 +2892,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MANAGER EVALUATION ENDPOINT ALIASES ====================
+  // These are aliases with different path formats for client compatibility
+
+  // Get employee competencies (alias)
+  app.get("/api/manager/employee-competencies/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { userId } = req.params;
+      const employee = await storage.getUser(userId);
+
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      const competencies = await competenciesStorage.getCompetenciesByUserId(userId);
+      res.json(competencies);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get employee self-assessment (alias)
+  app.get("/api/manager/employee-self-assessment/:userId/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { userId, cycleId } = req.params;
+      const assessments = await competenciesStorage.getSelfAssessments(cycleId, userId);
+      res.json(assessments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get employee peer feedback (alias)
+  app.get("/api/manager/employee-peer-feedback/:userId/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { userId, cycleId } = req.params;
+      const feedback = await competenciesStorage.getAggregatedPeerFeedback(cycleId, userId);
+      res.json(feedback);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Get my evaluations for an employee (alias)
+  app.get("/api/manager/my-evaluations/:userId/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const user = await storage.getUser(managerId);
+
+      if (user?.role !== "manager" && user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden - manager access required" });
+      }
+
+      const { userId, cycleId } = req.params;
+      const evaluations = await competenciesStorage.getManagerEvaluations(cycleId, userId);
+
+      // Transform to match client expectations
+      const transformed = evaluations.map(ev => ({
+        id: ev.id,
+        competencyId: ev.competencyId,
+        rating: ev.rating,
+        comment: ev.comment,
+        submittedAt: ev.submittedAt,
+      }));
+
+      res.json(transformed);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // Create or update manager evaluation
   app.post("/api/manager/evaluations", isAuthenticated, async (req, res) => {
     try {
