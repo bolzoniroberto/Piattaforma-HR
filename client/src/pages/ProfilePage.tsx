@@ -66,8 +66,13 @@ export default function ProfilePage() {
         description: "Profilo aggiornato correttamente",
       });
       setIsEditing(false);
-      // Invalidate auth user query to refresh data
+      // Invalidate all queries that contain user data to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ prefix: "/api/orgchart" });
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/team-members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/peer-feedback-requests/sent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/peer-feedback-requests/received"] });
     },
     onError: (error: any) => {
       console.error("Update error:", error);
