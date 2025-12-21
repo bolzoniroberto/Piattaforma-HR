@@ -294,7 +294,7 @@ export default function EmployeePeerFeedbackPage() {
   return (
     <>
       <AppHeader
-        userName={user?.name || "Dipendente"}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Dipendente"}
         userRole={user?.role === "admin" ? "Amministratore" : "Dipendente"}
         notificationCount={receivedRequests.filter(r => r.status === "pending").length}
         showSidebarTrigger={true}

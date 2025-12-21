@@ -122,7 +122,7 @@ export default function AdminDashboard() {
   return (
     <>
       <AppHeader
-        userName={user?.name || "Amministratore"}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
         userRole="Amministratore"
         notificationCount={0}
         showSidebarTrigger={true}

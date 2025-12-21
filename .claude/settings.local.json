@@ -38,7 +38,9 @@
       "Bash(if [ -n \"$DATABASE_URL\" ])",
       "Bash(then echo \"DATABASE_URL è impostato\")",
       "Bash(else echo \"DATABASE_URL non è impostato - verifico .env\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(node -e:*)",
+      "Bash(timeout 10 npm run dev)"
     ],
     "deny": [],
     "ask": []

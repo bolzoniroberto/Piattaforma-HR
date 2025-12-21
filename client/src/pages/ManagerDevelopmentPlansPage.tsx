@@ -310,7 +310,7 @@ export default function ManagerDevelopmentPlansPage() {
   return (
     <>
       <AppHeader
-        userName={user?.name || "Manager"}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Manager"}
         userRole={user?.role === "admin" ? "Amministratore" : "Manager"}
         notificationCount={0}
         showSidebarTrigger={true}
