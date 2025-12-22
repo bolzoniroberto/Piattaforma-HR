@@ -136,6 +136,17 @@ export default function ProfilePage() {
 
       <main className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
         <div className="max-w-2xl mx-auto">
+          {/* Back Button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setLocation("/")}
+            className="mb-6 gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Torna alla piattaforma
+          </Button>
+
           {/* Main Profile Card */}
           <Card className="mb-6">
             <CardHeader>
