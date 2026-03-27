@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,28 +123,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <AppHeader
-        userName={`${user.firstName || ""} ${user.lastName || ""}`}
-        userRole={user.role === "admin" ? "Amministratore" : "Dipendente"}
-        showSidebarTrigger={true}
-        pageTitle="Il Mio Profilo"
-        pageIcon={User}
-        pageDescription="Gestisci i tuoi dati personali e le tue informazioni di contatto"
-      />
-
-      <main className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
-        <div className="max-w-2xl mx-auto">
-          {/* Back Button */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setLocation("/")}
-            className="mb-6 gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Torna alla piattaforma
-          </Button>
+    <>
+      <div className="w-full">
+        <div className="w-full">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+            <div className="max-w-2xl">
 
           {/* Main Profile Card */}
           <Card className="mb-6">
@@ -347,8 +329,10 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

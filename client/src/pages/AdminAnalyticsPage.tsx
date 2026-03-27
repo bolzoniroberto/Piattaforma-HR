@@ -3,15 +3,34 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3 } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { useAuth } from "@/hooks/useAuth";
 
 const COLORS = ['#DC2626', '#6B7280', '#9CA3AF', '#D1D5DB', '#EF4444', '#991B1B'];
+
+interface OverviewStats {
+  totalObjectives: number;
+  completedObjectives: number;
+  inProgressObjectives: number;
+  notStartedObjectives: number;
+  averageCompletion: number;
+  totalEmployees: number;
+  activeEmployees: number;
+}
+
+interface FinancialData {
+  theoreticalBudget: number;
+  theoreticalTargetPayout: number;
+  actualProjectedPayout: number;
+  savings: number;
+  savingsPercentage: number;
+  averageTheoreticalMBO: number;
+  employeePayouts: any[];
+  departmentPayouts: any[];
+}
 
 export default function AdminAnalyticsPage() {
   const { user } = useAuth();
@@ -26,50 +45,33 @@ export default function AdminAnalyticsPage() {
   };
 
   // Fetch aggregated statistics
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading } = useQuery<OverviewStats>({
     queryKey: ["/api/admin/analytics/overview"],
   });
 
-  const { data: departmentData } = useQuery({
+  const { data: departmentData } = useQuery<any[]>({
     queryKey: ["/api/admin/analytics/by-department"],
   });
 
-  const { data: financialDataRaw } = useQuery({
+  const { data: financialDataRaw } = useQuery<FinancialData>({
     queryKey: ["/api/admin/analytics/financial"],
   });
 
-  const { data: clusterDataRaw } = useQuery({
+  const { data: clusterDataRaw } = useQuery<any[]>({
     queryKey: ["/api/admin/analytics/by-cluster"],
   });
 
-  const { data: eligiblesDataRaw } = useQuery({
+  const { data: eligiblesDataRaw } = useQuery<any[]>({
     queryKey: ["/api/admin/analytics/eligibles"],
   });
 
   if (isLoading) {
     return (
       <>
-        <AppHeader
-          userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-          userRole="Amministratore"
-          notificationCount={0}
-          showSidebarTrigger={true}
-        />
-        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-          <div className="flex gap-6 max-w-[1800px] mx-auto">
+        <div className="w-full">
+          <div className="w-full">
             {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-            <div className="w-[312px] shrink-0 flex gap-3">
-              <AppRail
-                activeSection={activeSection}
-                onSectionClick={handleSectionClick}
-              />
-              <AppPanel
-                activeSection={activeSection}
-                className="transition-opacity duration-200"
-              />
-            </div>
-
-            <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+            <main className="w-full space-y-6 flex flex-col pt-4" >
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading analytics...</p>
             </div>
@@ -124,31 +126,17 @@ export default function AdminAnalyticsPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Analytics & Reports"
-        pageIcon={BarChart3}
-        pageDescription="Metriche di performance e insights aggregati"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+          <main className="w-full space-y-6 flex flex-col pt-4" >
           <div className="space-y-6">
+          <PageHeader 
+            context="ANALYTICS" 
+            title="Overview Piattaforma" 
+            description="Panoramica generale sulle performance e distribuzione degli obiettivi"
+          />
+
           {/* KPI Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="md3-elevated md3-motion-standard">
@@ -206,10 +194,10 @@ export default function AdminAnalyticsPage() {
 
           {/* Charts Section */}
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="departments">By Department</TabsTrigger>
-              <TabsTrigger value="financial">Financial MBO</TabsTrigger>
+            <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Overview</TabsTrigger>
+              <TabsTrigger value="departments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">By Department</TabsTrigger>
+              <TabsTrigger value="financial" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Financial MBO</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}

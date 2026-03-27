@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import AppHeader from "@/components/AppHeader";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -40,6 +37,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { CustomFieldDefinition, CustomFieldValue } from "@shared/schema";
 import CustomFieldInput from "@/components/CustomFieldInput";
+import PageHeader from "@/components/PageHeader";
 
 export default function ProfiloPage() {
   const { user, isLoading } = useAuth();
@@ -150,34 +148,13 @@ export default function ProfiloPage() {
   };
 
   return (
-    <>
-      <AppHeader
-        userName={`${user.firstName || ""} ${user.lastName || ""}`.trim()}
-        userRole={user.role === "admin" ? "Amministratore" : "Dipendente"}
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Profilo"
-        pageIcon={UserCircle}
-        pageDescription="I tuoi dati personali e anagrafici"
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
-          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full space-y-6 flex flex-col pt-4" >
+      <div className="space-y-6">
+        <PageHeader 
+          context="DASHBOARD" 
+          title="Profilo Utente" 
+          description="Gestisci i tuoi dati anagrafici, contatti e informazioni contrattuali."
+        />
 
               {/* Informazioni Personali */}
               <Card>
@@ -451,10 +428,7 @@ export default function ProfiloPage() {
                 </CardContent>
               </Card>
 
-            </div>
-          </main>
-        </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -3,13 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { Link } from "wouter";
+import AppLayout from "./AppLayout";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: "admin" | "employee";
+  pageTitle?: string;
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRole, pageTitle }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -76,5 +78,9 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     );
   }
 
-  return <>{children}</>;
+  return (
+    <AppLayout pageTitle={pageTitle}>
+      {children}
+    </AppLayout>
+  );
 }

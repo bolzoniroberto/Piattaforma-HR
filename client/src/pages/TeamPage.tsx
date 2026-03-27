@@ -1,15 +1,12 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import AppHeader from "@/components/AppHeader";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
 import { useRail } from "@/contexts/RailContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import PageHeader from "@/components/PageHeader";
 import {
   Users,
   UserCircle,
@@ -25,11 +22,19 @@ export default function TeamPage() {
   const { user, isLoading: userLoading } = useAuth();
   const { activeSection, setActiveSection } = useRail();
 
-  // Fetch all users to build team structure
-  const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+  // Fetch team context for current user
+  const { data: teamData, isLoading: teamLoading } = useQuery<{
+    manager: User | null;
+    colleagues: User[];
+    directReports: User[];
+  }>({
+    queryKey: ["/api/my-team"],
     enabled: !!user,
   });
+
+  const manager = teamData?.manager ?? null;
+  const colleagues = teamData?.colleagues ?? [];
+  const directReports = teamData?.directReports ?? [];
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -39,7 +44,7 @@ export default function TeamPage() {
     }
   };
 
-  if (userLoading || usersLoading) {
+  if (userLoading || teamLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Caricamento...</p>
@@ -54,23 +59,6 @@ export default function TeamPage() {
       </div>
     );
   }
-
-  // Find manager
-  const manager = user.managerId
-    ? allUsers.find((u) => u.id === user.managerId)
-    : null;
-
-  // Find colleagues (same manager, excluding current user)
-  const colleagues = user.managerId
-    ? allUsers.filter(
-        (u) => u.managerId === user.managerId && u.id !== user.id && u.isActive
-      )
-    : [];
-
-  // Find direct reports (people who report to current user)
-  const directReports = allUsers.filter(
-    (u) => u.managerId === user.id && u.isActive
-  );
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     const name = `${firstName || ""} ${lastName || ""}`.trim();
@@ -136,33 +124,15 @@ export default function TeamPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user.firstName || ""} ${user.lastName || ""}`.trim()}
-        userRole={user.role === "admin" ? "Amministratore" : "Dipendente"}
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Team"
-        pageIcon={Users}
-        pageDescription="Il tuo team e la struttura organizzativa"
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
-          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-5xl mx-auto space-y-6">
+      <div className="w-full">
+        <div className="w-full">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+            <div className="w-full space-y-6">
+              <PageHeader 
+                context="IL TUO TEAM" 
+                title="Sintesi Team" 
+                description="Organizzazione, manager, colleghi e collaboratori diretti"
+              />
 
               {/* Hierarchy Breadcrumb */}
               {manager && (

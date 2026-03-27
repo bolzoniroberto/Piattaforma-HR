@@ -27,66 +27,66 @@
   --elevate-2: rgba(0,0,0, .04);
 
   /* === BACKGROUNDS === */
-  --background: 0 0% 100%;              /* Pure white */
+  --background: 210 40% 98%;            /* Slate 50 '#f8fafc' */
   --surface: 0 0% 100%;                 /* Pure white */
-  --surface-elevated: 0 0% 99%;         /* Almost white */
+  --surface-elevated: 0 0% 100%;        /* Pure white */
   --card: 0 0% 100%;                    /* Pure white */
-  --card-foreground: 0 0% 10%;
-  --card-border: 0 0% 0% / 0;           /* No borders */
+  --card-foreground: 222 47% 11%;       /* Slate 900 */
+  --card-border: 214 32% 91%;           /* Slate 200 */
 
   /* === FOREGROUNDS === */
-  --foreground: 0 0% 10%;               /* Almost black */
-  --muted-foreground: 0 0% 45%;         /* Medium neutral gray */
+  --foreground: 222 47% 11%;            /* Slate 900 */
+  --muted-foreground: 215 16% 47%;      /* Slate 500 */
 
   /* === ACCENTS === */
-  --primary: 354 73% 48%;               /* Corporate red #D72638 */
-  --primary-hover: 354 73% 42%;         /* Darker red on hover */
-  --primary-foreground: 0 0% 100%;
-  --accent: 0 0% 96%;                   /* Very light neutral gray */
-  --accent-hover: 0 0% 93%;             /* Slightly darker */
-  --accent-foreground: 0 0% 10%;
+  --primary: 222 47% 11%;               /* Slate 900 */
+  --primary-hover: 215 25% 27%;         /* Slate 700 */
+  --primary-foreground: 210 40% 98%;    /* Slate 50 */
+  --accent: 210 40% 96%;                /* Slate 100 */
+  --accent-hover: 214 32% 91%;          /* Slate 200 */
+  --accent-foreground: 222 47% 11%;     /* Slate 900 */
 
   /* === BORDERS === */
-  --border: 0 0% 0% / 0;                /* No borders */
-  --border-subtle: 0 0% 0% / 0;         /* No borders */
+  --border: 214 32% 91%;                /* Slate 200 */
+  --border-subtle: 210 40% 96%;         /* Slate 100 */
 
   /* === SIDEBAR === */
-  --sidebar: 0 0% 100%;                 /* Pure white */
-  --sidebar-foreground: 0 0% 10%;       /* Almost black */
-  --sidebar-accent: 0 0% 97%;           /* Very subtle highlight */
-  --sidebar-accent-foreground: 0 0% 10%;
-  --sidebar-border: 0 0% 0% / 0;        /* No borders */
-  --sidebar-primary: 354 73% 48%;       /* Corporate red */
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-ring: 354 73% 48%;
+  --sidebar: 210 40% 98%;               /* Slate 50 */
+  --sidebar-foreground: 222 47% 11%;    /* Slate 900 */
+  --sidebar-accent: 214 32% 91%;        /* Slate 200 */
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 214 32% 91%;        /* Slate 200 */
+  --sidebar-primary: 222 47% 11%;
+  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-ring: 222 47% 11%;
 
   /* === SECONDARY & MUTED === */
-  --secondary: 0 0% 96%;
-  --secondary-foreground: 0 0% 10%;
-  --muted: 0 0% 96%;
+  --secondary: 210 40% 96%;             /* Slate 100 */
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
 
   /* === POPOVERS === */
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  --popover-border: 0 0% 0% / 0;        /* No borders */
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 214 32% 91%;
 
   /* === SEMANTIC COLORS === */
-  --destructive: 0 84% 45%;             /* Red for destructive actions */
+  --destructive: 0 84% 60%;             /* Red for destructive actions */
   --destructive-foreground: 0 0% 98%;
   --warning: 38 92% 50%;                /* Amber */
   --success: 142 76% 36%;               /* Green */
   --info: 199 89% 48%;                  /* Blue */
 
   /* === INPUT & RING === */
-  --input: 0 0% 0% / 0;                 /* No input borders */
-  --ring: 354 73% 48%;
+  --input: 214 32% 91%;                 /* Slate 200 */
+  --ring: 222 47% 11%;                  /* Slate 900 */
 
   /* === CHARTS === */
-  --chart-1: 354 73% 48%;
-  --chart-2: 142 71% 35%;
-  --chart-3: 262 83% 48%;
-  --chart-4: 27 87% 50%;
-  --chart-5: 340 82% 48%;
+  --chart-1: 222 47% 11%;
+  --chart-2: 215 25% 27%;
+  --chart-3: 214 32% 91%;
+  --chart-4: 213 27% 84%;
+  --chart-5: 210 40% 96%;
 
   /* === TYPOGRAPHY === */
   --font-sans: Inter, system-ui, -apple-system, sans-serif;
@@ -162,66 +162,66 @@
   --elevate-2: rgba(255,255,255, .06);
 
   /* === BACKGROUNDS === */
-  --background: 215 18% 8%;             /* Very dark blue-grey */
-  --surface: 215 16% 10%;               /* Slightly lighter */
-  --surface-elevated: 215 14% 12%;      /* Elevated in dark mode */
-  --card: 215 16% 10%;
-  --card-foreground: 210 10% 95%;
-  --card-border: 215 12% 14%;
+  --background: 222 47% 11%;
+  --surface: 222 47% 11%;
+  --surface-elevated: 217 33% 17%;
+  --card: 222 47% 11%;
+  --card-foreground: 210 40% 98%;
+  --card-border: 217 33% 17%;
 
   /* === FOREGROUNDS === */
-  --foreground: 210 10% 95%;            /* Cool light gray */
-  --muted-foreground: 215 8% 60%;       /* Medium cool gray */
+  --foreground: 210 40% 98%;
+  --muted-foreground: 215 20% 65%;
 
   /* === ACCENTS === */
-  --primary: 354 73% 55%;               /* Lighter corporate red in dark mode */
-  --primary-hover: 354 73% 50%;
-  --primary-foreground: 0 0% 100%;
-  --accent: 215 15% 16%;                /* Dark gray for highlights */
-  --accent-hover: 215 15% 18%;
-  --accent-foreground: 210 10% 92%;
+  --primary: 210 40% 98%;
+  --primary-hover: 214 32% 91%;
+  --primary-foreground: 222 47% 11%;
+  --accent: 217 33% 17%;
+  --accent-hover: 215 25% 27%;
+  --accent-foreground: 210 40% 98%;
 
   /* === BORDERS === */
-  --border: 215 12% 18%;                /* Dark border */
-  --border-subtle: 215 10% 14%;         /* Very subtle border */
+  --border: 217 33% 17%;
+  --border-subtle: 215 25% 27%;
 
   /* === SIDEBAR === */
-  --sidebar: 215 16% 10%;
-  --sidebar-foreground: 210 10% 92%;
-  --sidebar-accent: 215 15% 14%;
-  --sidebar-accent-foreground: 210 10% 92%;
-  --sidebar-border: 215 12% 15%;
-  --sidebar-primary: 354 73% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-ring: 354 73% 55%;
+  --sidebar: 222 47% 11%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-accent: 217 33% 17%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-border: 217 33% 17%;
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 222 47% 11%;
+  --sidebar-ring: 210 40% 98%;
 
   /* === SECONDARY & MUTED === */
-  --secondary: 215 15% 16%;
-  --secondary-foreground: 210 10% 92%;
-  --muted: 215 15% 14%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
 
   /* === POPOVERS === */
-  --popover: 215 16% 12%;
-  --popover-foreground: 210 10% 95%;
-  --popover-border: 215 12% 18%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --popover-border: 217 33% 17%;
 
   /* === SEMANTIC COLORS === */
-  --destructive: 0 84% 50%;
+  --destructive: 0 62% 30%;
   --destructive-foreground: 0 0% 98%;
   --warning: 38 92% 55%;
   --success: 142 76% 45%;
   --info: 199 89% 55%;
 
   /* === INPUT & RING === */
-  --input: 215 13% 35%;
-  --ring: 354 73% 55%;
+  --input: 217 33% 17%;
+  --ring: 210 40% 98%;
 
   /* === CHARTS === */
-  --chart-1: 354 73% 60%;
-  --chart-2: 142 71% 55%;
-  --chart-3: 262 83% 65%;
-  --chart-4: 27 87% 60%;
-  --chart-5: 340 82% 60%;
+  --chart-1: 210 40% 98%;
+  --chart-2: 214 32% 91%;
+  --chart-3: 215 20% 65%;
+  --chart-4: 215 25% 27%;
+  --chart-5: 217 33% 17%;
 
   /* === SHADOWS (Slightly more evident in dark mode) === */
   --shadow-1: 0px 1px 2px rgba(0, 0, 0, 0.2);

@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PageHeader from "@/components/PageHeader";
 import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, BarChart3 } from "lucide-react";
 import {
   Table,
@@ -193,32 +191,17 @@ export default function AdminReportingPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Rendicontazione Obiettivi"
-        pageIcon={BarChart3}
-        pageDescription="Gestisci la rendicontazione degli obiettivi assegnati"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <div className="w-full space-y-6">
+              <PageHeader 
+                context="RENDICONTAZIONI" 
+                title="Obiettivi e Rendicontazione" 
+                description="Visualizza lo stato degli obiettivi e inserisci i valori di rendicontazione."
+              />
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-3">

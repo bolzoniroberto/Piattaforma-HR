@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -79,32 +77,17 @@ export default function AdminClearAllAssignmentsPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Disassocia Tutti gli Obiettivi"
-        pageIcon={Trash2}
-        pageDescription="Rimuovi tutti gli obiettivi dall'assegnazione di tutti gli utenti"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <div className="w-full space-y-6">
+              <PageHeader 
+                context="GESTIONE ASSEGNAZIONI" 
+                title="Disassocia Tutti gli Obiettivi" 
+                description="Rimuovi massivamente le assegnazioni degli obiettivi da tutti gli utenti. I dati storici rimarranno intatti."
+              />
               <Card className="md3-surface md3-motion-standard border-destructive/50 bg-destructive/5">
                 <CardHeader>
                   <CardTitle className="md3-title-large text-destructive flex items-center gap-2">

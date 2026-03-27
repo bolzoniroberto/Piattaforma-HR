@@ -1,8 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,29 +127,12 @@ export default function AdminDocumentsPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-6xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <div className="w-full space-y-6">
             <div>
               <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-primary/10">

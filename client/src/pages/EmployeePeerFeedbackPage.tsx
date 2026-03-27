@@ -1,8 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Star, CheckCircle, Clock, Send, UserPlus } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -293,35 +291,16 @@ export default function EmployeePeerFeedbackPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Dipendente"}
-        userRole={user?.role === "admin" ? "Amministratore" : "Dipendente"}
-        notificationCount={receivedRequests.filter(r => r.status === "pending").length}
-        showSidebarTrigger={true}
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail activeSection={activeSection} onSectionClick={handleSectionClick} />
-            <AppPanel activeSection={activeSection} className="transition-opacity duration-200" />
-          </div>
-
-          {/* MAIN CONTENT */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-4xl mx-auto space-y-6">
+      {/* MAIN CONTENT */}
+      <main className="flex-1 w-full min-h-[calc(100vh-7rem)]">
+            <div className="w-full space-y-6">
               <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-primary/10">
-                      <Users className="h-6 w-6 text-primary" />
-                    </div>
-                    Feedback 360°
-                  </h1>
-                  <p className="md3-body-large text-muted-foreground">
-                    Richiedi e fornisci feedback anonimi ai colleghi
-                  </p>
+                <div className="flex-1">
+                  <PageHeader 
+                    context="VALUTAZIONI" 
+                    title="Feedback 360°" 
+                    description="Richiedi e fornisci feedback anonimi ai colleghi"
+                  />
                 </div>
 
                 {cycles.length > 0 && (
@@ -342,9 +321,9 @@ export default function EmployeePeerFeedbackPage() {
 
               {selectedCycle && selectedCycleData ? (
                 <Tabs defaultValue="request" className="w-full">
-                  <TabsList className="mb-6">
-                    <TabsTrigger value="request">Richiedi Feedback</TabsTrigger>
-                    <TabsTrigger value="give">
+                  <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+                    <TabsTrigger value="request"  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Richiedi Feedback</TabsTrigger>
+                    <TabsTrigger value="give"  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">
                       Fornisci Feedback
                       {receivedRequests.filter(r => r.status === "pending").length > 0 && (
                         <Badge variant="destructive" className="ml-2">
@@ -352,7 +331,7 @@ export default function EmployeePeerFeedbackPage() {
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="results">I Miei Risultati 360°</TabsTrigger>
+                    <TabsTrigger value="results"  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">I Miei Risultati 360°</TabsTrigger>
                   </TabsList>
 
                   {/* Tab: Request Feedback */}
@@ -623,8 +602,7 @@ export default function EmployeePeerFeedbackPage() {
               </div>
             </AppActionsPanel>
           )}
-        </div>
-      </div>
+
 
       {/* Request Feedback Dialog */}
       <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>

@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RailProvider } from "@/contexts/RailContext";
+import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
@@ -20,6 +21,7 @@ import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
 import AdminAssignmentsBulkPage from "@/pages/AdminAssignmentsBulkPage";
 import AdminClearAllAssignmentsPage from "@/pages/AdminClearAllAssignmentsPage";
 import AdminReportingPage from "@/pages/AdminReportingPage";
+import AdminTabellonePage from "@/pages/AdminTabellonePage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
 import AdminAnalyticsPage from "@/pages/AdminAnalyticsPage";
@@ -129,6 +131,11 @@ function Router() {
           <AdminReportingPage />
         </ProtectedRoute>
       )} />
+      <Route path="/admin/tabellone" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminTabellonePage />
+        </ProtectedRoute>
+      )} />
       <Route path="/admin/documents" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminDocumentsPage />
@@ -220,8 +227,10 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <RailProvider>
-            <Toaster />
-            <Router />
+            <FeatureFlagsProvider>
+              <Toaster />
+              <Router />
+            </FeatureFlagsProvider>
           </RailProvider>
         </TooltipProvider>
       </QueryClientProvider>

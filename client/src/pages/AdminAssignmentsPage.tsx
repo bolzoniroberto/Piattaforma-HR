@@ -1,9 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -277,25 +274,9 @@ export default function AdminAssignmentsPage() {
   if (userLoading) {
     return (
       <>
-        <AppHeader
-          userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-          userRole="Amministratore"
-          notificationCount={0}
-          showSidebarTrigger={true}
-        />
-        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-          <div className="flex gap-6 max-w-[1800px] mx-auto">
-            <div className="w-[312px] shrink-0 flex gap-3">
-              <AppRail
-                activeSection={activeSection}
-                onSectionClick={handleSectionClick}
-              />
-              <AppPanel
-                activeSection={activeSection}
-                className="transition-opacity duration-200"
-              />
-            </div>
-            <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+        <div className="w-full">
+          <div className="w-full">
+            <main className="w-full space-y-6 flex flex-col pt-4" >
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Caricamento...</p>
             </div>
@@ -309,25 +290,9 @@ export default function AdminAssignmentsPage() {
   if (!targetUser) {
     return (
       <>
-        <AppHeader
-          userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-          userRole="Amministratore"
-          notificationCount={0}
-          showSidebarTrigger={true}
-        />
-        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-          <div className="flex gap-6 max-w-[1800px] mx-auto">
-            <div className="w-[312px] shrink-0 flex gap-3">
-              <AppRail
-                activeSection={activeSection}
-                onSectionClick={handleSectionClick}
-              />
-              <AppPanel
-                activeSection={activeSection}
-                className="transition-opacity duration-200"
-              />
-            </div>
-            <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
+        <div className="w-full">
+          <div className="w-full">
+            <main className="w-full space-y-6 flex flex-col pt-4" >
             <div className="flex items-center justify-center h-full">
               <Card className="max-w-md">
                 <CardContent className="pt-6 text-center">
@@ -350,32 +315,12 @@ export default function AdminAssignmentsPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Assegnazione Obiettivi"
-        pageIcon={Target}
-        pageDescription={`Gestisci gli obiettivi assegnati a ${targetUser?.firstName || ""} ${targetUser?.lastName || ""}`}
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <div className="w-full space-y-6">
             <div className="flex items-center gap-4">
               <Link href="/admin/users">
                 <Button variant="ghost" size="icon" data-testid="button-back">

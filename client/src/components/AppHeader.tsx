@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import logoPath from "@assets/image_1764169863444.png";
 import { ReactNode } from "react";
 
 interface AppHeaderProps {
@@ -61,12 +60,11 @@ export default function AppHeader({
     .toUpperCase();
 
   return (
-    <header className="h-16 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50" style={{boxShadow: 'var(--shadow-2)'}}>
+    <header className="h-16 border-b border-sidebar-border bg-background flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
       <div className="flex items-center gap-3 md:gap-4">
         <div className="flex items-center gap-3">
-          <img src={logoPath} alt="Piattaforma HR" className="h-6 md:h-7" />
           <h1 className="md3-title-large text-foreground hidden sm:block">
-            Piattaforma HR
+            Piattaforma Talent
           </h1>
           <h1 className="md3-title-medium text-foreground sm:hidden">
             HR

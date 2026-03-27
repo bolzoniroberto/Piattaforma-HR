@@ -1,54 +1,50 @@
 import { sql } from 'drizzle-orm';
 import {
   index,
-  jsonb,
-  pgTable,
-  timestamp,
-  varchar,
   text,
+  sqliteTable,
   integer,
-  boolean,
+  real,
   uniqueIndex,
-  numeric,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Session storage table - Required for Replit Auth
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    sid: text("sid").primaryKey(),
+    sess: text("sess").notNull(),
+    expire: integer("expire").notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // User storage table - Required for Replit Auth
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).unique(), // Tax ID - FK to persona
-  matricola: varchar("matricola", { length: 50 }).unique(), // Employee code - for quick lookup
-  profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // employee, admin, or hr
-  department: varchar("department"),
-  cdc: varchar("cdc"), // Centro di Costo (Cost Center)
-  managerId: varchar("manager_id").references((): any => users.id, { onDelete: "set null" }), // Manager/responsabile
-  ral: numeric("ral", { precision: 12, scale: 2 }), // Annual salary
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  email: text("email").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).unique(), // Tax ID - FK to persona
+  matricola: text("matricola", { length: 50 }).unique(), // Employee code - for quick lookup
+  profileImageUrl: text("profile_image_url"),
+  role: text("role").notNull().default("employee"), // employee, admin, or hr
+  department: text("department"),
+  cdc: text("cdc"), // Centro di Costo (Cost Center)
+  managerId: text("manager_id").references((): any => users.id, { onDelete: "set null" }), // Manager/responsabile
+  ral: real("ral"), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
-  mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"), // When user accepted MBO regulation
-  isActive: boolean("is_active").notNull().default(true), // Whether user is active
-  telefono: varchar("telefono"), // Phone number
+  mboRegulationAcceptedAt: integer("mbo_regulation_accepted_at"), // When user accepted MBO regulation
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1), // Whether user is active
+  telefono: text("telefono"), // Phone number
   indirizzo: text("indirizzo"), // Address
-  cap: varchar("cap", { length: 10 }), // Postal code
-  citta: varchar("citta"), // City
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  cap: text("cap", { length: 10 }), // Postal code
+  citta: text("citta"), // City
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_users_codice_fiscale").on(table.codiceFiscale),
   index("idx_users_matricola").on(table.matricola),
@@ -98,16 +94,16 @@ export type User = typeof users.$inferSelect;
 // ==============================================
 
 // Persona - Dati Anagrafici Base
-export const persona = pgTable("persona", {
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).primaryKey(),
-  matricola: varchar("matricola", { length: 50 }).unique(),
-  cognome: varchar("cognome").notNull(),
-  nome: varchar("nome").notNull(),
-  dataNascita: timestamp("data_nascita"),
-  sesso: varchar("sesso", { length: 1 }), // M, F, A
-  cittadinanza: varchar("cittadinanza"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const persona = sqliteTable("persona", {
+  codiceFiscale: text("codice_fiscale", { length: 16 }).primaryKey(),
+  matricola: text("matricola", { length: 50 }).unique(),
+  cognome: text("cognome").notNull(),
+  nome: text("nome").notNull(),
+  dataNascita: integer("data_nascita"),
+  sesso: text("sesso", { length: 1 }), // M, F, A
+  cittadinanza: text("cittadinanza"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_persona_matricola").on(table.matricola),
 ]);
@@ -121,16 +117,16 @@ export type InsertPersona = z.infer<typeof insertPersonaSchema>;
 export type Persona = typeof persona.$inferSelect;
 
 // Contatti - Informazioni di Contatto
-export const contatti = pgTable("contatti", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
-  email: varchar("email").unique().notNull(),
-  telefono: varchar("telefono"),
+export const contatti = sqliteTable("contatti", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  email: text("email").unique().notNull(),
+  telefono: text("telefono"),
   indirizzo: text("indirizzo"),
-  cap: varchar("cap", { length: 10 }),
-  citta: varchar("citta"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  cap: text("cap", { length: 10 }),
+  citta: text("citta"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertContattiSchema = createInsertSchema(contatti).omit({
@@ -143,34 +139,34 @@ export type InsertContatti = z.infer<typeof insertContattiSchema>;
 export type Contatti = typeof contatti.$inferSelect;
 
 // Organizzazione - Struttura Aziendale
-export const organizzazione = pgTable("organizzazione", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
-  codiceAzienda: varchar("codice_azienda"),
-  azienda: varchar("azienda"),
+export const organizzazione = sqliteTable("organizzazione", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  codiceAzienda: text("codice_azienda"),
+  azienda: text("azienda"),
   // Gerarchia strutturale (3 livelli)
-  codiceStrutturaL1: varchar("codice_struttura_l1"),
-  descrizioneStrutturaL1: varchar("descrizione_struttura_l1"),
-  codiceStrutturaL2: varchar("codice_struttura_l2"),
-  descrizioneStrutturaL2: varchar("descrizione_struttura_l2"),
-  codiceStrutturaL3: varchar("codice_struttura_l3"),
-  descrizioneStrutturaL3: varchar("descrizione_struttura_l3"),
+  codiceStrutturaL1: text("codice_struttura_l1"),
+  descrizioneStrutturaL1: text("descrizione_struttura_l1"),
+  codiceStrutturaL2: text("codice_struttura_l2"),
+  descrizioneStrutturaL2: text("descrizione_struttura_l2"),
+  codiceStrutturaL3: text("codice_struttura_l3"),
+  descrizioneStrutturaL3: text("descrizione_struttura_l3"),
   // Centro di Costo
-  codiceCdc: varchar("codice_cdc"),
-  descrizioneCdc: varchar("descrizione_cdc"),
+  codiceCdc: text("codice_cdc"),
+  descrizioneCdc: text("descrizione_cdc"),
   // Suddivisioni organizzative
-  area: varchar("area"),
-  sottoArea: varchar("sotto_area"),
-  unitaOrganizzativa: varchar("unita_organizzativa"),
+  area: text("area"),
+  sottoArea: text("sotto_area"),
+  unitaOrganizzativa: text("unita_organizzativa"),
   // Sede di lavoro
-  sedeId: varchar("sede_id").references(() => sedi.id),
-  dataDecorrenzaSede: timestamp("data_decorrenza_sede"),
+  sedeId: text("sede_id").references(() => sedi.id),
+  dataDecorrenzaSede: integer("data_decorrenza_sede"),
   // Altri campi
-  sindacato: varchar("sindacato", { length: 100 }),
-  configurazioneOrarioId: varchar("configurazione_orario_id").references(() => configurazioniOrario.id),
-  configurazioneTimbraFirmaId: varchar("configurazione_timbra_firma_id").references(() => configurazioniOrario.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  sindacato: text("sindacato", { length: 100 }),
+  configurazioneOrarioId: text("configurazione_orario_id").references(() => configurazioniOrario.id),
+  configurazioneTimbraFirmaId: text("configurazione_timbra_firma_id").references(() => configurazioniOrario.id),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_organizzazione_sede").on(table.sedeId).where(sql`${table.sedeId} IS NOT NULL`),
 ]);
@@ -185,41 +181,41 @@ export type InsertOrganizzazione = z.infer<typeof insertOrganizzazioneSchema>;
 export type Organizzazione = typeof organizzazione.$inferSelect;
 
 // Contratti - Informazioni Contrattuali
-export const contratti = pgTable("contratti", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
-  matricola: varchar("matricola", { length: 50 }), // Riferimento a persona.matricola
+export const contratti = sqliteTable("contratti", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  matricola: text("matricola", { length: 50 }), // Riferimento a persona.matricola
   // Date contrattuali
-  dataAssunzione: timestamp("data_assunzione"),
-  dataAssunzioneGruppo: timestamp("data_assunzione_gruppo"),
-  dataFineRapporto: timestamp("data_fine_rapporto"),
-  dataCessazione: timestamp("data_cessazione"),
-  dataScadenzaPosizioneLavorativa: timestamp("data_scadenza_posizione_lavorativa"),
-  dataScadenzaContrattoTermine: timestamp("data_scadenza_contratto_termine"),
+  dataAssunzione: integer("data_assunzione"),
+  dataAssunzioneGruppo: integer("data_assunzione_gruppo"),
+  dataFineRapporto: integer("data_fine_rapporto"),
+  dataCessazione: integer("data_cessazione"),
+  dataScadenzaPosizioneLavorativa: integer("data_scadenza_posizione_lavorativa"),
+  dataScadenzaContrattoTermine: integer("data_scadenza_contratto_termine"),
   // Tipologia contratto
-  codiceContratto: varchar("codice_contratto"),
-  descrizioneContratto: varchar("descrizione_contratto"),
-  tipologiaContrattoTermine: varchar("tipologia_contratto_termine"),
-  causaleAssunzioneId: varchar("causale_assunzione_id").references(() => causaliAssunzione.id),
+  codiceContratto: text("codice_contratto"),
+  descrizioneContratto: text("descrizione_contratto"),
+  tipologiaContrattoTermine: text("tipologia_contratto_termine"),
+  causaleAssunzioneId: text("causale_assunzione_id").references(() => causaliAssunzione.id),
   // Classificazione
-  qualifica: varchar("qualifica"),
-  livello: varchar("livello"),
-  jobTitle: varchar("job_title"),
-  ccnlId: varchar("ccnl_id").references(() => ccnl.id),
-  livelloContrattualeId: varchar("livello_contrattuale_id").references(() => livelliContrattuali.id),
+  qualifica: text("qualifica"),
+  livello: text("livello"),
+  jobTitle: text("job_title"),
+  ccnlId: text("ccnl_id").references(() => ccnl.id),
+  livelloContrattualeId: text("livello_contrattuale_id").references(() => livelliContrattuali.id),
   // Part-time
-  partTimeCodice: varchar("part_time_codice"),
+  partTimeCodice: text("part_time_codice"),
   partTimePercentuale: integer("part_time_percentuale"),
-  descrizionePartTime: varchar("descrizione_part_time", { length: 255 }),
-  partTimeDataInizio: timestamp("part_time_data_inizio"),
-  partTimeDataFine: timestamp("part_time_data_fine"),
+  descrizionePartTime: text("descrizione_part_time", { length: 255 }),
+  partTimeDataInizio: integer("part_time_data_inizio"),
+  partTimeDataFine: integer("part_time_data_fine"),
   // Categoria protetta
-  categoriaProtettaId: varchar("categoria_protetta_id").references(() => categorieProtette.id),
+  categoriaProtettaId: text("categoria_protetta_id").references(() => categorieProtette.id),
   // Altri
-  aziendaProvenienza: varchar("azienda_provenienza", { length: 255 }),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  aziendaProvenienza: text("azienda_provenienza", { length: 255 }),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_contratti_matricola").on(table.matricola),
   index("idx_contratti_ccnl").on(table.ccnlId),
@@ -238,21 +234,21 @@ export type InsertContratti = z.infer<typeof insertContrattiSchema>;
 export type Contratti = typeof contratti.$inferSelect;
 
 // Compensation - Retribuzione e MBO
-export const compensation = pgTable("compensation", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+export const compensation = sqliteTable("compensation", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
   // Retribuzione
-  ral: numeric("ral", { precision: 12, scale: 2 }),
-  valuta: varchar("valuta", { length: 3 }).default("EUR"),
+  ral: real("ral"),
+  valuta: text("valuta", { length: 3 }).default("EUR"),
   // MBO
   mboPercentuale: integer("mbo_percentuale"), // 0-100, multipli di 5
-  mboTargetEuro: numeric("mbo_target_euro", { precision: 12, scale: 2 }),
+  mboTargetEuro: real("mbo_target_euro"),
   // Periodo di validità
-  validoDa: timestamp("valido_da").notNull(),
-  validoA: timestamp("valido_a"),
-  isCurrent: boolean("is_current").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  validoDa: integer("valido_da").notNull(),
+  validoA: integer("valido_a"),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCompensationSchema = createInsertSchema(compensation).omit({
@@ -270,23 +266,23 @@ export type InsertCompensation = z.infer<typeof insertCompensationSchema>;
 export type Compensation = typeof compensation.$inferSelect;
 
 // Ruoli - Ruoli e Responsabilità
-export const ruoli = pgTable("ruoli", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+export const ruoli = sqliteTable("ruoli", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).notNull().unique().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
   // Gerarchia
-  primoResponsabileCf: varchar("primo_responsabile_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
-  responsabileDirettoCf: varchar("responsabile_diretto_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
-  reportsToCf: varchar("reports_to_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
+  primoResponsabileCf: text("primo_responsabile_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
+  responsabileDirettoCf: text("responsabile_diretto_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
+  reportsToCf: text("reports_to_cf", { length: 16 }).references(() => persona.codiceFiscale, { onDelete: "set null" }),
   // Ruoli speciali
-  isTns: boolean("is_tns").default(false),
-  isSgsl: boolean("is_sgsl").default(false),
-  isPrivacy: boolean("is_privacy").default(false),
+  isTns: integer("is_tns", { mode: "boolean" }).default(false),
+  isSgsl: integer("is_sgsl", { mode: "boolean" }).default(false),
+  isPrivacy: integer("is_privacy", { mode: "boolean" }).default(false),
   // Sistema
-  role: varchar("role").notNull().default("employee"),
-  profileImageUrl: varchar("profile_image_url"),
-  mboRegulationAcceptedAt: timestamp("mbo_regulation_accepted_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  role: text("role").notNull().default("employee"),
+  profileImageUrl: text("profile_image_url"),
+  mboRegulationAcceptedAt: integer("mbo_regulation_accepted_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_ruoli_hierarchy").on(table.responsabileDirettoCf, table.codiceFiscale).where(sql`${table.responsabileDirettoCf} IS NOT NULL`),
 ]);
@@ -305,17 +301,17 @@ export type Ruoli = typeof ruoli.$inferSelect;
 // ==============================================
 
 // Sedi - Anagrafica Sedi di Lavoro
-export const sedi = pgTable("sedi", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceSede: varchar("codice_sede", { length: 50 }).unique().notNull(),
-  descrizioneSede: varchar("descrizione_sede", { length: 255 }).notNull(),
-  comune: varchar("comune", { length: 100 }),
+export const sedi = sqliteTable("sedi", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceSede: text("codice_sede", { length: 50 }).unique().notNull(),
+  descrizioneSede: text("descrizione_sede", { length: 255 }).notNull(),
+  comune: text("comune", { length: 100 }),
   indirizzo: text("indirizzo"),
-  cap: varchar("cap", { length: 10 }),
-  provincia: varchar("provincia", { length: 2 }),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  cap: text("cap", { length: 10 }),
+  provincia: text("provincia", { length: 2 }),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertSediSchema = createInsertSchema(sedi).omit({
@@ -328,13 +324,13 @@ export type InsertSedi = z.infer<typeof insertSediSchema>;
 export type Sedi = typeof sedi.$inferSelect;
 
 // CCNL - Contratti Collettivi Nazionali Lavoro
-export const ccnl = pgTable("ccnl", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceCcnl: varchar("codice_ccnl", { length: 50 }).unique().notNull(),
-  descrizioneCcnl: varchar("descrizione_ccnl", { length: 255 }).notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const ccnl = sqliteTable("ccnl", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceCcnl: text("codice_ccnl", { length: 50 }).unique().notNull(),
+  descrizioneCcnl: text("descrizione_ccnl", { length: 255 }).notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCcnlSchema = createInsertSchema(ccnl).omit({
@@ -347,15 +343,15 @@ export type InsertCcnl = z.infer<typeof insertCcnlSchema>;
 export type Ccnl = typeof ccnl.$inferSelect;
 
 // Livelli Contrattuali - Livelli per CCNL
-export const livelliContrattuali = pgTable("livelli_contrattuali", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  ccnlId: varchar("ccnl_id").notNull().references(() => ccnl.id, { onDelete: "cascade" }),
-  codiceLivello: varchar("codice_livello", { length: 50 }).notNull(),
-  descrizioneLivello: varchar("descrizione_livello", { length: 255 }).notNull(),
+export const livelliContrattuali = sqliteTable("livelli_contrattuali", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  ccnlId: text("ccnl_id").notNull().references(() => ccnl.id, { onDelete: "cascade" }),
+  codiceLivello: text("codice_livello", { length: 50 }).notNull(),
+  descrizioneLivello: text("descrizione_livello", { length: 255 }).notNull(),
   ordinamento: integer("ordinamento").default(0),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueCcnlLivello: uniqueIndex("unique_ccnl_livello").on(table.ccnlId, table.codiceLivello),
 }));
@@ -370,13 +366,13 @@ export type InsertLivelliContrattuali = z.infer<typeof insertLivelliContrattuali
 export type LivelliContrattuali = typeof livelliContrattuali.$inferSelect;
 
 // Categorie Protette - Categorie L.68/99
-export const categorieProtette = pgTable("categorie_protette", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codice: varchar("codice", { length: 50 }).unique().notNull(),
-  descrizione: varchar("descrizione", { length: 255 }).notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const categorieProtette = sqliteTable("categorie_protette", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codice: text("codice", { length: 50 }).unique().notNull(),
+  descrizione: text("descrizione", { length: 255 }).notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCategorieProtetteSchema = createInsertSchema(categorieProtette).omit({
@@ -389,14 +385,14 @@ export type InsertCategorieProtette = z.infer<typeof insertCategorieProtetteSche
 export type CategorieProtette = typeof categorieProtette.$inferSelect;
 
 // Configurazioni Orario - Tipologie Orario e Timbratura
-export const configurazioniOrario = pgTable("configurazioni_orario", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codice: varchar("codice", { length: 50 }).unique().notNull(),
-  tipo: varchar("tipo", { length: 50 }).notNull(), // "tipo_orario" o "timbra_firma"
-  descrizione: varchar("descrizione", { length: 255 }).notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const configurazioniOrario = sqliteTable("configurazioni_orario", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codice: text("codice", { length: 50 }).unique().notNull(),
+  tipo: text("tipo", { length: 50 }).notNull(), // "tipo_orario" o "timbra_firma"
+  descrizione: text("descrizione", { length: 255 }).notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertConfigurazioniOrarioSchema = createInsertSchema(configurazioniOrario).omit({
@@ -411,13 +407,13 @@ export type InsertConfigurazioniOrario = z.infer<typeof insertConfigurazioniOrar
 export type ConfigurazioniOrario = typeof configurazioniOrario.$inferSelect;
 
 // Causali Assunzione
-export const causaliAssunzione = pgTable("causali_assunzione", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codice: varchar("codice", { length: 50 }).unique().notNull(),
+export const causaliAssunzione = sqliteTable("causali_assunzione", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codice: text("codice", { length: 50 }).unique().notNull(),
   descrizione: text("descrizione").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCausaliAssunzioneSchema = createInsertSchema(causaliAssunzione).omit({
@@ -430,16 +426,16 @@ export type InsertCausaliAssunzione = z.infer<typeof insertCausaliAssunzioneSche
 export type CausaliAssunzione = typeof causaliAssunzione.$inferSelect;
 
 // Smart Working Storico - Storico Smart Working
-export const smartWorkingStorico = pgTable("smart_working_storico", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  codiceFiscale: varchar("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
-  tipologiaSmartWorking: varchar("tipologia_smart_working", { length: 100 }).notNull(),
-  dataDecorrenza: timestamp("data_decorrenza").notNull(),
-  dataScadenza: timestamp("data_scadenza"),
-  isCurrent: boolean("is_current").notNull().default(true),
+export const smartWorkingStorico = sqliteTable("smart_working_storico", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  codiceFiscale: text("codice_fiscale", { length: 16 }).notNull().references(() => persona.codiceFiscale, { onDelete: "cascade" }),
+  tipologiaSmartWorking: text("tipologia_smart_working", { length: 100 }).notNull(),
+  dataDecorrenza: integer("data_decorrenza").notNull(),
+  dataScadenza: integer("data_scadenza"),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
   note: text("note"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_sw_storico_cf").on(table.codiceFiscale),
   index("idx_sw_storico_current").on(table.codiceFiscale, table.isCurrent).where(sql`${table.isCurrent} = true`),
@@ -455,15 +451,15 @@ export type InsertSmartWorkingStorico = z.infer<typeof insertSmartWorkingStorico
 export type SmartWorkingStorico = typeof smartWorkingStorico.$inferSelect;
 
 // Livelli Contrattuali Storico - Storico Cambi Livello
-export const livelliContrattualiStorico = pgTable("livelli_contrattuali_storico", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  contrattoId: varchar("contratto_id").notNull().references(() => contratti.id, { onDelete: "cascade" }),
-  livelloContrattualeId: varchar("livello_contrattuale_id").references(() => livelliContrattuali.id),
-  dataDecorrenza: timestamp("data_decorrenza").notNull(),
-  dataFine: timestamp("data_fine"),
-  isCurrent: boolean("is_current").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const livelliContrattualiStorico = sqliteTable("livelli_contrattuali_storico", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  contrattoId: text("contratto_id").notNull().references(() => contratti.id, { onDelete: "cascade" }),
+  livelloContrattualeId: text("livello_contrattuale_id").references(() => livelliContrattuali.id),
+  dataDecorrenza: integer("data_decorrenza").notNull(),
+  dataFine: integer("data_fine"),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_livelli_storico_contratto").on(table.contrattoId),
   index("idx_livelli_storico_current").on(table.contrattoId, table.isCurrent).where(sql`${table.isCurrent} = true`),
@@ -479,12 +475,12 @@ export type InsertLivelliContrattualiStorico = z.infer<typeof insertLivelliContr
 export type LivelliContrattualiStorico = typeof livelliContrattualiStorico.$inferSelect;
 
 // Indicator Clusters for objectives
-export const indicatorClusters = pgTable("indicator_clusters", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(), // Obiettivi di Gruppo, Individuali, ESG, etc.
+export const indicatorClusters = sqliteTable("indicator_clusters", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(), // Obiettivi di Gruppo, Individuali, ESG, etc.
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertIndicatorClusterSchema = createInsertSchema(indicatorClusters).omit({
@@ -497,13 +493,13 @@ export type InsertIndicatorCluster = z.infer<typeof insertIndicatorClusterSchema
 export type IndicatorCluster = typeof indicatorClusters.$inferSelect;
 
 // Calculation types for objectives
-export const calculationTypes = pgTable("calculation_types", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(), // Linear interpolation, 100% at target, Inverse linear, etc.
+export const calculationTypes = sqliteTable("calculation_types", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(), // Linear interpolation, 100% at target, Inverse linear, etc.
   description: text("description"),
   formula: text("formula"), // Description of calculation logic
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCalculationTypeSchema = createInsertSchema(calculationTypes).omit({
@@ -516,14 +512,14 @@ export type InsertCalculationType = z.infer<typeof insertCalculationTypeSchema>;
 export type CalculationType = typeof calculationTypes.$inferSelect;
 
 // Business Functions (Strutture) - for objective verification source
-export const businessFunctions = pgTable("business_functions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(), // Department/function name
+export const businessFunctions = sqliteTable("business_functions", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(), // Department/function name
   description: text("description"),
-  primoLivelloId: varchar("primo_livello_id"), // Reference to first level structure
-  secondoLivelloId: varchar("secondo_livello_id"), // Reference to second level structure
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  primoLivelloId: text("primo_livello_id"), // Reference to first level structure
+  secondoLivelloId: text("secondo_livello_id"), // Reference to second level structure
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertBusinessFunctionSchema = createInsertSchema(businessFunctions).omit({
@@ -536,20 +532,25 @@ export type InsertBusinessFunction = z.infer<typeof insertBusinessFunctionSchema
 export type BusinessFunction = typeof businessFunctions.$inferSelect;
 
 // Objectives Dictionary - Repository of all possible objectives
-export const objectivesDictionary = pgTable("objectives_dictionary", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: varchar("title").notNull(),
+export const objectivesDictionary = sqliteTable("objectives_dictionary", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  title: text("title").notNull(),
   description: text("description"),
-  indicatorClusterId: varchar("indicator_cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
-  calculationTypeId: varchar("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
-  objectiveType: varchar("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
-  targetValue: numeric("target_value", { precision: 15, scale: 2 }), // Target for numeric objectives
-  thresholdValue: numeric("threshold_value", { precision: 15, scale: 2 }), // Threshold below which numeric objective is 0%
-  actualValue: numeric("actual_value", { precision: 15, scale: 2 }), // Actual value reported (for numeric objectives)
-  qualitativeResult: varchar("qualitative_result"), // "reached", "partial", "not_reached"
-  reportedAt: timestamp("reported_at"), // When the objective was reported
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  indicatorClusterId: text("indicator_cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
+  calculationTypeId: text("calculation_type_id").notNull().references(() => calculationTypes.id, { onDelete: "restrict" }),
+  objectiveType: text("objective_type").notNull().default("numeric"), // "numeric" or "qualitative"
+  targetValue: real("target_value"), // Target for numeric objectives
+  thresholdValue: real("threshold_value"), // Threshold below which numeric objective is 0%
+  thresholdPayout: real("threshold_payout").default(50), // Payout % at exactly threshold (default 50%)
+  allowOverperformance: integer("allow_overperformance").default(0), // Boolean: allows >100% payout
+  maxPayout: real("max_payout").default(120), // Max payout % when overperformance is enabled
+  targetDescription: text("target_description"), // Detailed description of what reaching the target means
+  dataSource: text("data_source"), // Data source / where result data comes from
+  actualValue: real("actual_value"), // Actual value reported (for numeric objectives)
+  qualitativeResult: text("qualitative_result"), // "reached", "partial", "not_reached"
+  reportedAt: integer("reported_at"), // When the objective was reported
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDictionary).omit({
@@ -560,23 +561,28 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
   objectiveType: z.enum(["numeric", "qualitative"]).default("numeric"),
   targetValue: z.coerce.number().nullable().optional(),
   thresholdValue: z.coerce.number().nullable().optional(),
+  thresholdPayout: z.coerce.number().min(0).max(100).nullable().optional(),
+  allowOverperformance: z.coerce.number().int().min(0).max(1).nullable().optional(),
+  maxPayout: z.coerce.number().min(100).nullable().optional(),
+  targetDescription: z.string().nullable().optional(),
+  dataSource: z.string().nullable().optional(),
 });
 
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;
 export type ObjectivesDictionary = typeof objectivesDictionary.$inferSelect;
 
 // Objectives - Instances assigned to users
-export const objectives = pgTable("objectives", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  dictionaryId: varchar("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "restrict" }),
-  clusterId: varchar("cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
-  deadline: timestamp("deadline"),
+export const objectives = sqliteTable("objectives", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  dictionaryId: text("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "restrict" }),
+  clusterId: text("cluster_id").notNull().references(() => indicatorClusters.id, { onDelete: "cascade" }),
+  deadline: integer("deadline"),
   // Reporting fields
-  actualValue: numeric("actual_value", { precision: 15, scale: 2 }), // Reported value for numeric objectives
-  qualitativeResult: varchar("qualitative_result"), // "reached" or "not_reached" for qualitative objectives
-  reportedAt: timestamp("reported_at"), // When the reporting was done
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  actualValue: real("actual_value"), // Reported value for numeric objectives
+  qualitativeResult: text("qualitative_result"), // "reached" or "not_reached" for qualitative objectives
+  reportedAt: integer("reported_at"), // When the reporting was done
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertObjectiveSchema = createInsertSchema(objectives).omit({
@@ -593,15 +599,15 @@ export type InsertObjective = z.infer<typeof insertObjectiveSchema>;
 export type Objective = typeof objectives.$inferSelect;
 
 // Objective Assignments (linking users to objectives with weight)
-export const objectiveAssignments = pgTable("objective_assignments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  objectiveId: varchar("objective_id").notNull().references(() => objectives.id, { onDelete: "cascade" }),
+export const objectiveAssignments = sqliteTable("objective_assignments", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  objectiveId: text("objective_id").notNull().references(() => objectives.id, { onDelete: "cascade" }),
   weight: integer("weight"), // Weight for this assignment (defined at assignment time, multiples of 5%)
-  status: varchar("status").notNull().default("assegnato"), // assegnato, in_corso, completato, da_approvare
+  status: text("status").notNull().default("assegnato"), // assegnato, in_corso, completato, da_approvare
   progress: integer("progress").notNull().default(0), // 0-100
-  assignedAt: timestamp("assigned_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  assignedAt: integer("assigned_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueUserObjective: uniqueIndex("unique_user_objective").on(table.userId, table.objectiveId),
 }));
@@ -620,15 +626,15 @@ export type InsertObjectiveAssignment = z.infer<typeof insertObjectiveAssignment
 export type ObjectiveAssignment = typeof objectiveAssignments.$inferSelect;
 
 // Documents
-export const documents = pgTable("documents", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: varchar("title").notNull(),
+export const documents = sqliteTable("documents", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  title: text("title").notNull(),
   description: text("description"),
-  type: varchar("type").notNull(), // regulation, policy, contract
-  filePath: varchar("file_path"),
-  requiresAcceptance: boolean("requires_acceptance").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  type: text("type").notNull(), // regulation, policy, contract
+  filePath: text("file_path"),
+  requiresAcceptance: integer("requires_acceptance", { mode: "boolean" }).notNull().default(0),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
@@ -641,11 +647,11 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 
 // Document Acceptances
-export const documentAcceptances = pgTable("document_acceptances", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  documentId: varchar("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
-  acceptedAt: timestamp("accepted_at").defaultNow(),
+export const documentAcceptances = sqliteTable("document_acceptances", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  acceptedAt: integer("accepted_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueUserDocument: uniqueIndex("unique_user_document").on(table.userId, table.documentId),
 }));
@@ -659,10 +665,10 @@ export type InsertDocumentAcceptance = z.infer<typeof insertDocumentAcceptanceSc
 export type DocumentAcceptance = typeof documentAcceptances.$inferSelect;
 
 // MBO Regulation Acceptances
-export const mboRegulationAcceptances = pgTable("mbo_regulation_acceptances", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  acceptedAt: timestamp("accepted_at").defaultNow(),
+export const mboRegulationAcceptances = sqliteTable("mbo_regulation_acceptances", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  acceptedAt: integer("accepted_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueUserAcceptance: uniqueIndex("unique_mbo_user_acceptance").on(table.userId),
 }));
@@ -674,6 +680,15 @@ export const insertMboRegulationAcceptanceSchema = createInsertSchema(mboRegulat
 
 export type InsertMboRegulationAcceptance = z.infer<typeof insertMboRegulationAcceptanceSchema>;
 export type MboRegulationAcceptance = typeof mboRegulationAcceptances.$inferSelect;
+
+// App Settings - key/value store for platform configuration
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -898,25 +913,25 @@ export const livelliContrattualiStoricoRelations = relations(livelliContrattuali
 // ==============================================
 
 // Custom Field Definitions - Configuration of custom fields
-export const customFieldDefinitions = pgTable("custom_field_definitions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  fieldName: varchar("field_name").notNull(), // Internal name (snake_case)
-  fieldLabel: varchar("field_label").notNull(), // Display label
-  fieldType: varchar("field_type").notNull(), // text, number, date, select, multiselect, boolean, email, phone, url
-  category: varchar("category").notNull(), // personal, contact, organizational, professional, custom
-  section: varchar("section"), // Which section of the profile to display in
-  isRequired: boolean("is_required").notNull().default(false),
-  isActive: boolean("is_active").notNull().default(true),
-  isSearchable: boolean("is_searchable").notNull().default(false),
+export const customFieldDefinitions = sqliteTable("custom_field_definitions", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  fieldName: text("field_name").notNull(), // Internal name (snake_case)
+  fieldLabel: text("field_label").notNull(), // Display label
+  fieldType: text("field_type").notNull(), // text, number, date, select, multiselect, boolean, email, phone, url
+  category: text("category").notNull(), // personal, contact, organizational, professional, custom
+  section: text("section"), // Which section of the profile to display in
+  isRequired: integer("is_required", { mode: "boolean" }).notNull().default(0),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isSearchable: integer("is_searchable", { mode: "boolean" }).notNull().default(0),
   displayOrder: integer("display_order").default(0),
-  placeholder: varchar("placeholder"),
+  placeholder: text("placeholder"),
   helpText: text("help_text"),
-  validationRules: jsonb("validation_rules"), // JSON for min, max, pattern, etc.
-  options: jsonb("options"), // For select/multiselect: [{value: "opt1", label: "Option 1"}]
+  validationRules: text("validation_rules"), // JSON for min, max, pattern, etc.
+  options: text("options"), // For select/multiselect: [{value: "opt1", label: "Option 1"}]
   defaultValue: text("default_value"),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCustomFieldDefinitionSchema = createInsertSchema(customFieldDefinitions).omit({
@@ -934,13 +949,13 @@ export type InsertCustomFieldDefinition = z.infer<typeof insertCustomFieldDefini
 export type CustomFieldDefinition = typeof customFieldDefinitions.$inferSelect;
 
 // Custom Field Values - Actual values for each user
-export const customFieldValues = pgTable("custom_field_values", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  fieldId: varchar("field_id").notNull().references(() => customFieldDefinitions.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+export const customFieldValues = sqliteTable("custom_field_values", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  fieldId: text("field_id").notNull().references(() => customFieldDefinitions.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   value: text("value"), // Stored as text, parsed based on field type
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   uniqueIndex("unique_field_user").on(table.fieldId, table.userId),
 ]);
@@ -979,15 +994,15 @@ export const customFieldValuesRelations = relations(customFieldValues, ({ one })
 // ==============================================
 
 // Competency Models - Templates for different personas
-export const competencyModels = pgTable("competency_models", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(), // "Executive Competencies", "Manager Competencies"
+export const competencyModels = sqliteTable("competency_models", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(), // "Executive Competencies", "Manager Competencies"
   description: text("description"),
-  personaType: varchar("persona_type").notNull(), // "executive", "manager", "professional", "individual_contributor"
-  isActive: boolean("is_active").notNull().default(true),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  personaType: text("persona_type").notNull(), // "executive", "manager", "professional", "individual_contributor"
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCompetencyModelSchema = createInsertSchema(competencyModels).omit({
@@ -1002,18 +1017,18 @@ export type InsertCompetencyModel = z.infer<typeof insertCompetencyModelSchema>;
 export type CompetencyModel = typeof competencyModels.$inferSelect;
 
 // User Competency Model Assignments - Associates users with competency models
-export const userCompetencyModelAssignments = pgTable("user_competency_model_assignments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  competencyModelId: varchar("competency_model_id").notNull().references(() => competencyModels.id, { onDelete: "cascade" }),
-  assignedAt: timestamp("assigned_at").defaultNow(),
-  assignedBy: varchar("assigned_by").references(() => users.id, { onDelete: "set null" }),
-  validFrom: timestamp("valid_from").notNull().defaultNow(),
-  validTo: timestamp("valid_to"),
-  isCurrent: boolean("is_current").notNull().default(true),
+export const userCompetencyModelAssignments = sqliteTable("user_competency_model_assignments", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyModelId: text("competency_model_id").notNull().references(() => competencyModels.id, { onDelete: "cascade" }),
+  assignedAt: integer("assigned_at").default(sql`(unixepoch())`),
+  assignedBy: text("assigned_by").references(() => users.id, { onDelete: "set null" }),
+  validFrom: integer("valid_from").notNull().default(sql`(unixepoch())`),
+  validTo: integer("valid_to"),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
   notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueUserModelCurrent: uniqueIndex("unique_user_model_current").on(table.userId, table.competencyModelId, table.isCurrent),
 }));
@@ -1032,16 +1047,16 @@ export type InsertUserCompetencyModelAssignment = z.infer<typeof insertUserCompe
 export type UserCompetencyModelAssignment = typeof userCompetencyModelAssignments.$inferSelect;
 
 // Competencies - Individual competency definitions
-export const competencies = pgTable("competencies", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  modelId: varchar("model_id").notNull().references(() => competencyModels.id, { onDelete: "cascade" }),
-  name: varchar("name").notNull(), // "Leadership", "Problem Solving", "Communication"
+export const competencies = sqliteTable("competencies", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  modelId: text("model_id").notNull().references(() => competencyModels.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // "Leadership", "Problem Solving", "Communication"
   description: text("description"),
-  category: varchar("category"), // "technical", "behavioral", "leadership", "transversal"
-  isTransversal: boolean("is_transversal").notNull().default(false), // Shared across multiple personas
+  category: text("category"), // "technical", "behavioral", "leadership", "transversal"
+  isTransversal: integer("is_transversal", { mode: "boolean" }).notNull().default(0), // Shared across multiple personas
   displayOrder: integer("display_order").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertCompetencySchema = createInsertSchema(competencies).omit({
@@ -1056,29 +1071,29 @@ export type InsertCompetency = z.infer<typeof insertCompetencySchema>;
 export type Competency = typeof competencies.$inferSelect;
 
 // Evaluation Cycles - Annual performance review cycles
-export const evaluationCycles = pgTable("evaluation_cycles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(), // "Ciclo 2024", "Performance Review 2024"
+export const evaluationCycles = sqliteTable("evaluation_cycles", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(), // "Ciclo 2024", "Performance Review 2024"
   year: integer("year").notNull(),
-  status: varchar("status").notNull().default("draft"), // "draft", "active", "completed", "archived"
+  status: text("status").notNull().default("draft"), // "draft", "active", "completed", "archived"
 
   // Phase dates
-  selfAssessmentStart: timestamp("self_assessment_start"),
-  selfAssessmentEnd: timestamp("self_assessment_end"),
-  peerFeedbackStart: timestamp("peer_feedback_start"),
-  peerFeedbackEnd: timestamp("peer_feedback_end"),
-  managerEvaluationStart: timestamp("manager_evaluation_start"),
-  managerEvaluationEnd: timestamp("manager_evaluation_end"),
-  feedbackDeliveryStart: timestamp("feedback_delivery_start"),
-  feedbackDeliveryEnd: timestamp("feedback_delivery_end"),
+  selfAssessmentStart: integer("self_assessment_start"),
+  selfAssessmentEnd: integer("self_assessment_end"),
+  peerFeedbackStart: integer("peer_feedback_start"),
+  peerFeedbackEnd: integer("peer_feedback_end"),
+  managerEvaluationStart: integer("manager_evaluation_start"),
+  managerEvaluationEnd: integer("manager_evaluation_end"),
+  feedbackDeliveryStart: integer("feedback_delivery_start"),
+  feedbackDeliveryEnd: integer("feedback_delivery_end"),
 
   // Configuration
-  enable360Feedback: boolean("enable_360_feedback").notNull().default(false),
+  enable360Feedback: integer("enable_360_feedback", { mode: "boolean" }).notNull().default(0),
 
   // Metadata
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
 
 export const insertEvaluationCycleSchema = createInsertSchema(evaluationCycles).omit({
@@ -1103,16 +1118,16 @@ export type InsertEvaluationCycle = z.infer<typeof insertEvaluationCycleSchema>;
 export type EvaluationCycle = typeof evaluationCycles.$inferSelect;
 
 // Self Assessments - Employee self-evaluations
-export const selfAssessments = pgTable("self_assessments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  competencyId: varchar("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+export const selfAssessments = sqliteTable("self_assessments", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
-  submittedAt: timestamp("submitted_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  submittedAt: integer("submitted_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueCycleUserCompetency: uniqueIndex("unique_self_assessment").on(table.cycleId, table.userId, table.competencyId),
 }));
@@ -1130,18 +1145,18 @@ export type InsertSelfAssessment = z.infer<typeof insertSelfAssessmentSchema>;
 export type SelfAssessment = typeof selfAssessments.$inferSelect;
 
 // Overall Self Assessments - General overall evaluation for the cycle
-export const overallSelfAssessments = pgTable("overall_self_assessments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+export const overallSelfAssessments = sqliteTable("overall_self_assessments", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   overallRating: integer("overall_rating").notNull(), // 1-5
   overallComment: text("overall_comment").notNull(),
   strengths: text("strengths"), // Punti di forza
   areasForImprovement: text("areas_for_improvement"), // Aree di miglioramento
   goals: text("goals"), // Obiettivi futuri
-  submittedAt: timestamp("submitted_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  submittedAt: integer("submitted_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueCycleUser: uniqueIndex("unique_overall_self_assessment").on(table.cycleId, table.userId),
 }));
@@ -1160,16 +1175,16 @@ export type InsertOverallSelfAssessment = z.infer<typeof insertOverallSelfAssess
 export type OverallSelfAssessment = typeof overallSelfAssessments.$inferSelect;
 
 // Peer Feedback Requests - 360 degree feedback requests
-export const peerFeedbackRequests = pgTable("peer_feedback_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  requestorUserId: varchar("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  peerUserId: varchar("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  status: varchar("status").notNull().default("pending"), // "pending", "completed", "declined"
-  requestedAt: timestamp("requested_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const peerFeedbackRequests = sqliteTable("peer_feedback_requests", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  requestorUserId: text("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  peerUserId: text("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // "pending", "completed", "declined"
+  requestedAt: integer("requested_at").default(sql`(unixepoch())`),
+  completedAt: integer("completed_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueCycleRequestorPeer: uniqueIndex("unique_peer_request").on(table.cycleId, table.requestorUserId, table.peerUserId),
 }));
@@ -1188,19 +1203,19 @@ export type InsertPeerFeedbackRequest = z.infer<typeof insertPeerFeedbackRequest
 export type PeerFeedbackRequest = typeof peerFeedbackRequests.$inferSelect;
 
 // Peer Feedbacks - Anonymous 360 feedback
-export const peerFeedbacks = pgTable("peer_feedbacks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  requestId: varchar("request_id").notNull().references(() => peerFeedbackRequests.id, { onDelete: "cascade" }),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  requestorUserId: varchar("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  peerUserId: varchar("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  competencyId: varchar("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+export const peerFeedbacks = sqliteTable("peer_feedbacks", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  requestId: text("request_id").notNull().references(() => peerFeedbackRequests.id, { onDelete: "cascade" }),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  requestorUserId: text("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  peerUserId: text("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
-  isAnonymous: boolean("is_anonymous").notNull().default(true),
-  submittedAt: timestamp("submitted_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(1),
+  submittedAt: integer("submitted_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueRequestCompetency: uniqueIndex("unique_peer_feedback").on(table.requestId, table.competencyId),
 }));
@@ -1218,17 +1233,17 @@ export type InsertPeerFeedback = z.infer<typeof insertPeerFeedbackSchema>;
 export type PeerFeedback = typeof peerFeedbacks.$inferSelect;
 
 // Manager Evaluations - Manager's evaluation of employees
-export const managerEvaluations = pgTable("manager_evaluations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  employeeUserId: varchar("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  managerUserId: varchar("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  competencyId: varchar("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+export const managerEvaluations = sqliteTable("manager_evaluations", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  employeeUserId: text("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managerUserId: text("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
-  submittedAt: timestamp("submitted_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  submittedAt: integer("submitted_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueCycleEmployeeCompetency: uniqueIndex("unique_manager_evaluation").on(table.cycleId, table.employeeUserId, table.competencyId),
 }));
@@ -1246,32 +1261,32 @@ export type InsertManagerEvaluation = z.infer<typeof insertManagerEvaluationSche
 export type ManagerEvaluation = typeof managerEvaluations.$inferSelect;
 
 // Development Plans - Collaborative development plans
-export const developmentPlans = pgTable("development_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  employeeUserId: varchar("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  managerUserId: varchar("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+export const developmentPlans = sqliteTable("development_plans", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  employeeUserId: text("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managerUserId: text("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 
   // Competencies to develop (array of competency IDs)
-  competenciesToDevelop: jsonb("competencies_to_develop"), // ["comp-id-1", "comp-id-2"]
+  competenciesToDevelop: text("competencies_to_develop"), // ["comp-id-1", "comp-id-2"]
 
   // Development goals
   developmentGoals: text("development_goals").notNull(),
 
   // Action items with deadlines and status
-  actionItems: jsonb("action_items"), // [{ action: "...", deadline: "...", status: "..." }]
+  actionItems: text("action_items"), // [{ action: "...", deadline: "...", status: "..." }]
 
   // Notes
   managerNotes: text("manager_notes"),
   employeeNotes: text("employee_notes"),
 
   // Timeline
-  feedbackSessionDate: timestamp("feedback_session_date"),
-  reviewDate: timestamp("review_date"),
+  feedbackSessionDate: integer("feedback_session_date"),
+  reviewDate: integer("review_date"),
 
-  status: varchar("status").notNull().default("draft"), // "draft", "agreed", "in_progress", "completed"
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  status: text("status").notNull().default("draft"), // "draft", "agreed", "in_progress", "completed"
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
   uniqueCycleEmployee: uniqueIndex("unique_development_plan").on(table.cycleId, table.employeeUserId),
 }));
@@ -1290,18 +1305,18 @@ export type InsertDevelopmentPlan = z.infer<typeof insertDevelopmentPlanSchema>;
 export type DevelopmentPlan = typeof developmentPlans.$inferSelect;
 
 // Evaluation Notifications - Automated reminders and notifications
-export const evaluationNotifications = pgTable("evaluation_notifications", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  cycleId: varchar("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  notificationType: varchar("notification_type").notNull(), // "self_assessment_reminder", "peer_feedback_request", etc.
-  phase: varchar("phase").notNull(), // "self_assessment", "peer_feedback", "manager_evaluation", "feedback_delivery"
-  title: varchar("title").notNull(),
+export const evaluationNotifications = sqliteTable("evaluation_notifications", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  notificationType: text("notification_type").notNull(), // "self_assessment_reminder", "peer_feedback_request", etc.
+  phase: text("phase").notNull(), // "self_assessment", "peer_feedback", "manager_evaluation", "feedback_delivery"
+  title: text("title").notNull(),
   message: text("message").notNull(),
-  isRead: boolean("is_read").notNull().default(false),
-  sentAt: timestamp("sent_at").defaultNow(),
-  readAt: timestamp("read_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+  isRead: integer("is_read", { mode: "boolean" }).notNull().default(0),
+  sentAt: integer("sent_at").default(sql`(unixepoch())`),
+  readAt: integer("read_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
 });
 
 export const insertEvaluationNotificationSchema = createInsertSchema(evaluationNotifications).omit({

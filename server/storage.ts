@@ -30,9 +30,13 @@ import {
   type InsertDocumentAcceptance,
   type MboRegulationAcceptance,
   type InsertMboRegulationAcceptance,
+  appSettings,
+  type AppSetting,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
+
+const nowUnix = () => Math.floor(Date.now() / 1000);
 
 // Pagination types
 export interface PaginationParams {
@@ -124,6 +128,10 @@ export interface IStorage {
   // MBO Regulation Acceptance operations
   getMboRegulationAcceptances(): Promise<MboRegulationAcceptance[]>;
   acceptMboRegulation(acceptance: InsertMboRegulationAcceptance): Promise<MboRegulationAcceptance>;
+
+  // App Settings
+  getFeatureFlags(): Promise<Record<string, boolean>>;
+  setFeatureFlags(flags: Record<string, boolean>): Promise<void>;
   
   // Statistics
   getUserStats(userId: string): Promise<{ totalObjectives: number; completedObjectives: number }>;
@@ -151,7 +159,7 @@ export class DatabaseStorage implements IStorage {
         target: users.id,
         set: {
           ...dbData,
-          updatedAt: new Date(),
+          updatedAt: nowUnix(),
         },
       })
       .returning();
@@ -174,7 +182,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(users.lastName, users.firstName)
         .limit(limit)
         .offset(offset),
-      db.select({ count: sql<number>`count(*)::int` }).from(users)
+      db.select({ count: sql<number>`count(*)` }).from(users)
     ]);
 
     const total = Number(countResult[0].count);
@@ -193,7 +201,7 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
     const dbData: any = {
       ...userData,
-      updatedAt: new Date(),
+      updatedAt: nowUnix(),
     };
 
     // Remove undefined fields to prevent Drizzle from ignoring updates
@@ -233,7 +241,7 @@ export class DatabaseStorage implements IStorage {
   async updateIndicatorCluster(id: string, clusterData: Partial<InsertIndicatorCluster>): Promise<IndicatorCluster> {
     const [cluster] = await db
       .update(indicatorClusters)
-      .set({ ...clusterData, updatedAt: new Date() })
+      .set({ ...clusterData, updatedAt: nowUnix() })
       .where(eq(indicatorClusters.id, id))
       .returning();
     return cluster;
@@ -261,7 +269,7 @@ export class DatabaseStorage implements IStorage {
   async updateCalculationType(id: string, typeData: Partial<InsertCalculationType>): Promise<CalculationType> {
     const [type] = await db
       .update(calculationTypes)
-      .set({ ...typeData, updatedAt: new Date() })
+      .set({ ...typeData, updatedAt: nowUnix() })
       .where(eq(calculationTypes.id, id))
       .returning();
     return type;
@@ -289,7 +297,7 @@ export class DatabaseStorage implements IStorage {
   async updateBusinessFunction(id: string, businessData: Partial<InsertBusinessFunction>): Promise<BusinessFunction> {
     const [business] = await db
       .update(businessFunctions)
-      .set({ ...businessData, updatedAt: new Date() })
+      .set({ ...businessData, updatedAt: nowUnix() })
       .where(eq(businessFunctions.id, id))
       .returning();
     return business;
@@ -352,7 +360,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateObjectivesDictionaryItem(id: string, itemData: Partial<InsertObjectivesDictionary>): Promise<ObjectivesDictionary> {
-    const updateData: any = { ...itemData, updatedAt: new Date() };
+    const updateData: any = { ...itemData, updatedAt: nowUnix() };
     const [item] = await db
       .update(objectivesDictionary)
       .set(updateData)
@@ -393,7 +401,7 @@ export class DatabaseStorage implements IStorage {
     const dbData = {
       ...objectiveData,
       actualValue: objectiveData.actualValue !== undefined && objectiveData.actualValue !== null ? String(objectiveData.actualValue) : undefined,
-      updatedAt: new Date(),
+      updatedAt: nowUnix(),
     } as any;
 
     const [objective] = await db
@@ -501,9 +509,17 @@ export class DatabaseStorage implements IStorage {
         ...(row.objective || {} as any),
         title: row.dictionary?.title || "Obiettivo",
         description: row.dictionary?.description || "",
+        targetDescription: row.dictionary?.targetDescription || null,
+        dataSource: row.dictionary?.dataSource || null,
         objectiveType: row.dictionary?.objectiveType,
         targetValue: row.dictionary?.targetValue ? parseFloat(String(row.dictionary.targetValue)) : null,
+        thresholdValue: row.dictionary?.thresholdValue ? parseFloat(String(row.dictionary.thresholdValue)) : null,
+        thresholdPayout: row.dictionary?.thresholdPayout ?? 50,
+        allowOverperformance: row.dictionary?.allowOverperformance ?? 0,
+        maxPayout: row.dictionary?.maxPayout ?? null,
         actualValue: row.objective?.actualValue ? parseFloat(String(row.objective.actualValue)) : null,
+        qualitativeResult: row.dictionary?.qualitativeResult || null,
+        reportedAt: row.dictionary?.reportedAt || null,
         indicatorCluster: row.indicatorCluster || undefined,
         calculationType: row.calculationType || undefined,
       },
@@ -527,7 +543,7 @@ export class DatabaseStorage implements IStorage {
   async updateObjectiveAssignment(id: string, assignmentData: Partial<InsertObjectiveAssignment>): Promise<ObjectiveAssignment> {
     const [assignment] = await db
       .update(objectiveAssignments)
-      .set({ ...assignmentData, updatedAt: new Date() })
+      .set({ ...assignmentData, updatedAt: nowUnix() })
       .where(eq(objectiveAssignments.id, id))
       .returning();
     return assignment;
@@ -555,7 +571,7 @@ export class DatabaseStorage implements IStorage {
   async updateDocument(id: string, documentData: Partial<InsertDocument>): Promise<Document> {
     const [document] = await db
       .update(documents)
-      .set({ ...documentData, updatedAt: new Date() })
+      .set({ ...documentData, updatedAt: nowUnix() })
       .where(eq(documents.id, id))
       .returning();
     return document;
@@ -603,7 +619,7 @@ export class DatabaseStorage implements IStorage {
       .set({
         actualValue: reportData.actualValue,
         qualitativeResult: reportData.qualitativeResult,
-        reportedAt: new Date(),
+        reportedAt: nowUnix(),
       })
       .where(eq(objectivesDictionary.id, dictionaryId));
 
@@ -620,7 +636,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           actualValue: reportData.actualValue,
           qualitativeResult: reportData.qualitativeResult,
-          reportedAt: new Date(),
+          reportedAt: nowUnix(),
         })
         .where(eq(objectives.id, objective.id));
 
@@ -641,11 +657,29 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: mboRegulationAcceptances.userId,
         set: {
-          acceptedAt: new Date(),
+          acceptedAt: sql`(unixepoch())`,
         },
       })
       .returning();
     return acceptance;
+  }
+
+  // App Settings
+  async getFeatureFlags(): Promise<Record<string, boolean>> {
+    const defaults = { gestione_anagrafiche: true, gestione_mbo: true, performance_management: true, gestione_organizzazione: true };
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, "feature_flags"));
+    if (!row) return defaults;
+    try {
+      return { ...defaults, ...JSON.parse(row.value) };
+    } catch {
+      return defaults;
+    }
+  }
+
+  async setFeatureFlags(flags: Record<string, boolean>): Promise<void> {
+    await db.insert(appSettings)
+      .values({ key: "feature_flags", value: JSON.stringify(flags) })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: JSON.stringify(flags), updatedAt: nowUnix() } });
   }
 
   // Statistics

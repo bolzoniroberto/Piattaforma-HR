@@ -33,13 +33,13 @@ export default function AppRail({ activeSection, onSectionClick }: AppRailProps)
         <div className="mb-4 pb-3 shrink-0 flex justify-center border-b border-sidebar-border">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center cursor-pointer hover:bg-primary/15 transition-colors">
-                <span className="text-primary font-bold text-base">HR</span>
+              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center cursor-pointer shadow-md transition-transform hover:scale-105">
+                <span className="text-primary-foreground font-bold text-sm tracking-wider">TLNT</span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">
-              <p>Piattaforma HR</p>
-              <p className="text-xs text-muted-foreground">MBO System</p>
+              <p>Piattaforma Talent</p>
+              <p className="text-xs text-muted-foreground">Talent System</p>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -56,9 +56,9 @@ export default function AppRail({ activeSection, onSectionClick }: AppRailProps)
               <div
                 className={cn(
                   "w-full h-12 flex items-center justify-center rounded-xl",
-                  "text-sidebar-foreground cursor-pointer",
-                  "hover:bg-sidebar-accent transition-all duration-200",
-                  isActive && "bg-primary/10 text-primary"
+                  "text-muted-foreground cursor-pointer",
+                  "hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200",
+                  isActive && "bg-sidebar-accent text-sidebar-foreground font-semibold"
                 )}
               >
                 <Icon className="h-5 w-5" />

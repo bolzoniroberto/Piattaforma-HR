@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import PageHeader from "@/components/PageHeader";
 import { Users, CheckCircle, Clock, Eye, FileCheck, MessageSquare } from "lucide-react";
 import {
   Select,
@@ -146,36 +144,18 @@ export default function ManagerTeamEvaluationsPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Manager"}
-        userRole={user?.role === "admin" ? "Amministratore" : "Manager"}
-        notificationCount={stats.toEvaluate}
-        showSidebarTrigger={true}
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail activeSection={activeSection} onSectionClick={handleSectionClick} />
-            <AppPanel activeSection={activeSection} className="transition-opacity duration-200" />
-          </div>
-
           {/* MAIN CONTENT */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-6xl mx-auto space-y-6">
+          <main className="flex-1 w-full min-h-[calc(100vh-7rem)]">
+            <div className="w-full space-y-6">
               <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-primary/10">
-                      <Users className="h-6 w-6 text-primary" />
-                    </div>
-                    Valutazioni Team
-                  </h1>
-                  <p className="md3-body-large text-muted-foreground">
-                    Valuta i membri del tuo team per il ciclo corrente
-                  </p>
-                </div>
+                <PageHeader 
+                  context="TEAM" 
+                  title="Valutazioni Team" 
+                  description="Valuta i membri del tuo team per il ciclo corrente"
+                />
 
                 {cycles.length > 0 && (
                   <Select value={selectedCycle} onValueChange={setSelectedCycle}>

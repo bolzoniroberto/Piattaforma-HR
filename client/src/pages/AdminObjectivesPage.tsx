@@ -1,9 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
+import PageHeader from "@/components/PageHeader";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -101,11 +100,16 @@ export default function AdminObjectivesPage() {
   const [newObjective, setNewObjective] = useState({
     title: "",
     description: "",
+    targetDescription: "",
+    dataSource: "",
     indicatorClusterId: "",
     calculationTypeId: "",
     objectiveType: "numeric",
     targetValue: "",
     thresholdValue: "",
+    thresholdPayout: "50",
+    allowOverperformance: false,
+    maxPayout: "120",
   });
 
   const handleSectionClick = (sectionId: string) => {
@@ -146,11 +150,16 @@ export default function AdminObjectivesPage() {
       const payload = {
         title: data.title,
         description: data.description,
+        targetDescription: data.targetDescription || null,
+        dataSource: data.dataSource || null,
         indicatorClusterId: data.indicatorClusterId,
         calculationTypeId: data.calculationTypeId,
         objectiveType: data.objectiveType,
         targetValue: data.objectiveType === "numeric" && data.targetValue ? parseFloat(data.targetValue) : null,
         thresholdValue: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdValue) : null,
+        thresholdPayout: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdPayout) : null,
+        allowOverperformance: data.allowOverperformance ? 1 : 0,
+        maxPayout: data.allowOverperformance ? parseFloat(data.maxPayout) : null,
       };
       const res = await apiRequest("POST", "/api/objectives-dictionary", payload);
       return res.json();
@@ -159,7 +168,7 @@ export default function AdminObjectivesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
       toast({ title: "Obiettivo creato con successo" });
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "" });
+      setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120" });
     },
     onError: (error) => {
       toast({
@@ -171,15 +180,20 @@ export default function AdminObjectivesPage() {
   });
 
   const updateObjectiveMutation = useMutation({
-    mutationFn: async (data: { id: string; title: string; description: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string; thresholdValue: string }) => {
+    mutationFn: async (data: { id: string; title: string; description: string; targetDescription: string; dataSource: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string; thresholdValue: string; thresholdPayout: string; allowOverperformance: boolean; maxPayout: string }) => {
       const payload = {
         title: data.title,
         description: data.description,
+        targetDescription: data.targetDescription || null,
+        dataSource: data.dataSource || null,
         indicatorClusterId: data.indicatorClusterId,
         calculationTypeId: data.calculationTypeId,
         objectiveType: data.objectiveType,
         targetValue: data.objectiveType === "numeric" && data.targetValue ? parseFloat(data.targetValue) : null,
         thresholdValue: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdValue) : null,
+        thresholdPayout: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdPayout) : null,
+        allowOverperformance: data.allowOverperformance ? 1 : 0,
+        maxPayout: data.allowOverperformance ? parseFloat(data.maxPayout) : null,
       };
       const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, payload);
       return res.json();
@@ -189,7 +203,7 @@ export default function AdminObjectivesPage() {
       toast({ title: "Obiettivo aggiornato con successo" });
       setEditingId(null);
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "" });
+      setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120" });
     },
     onError: (error) => {
       toast({
@@ -278,44 +292,30 @@ export default function AdminObjectivesPage() {
       objectiveType: obj.objectiveType || "numeric",
       targetValue: obj.targetValue?.toString() || "",
       thresholdValue: obj.thresholdValue?.toString() || "",
+      thresholdPayout: (obj.thresholdPayout ?? 50).toString(),
+      allowOverperformance: (obj.allowOverperformance ?? 0) === 1,
+      maxPayout: (obj.maxPayout ?? 120).toString(),
+      targetDescription: obj.targetDescription || "",
+      dataSource: obj.dataSource || "",
     });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setEditingId(null);
-    setNewObjective({ title: "", description: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "" });
+    setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120" });
     setIsDialogOpen(false);
   };
 
   return (
-    <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Database Obiettivi"
-        pageIcon={Target}
-        pageDescription="Gestisci il dizionario completo degli obiettivi aziendali"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
-          {/* MAIN CONTENT - flex-1 grows naturally, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+    <div className="flex gap-6 w-full pb-8">
+      <main className="w-full space-y-6 flex flex-col pt-4" >
+        <div className="w-full space-y-6 w-full relative h-full">
+          <PageHeader 
+            context="GESTIONE OBIETTIVI" 
+            title="Database Obiettivi" 
+            description="Gestisci il dizionario centralizzato degli obiettivi assegnabili ai dipendenti."
+          />
                 <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
                   <DialogContent className="sm:max-w-[600px] rounded-3xl" style={{boxShadow: 'var(--shadow-5)'}}>
                     <DialogHeader>
@@ -340,10 +340,29 @@ export default function AdminObjectivesPage() {
                         <Textarea
                           id="objective-description"
                           placeholder="Descrizione dettagliata dell'obiettivo..."
-                          rows={3}
+                          rows={2}
                           value={newObjective.description}
                           onChange={(e) => setNewObjective({ ...newObjective, description: e.target.value })}
                           data-testid="input-objective-description"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="target-description">Descrizione Target</Label>
+                        <Textarea
+                          id="target-description"
+                          placeholder="Cosa significa raggiungere il target? Es. Presentazione piano al CdA entro 30 giugno..."
+                          rows={2}
+                          value={newObjective.targetDescription}
+                          onChange={(e) => setNewObjective({ ...newObjective, targetDescription: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="data-source">Fonte Dati</Label>
+                        <Input
+                          id="data-source"
+                          placeholder="Es. Dati consuntivazione al 31 dic. — [Fonte: Controlling]"
+                          value={newObjective.dataSource}
+                          onChange={(e) => setNewObjective({ ...newObjective, dataSource: e.target.value })}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -415,19 +434,69 @@ export default function AdminObjectivesPage() {
                         )}
                       </div>
                       {newObjective.objectiveType === "numeric" && (
-                        <div className="space-y-2">
-                          <Label htmlFor="threshold-value">Valore Soglia (opzionale)</Label>
-                          <Input
-                            id="threshold-value"
-                            type="number"
-                            placeholder="Es. 50 - sotto questo valore l'obiettivo è 0%"
-                            value={newObjective.thresholdValue}
-                            onChange={(e) => setNewObjective({ ...newObjective, thresholdValue: e.target.value })}
-                            data-testid="input-threshold-value"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Se impostato: valori sotto la soglia = 0%, tra soglia e target = interpolazione lineare, al target = 100%
-                          </p>
+                        <div className="space-y-4">
+                          {/* Threshold Value + Threshold Payout */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="threshold-value">Valore Soglia (opzionale)</Label>
+                              <Input
+                                id="threshold-value"
+                                type="number"
+                                placeholder="Es. 85"
+                                value={newObjective.thresholdValue}
+                                onChange={(e) => setNewObjective({ ...newObjective, thresholdValue: e.target.value })}
+                                data-testid="input-threshold-value"
+                              />
+                              <p className="text-xs text-muted-foreground">Sotto questo valore: 0%</p>
+                            </div>
+                            {newObjective.thresholdValue && (
+                              <div className="space-y-2">
+                                <Label htmlFor="threshold-payout">Payout alla Soglia (%)</Label>
+                                <Input
+                                  id="threshold-payout"
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  placeholder="Es. 50"
+                                  value={newObjective.thresholdPayout}
+                                  onChange={(e) => setNewObjective({ ...newObjective, thresholdPayout: e.target.value })}
+                                />
+                                <p className="text-xs text-muted-foreground">% erogata esattamente alla soglia</p>
+                              </div>
+                            )}
+                          </div>
+                          {newObjective.thresholdValue && (
+                            <p className="text-xs text-muted-foreground bg-slate-50 rounded p-2">
+                              Logica: sotto soglia = 0% · alla soglia = {newObjective.thresholdPayout}% · interpolazione lineare fino al target = 100%
+                            </p>
+                          )}
+
+                          {/* Overperformance toggle */}
+                          <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                              <p className="text-sm font-medium">Consenti Overperformance</p>
+                              <p className="text-xs text-muted-foreground">Il payout può superare il 100% se l'actual supera il target</p>
+                            </div>
+                            <Switch
+                              checked={newObjective.allowOverperformance}
+                              onCheckedChange={(checked) => setNewObjective({ ...newObjective, allowOverperformance: checked })}
+                            />
+                          </div>
+                          {newObjective.allowOverperformance && (
+                            <div className="space-y-2">
+                              <Label htmlFor="max-payout">Payout Massimo (%)</Label>
+                              <Input
+                                id="max-payout"
+                                type="number"
+                                min="100"
+                                max="200"
+                                placeholder="Es. 120"
+                                value={newObjective.maxPayout}
+                                onChange={(e) => setNewObjective({ ...newObjective, maxPayout: e.target.value })}
+                              />
+                              <p className="text-xs text-muted-foreground">Cap massimo del payout (es. 120 = fino al 120%)</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -457,15 +526,7 @@ export default function AdminObjectivesPage() {
                 </Dialog>
 
               <Card className="md3-surface md3-motion-standard">
-                <CardHeader className="pb-4">
-                  <div>
-                    <CardTitle className="md3-title-large">Dizionario Obiettivi</CardTitle>
-                    <CardDescription className="md3-body-medium mt-1">
-                      Tutti gli obiettivi disponibili organizzati per categoria
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   {dictLoading ? (
                     <div className="text-center py-8 text-muted-foreground">Caricamento...</div>
                   ) : Object.keys(objectivesByIndicatorCluster).length === 0 ? (
@@ -652,9 +713,7 @@ export default function AdminObjectivesPage() {
               </div>
             </div>
           </AppActionsPanel>
-          )}
-      </div>
+        )}
     </div>
-    </>
   );
 }

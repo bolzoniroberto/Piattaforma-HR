@@ -1,8 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import PageHeader from "@/components/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -44,10 +42,114 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2, MapPin, FileText, ShieldCheck, Clock, Briefcase } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2, MapPin, FileText, ShieldCheck, Clock, Briefcase, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags, type FeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+
+// ─── Moduli Tab ───────────────────────────────────────────────────────────────
+
+const MODULE_DEFS = [
+  {
+    key: "gestione_anagrafiche" as keyof FeatureFlags,
+    label: "Gestione Anagrafiche",
+    description: "Gestione utenti, strutture aziendali, campi personalizzati e lookup tabelle.",
+    affectsAdmin: true,
+    affectsEmployee: false,
+  },
+  {
+    key: "gestione_mbo" as keyof FeatureFlags,
+    label: "Gestione MBO",
+    description: "Database obiettivi, assegnazione, disassociazione e rendicontazione MBO.",
+    affectsAdmin: true,
+    affectsEmployee: true,
+  },
+  {
+    key: "performance_management" as keyof FeatureFlags,
+    label: "Performance Management",
+    description: "Autovalutazione, feedback 360°, piani di sviluppo, valutazioni team e competenze.",
+    affectsAdmin: true,
+    affectsEmployee: true,
+  },
+  {
+    key: "gestione_organizzazione" as keyof FeatureFlags,
+    label: "Gestione Organizzazione",
+    description: "Organigramma aziendale e vista team.",
+    affectsAdmin: false,
+    affectsEmployee: true,
+  },
+];
+
+function ModuliTab() {
+  const flags = useFeatureFlags();
+  const { toast } = useToast();
+  const [localFlags, setLocalFlags] = useState<FeatureFlags>({ ...flags });
+
+  const saveMutation = useMutation({
+    mutationFn: async (updated: FeatureFlags) => {
+      const res = await apiRequest("PUT", "/api/settings/features", updated);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/features"] });
+      toast({ title: "Moduli aggiornati", description: "Le impostazioni sono state salvate." });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile salvare le impostazioni.", variant: "destructive" });
+    },
+  });
+
+  const toggle = (key: keyof FeatureFlags) => {
+    setLocalFlags(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <TabsContent value="moduli" className="mt-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Macro Processi — Attivazione Moduli</CardTitle>
+          <CardDescription>
+            Attiva o disattiva i macro processi della piattaforma. Le sezioni disattivate vengono nascoste dalla navigazione per tutti gli utenti, incluso l'amministratore.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {MODULE_DEFS.map((mod) => (
+            <div key={mod.key} className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <p className="font-semibold text-slate-900">{mod.label}</p>
+                <p className="text-sm text-slate-500">{mod.description}</p>
+                <div className="flex gap-2 mt-1">
+                  {mod.affectsAdmin && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Admin</span>
+                  )}
+                  {mod.affectsEmployee && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Dipendente</span>
+                  )}
+                </div>
+              </div>
+              <Switch
+                checked={localFlags[mod.key]}
+                onCheckedChange={() => toggle(mod.key)}
+              />
+            </div>
+          ))}
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={() => saveMutation.mutate(localFlags)}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 interface IndicatorCluster {
   id: string;
@@ -736,32 +838,17 @@ export default function AdminSettingsPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Impostazioni Strutture"
-        pageIcon={Settings}
-        pageDescription="Configura indicatori, tipi di calcolo e funzioni aziendali"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <div className="w-full space-y-6">
+            <PageHeader 
+              context="IMPOSTAZIONI PIATTAFORMA" 
+              title="Gestione Tabelle Base" 
+              description="Configura i cluster, le funzioni aziendali, le sedi, i contratti e le causali predefinite."
+            />
             <div className="flex items-center justify-end gap-4 flex-wrap">
                 <Button
                   variant="outline"
@@ -774,19 +861,23 @@ export default function AdminSettingsPage() {
                 </Button>
               </div>
 
-              <Tabs defaultValue="clusters" className="w-full">
-                <TabsList className="grid w-full grid-cols-8">
-                  <TabsTrigger value="clusters">Indicatori</TabsTrigger>
-                  <TabsTrigger value="calculations">Tipi di Calcolo</TabsTrigger>
-                  <TabsTrigger value="business">Funzioni Aziendali</TabsTrigger>
-                  <TabsTrigger value="sedi">Sedi di Lavoro</TabsTrigger>
-                  <TabsTrigger value="ccnl">CCNL</TabsTrigger>
+              <Tabs defaultValue="moduli" className="w-full">
+                <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+                  <TabsTrigger value="moduli" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Moduli</TabsTrigger>
+                  <TabsTrigger value="clusters" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Indicatori</TabsTrigger>
+                  <TabsTrigger value="calculations" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Tipi di Calcolo</TabsTrigger>
+                  <TabsTrigger value="business" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Funzioni Aziendali</TabsTrigger>
+                  <TabsTrigger value="sedi" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Sedi di Lavoro</TabsTrigger>
+                  <TabsTrigger value="ccnl" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">CCNL</TabsTrigger>
                   {user?.role === "admin" && (
-                    <TabsTrigger value="categorie-protette">Categorie Protette</TabsTrigger>
+                    <TabsTrigger value="categorie-protette" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Categorie Protette</TabsTrigger>
                   )}
-                  <TabsTrigger value="configurazioni-orario">Configurazioni Orario</TabsTrigger>
-                  <TabsTrigger value="causali-assunzione">Causali Assunzione</TabsTrigger>
+                  <TabsTrigger value="configurazioni-orario" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Configurazioni Orario</TabsTrigger>
+                  <TabsTrigger value="causali-assunzione" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Causali Assunzione</TabsTrigger>
                 </TabsList>
+
+                {/* Moduli Tab */}
+                <ModuliTab />
 
                 {/* Clusters Tab */}
                 <TabsContent value="clusters" className="mt-6">
@@ -1520,9 +1611,9 @@ export default function AdminSettingsPage() {
                     </CardHeader>
                     <CardContent>
                       <Tabs defaultValue="tipo_orario" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="tipo_orario">Tipo Orario</TabsTrigger>
-                          <TabsTrigger value="timbra_firma">Timbra/Firma</TabsTrigger>
+                        <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+                          <TabsTrigger value="tipo_orario" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Tipo Orario</TabsTrigger>
+                          <TabsTrigger value="timbra_firma" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Timbra/Firma</TabsTrigger>
                         </TabsList>
 
                         {/* Sottotab Tipo Orario */}

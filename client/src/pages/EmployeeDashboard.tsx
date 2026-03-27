@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import EmployeeCard from "@/components/EmployeeCard";
 import DocumentList, { type Document } from "@/components/DocumentList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import PageHeader from "@/components/PageHeader";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -56,6 +54,8 @@ interface EnrichedObjective {
   qualitativeResult?: string | null;
   reportedAt?: Date | null;
 }
+import { Bell } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function EmployeeDashboard() {
   const { user, isLoading: userLoading } = useAuth();
@@ -92,6 +92,7 @@ export default function EmployeeDashboard() {
     queryKey: ["/api/my-acceptances"],
     enabled: !!user,
   });
+
 
   // Mutation for updating objective status
   const updateObjectiveMutation = useMutation({
@@ -227,6 +228,20 @@ export default function EmployeeDashboard() {
     });
   }, [objectiveAssignments, mboTarget]);
 
+  // Group objectives by cluster
+  const objectivesByCluster = useMemo(() => {
+    const map = new Map<string, { clusterName: string; clusterId: string; totalWeight: number; objectives: EnrichedObjective[] }>();
+    objectives.forEach(obj => {
+      if (!map.has(obj.clusterId)) {
+        map.set(obj.clusterId, { clusterName: obj.clusterName, clusterId: obj.clusterId, totalWeight: 0, objectives: [] });
+      }
+      const cluster = map.get(obj.clusterId)!;
+      cluster.objectives.push(obj);
+      cluster.totalWeight += obj.weight;
+    });
+    return Array.from(map.values());
+  }, [objectives]);
+
   const documents: Document[] = useMemo(() => {
     const acceptedDocIds = new Set(acceptedDocs.map((d) => d.documentId));
     return allDocuments.map((doc) => ({
@@ -264,7 +279,7 @@ export default function EmployeeDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Effettua il login per accedere alla Piattaforma HR.
+              Effettua il login per accedere alla Piattaforma Talent.
             </p>
             <Button onClick={() => (window.location.href = "/api/login")} className="w-full">
               Accedi
@@ -286,7 +301,7 @@ export default function EmployeeDashboard() {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-view-regulation">
         <DialogHeader>
           <DialogTitle className="text-xl font-serif">
-            Regolamento della Piattaforma HR
+            Regolamento della Piattaforma Talent
           </DialogTitle>
           <DialogDescription>
             Consulta il regolamento completo
@@ -295,7 +310,7 @@ export default function EmployeeDashboard() {
         
         <div className="space-y-4 text-sm text-muted-foreground">
           <p>
-            <strong>Regolamento della Piattaforma HR</strong>
+            <strong>Regolamento della Piattaforma Talent</strong>
           </p>
           
           <p>
@@ -333,7 +348,7 @@ export default function EmployeeDashboard() {
           </p>
 
           <p className="pt-2 border-t">
-            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma HR e ti impegni a rispettarle.
+            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma Talent e ti impegni a rispettarle.
           </p>
         </div>
       </DialogContent>
@@ -342,370 +357,277 @@ export default function EmployeeDashboard() {
 
   // Content to render (same for both admin and employee)
   const dashboardContent = (
-    <div className="max-w-7xl mx-auto space-y-6">
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Caricamento dati...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-4">
-              <EmployeeCard employee={employee} />
+    <div className="w-full space-y-8 pb-10">
+      {isLoading ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Caricamento dati...</p>
+        </div>
+      ) : (
+        <>
+          {/* Top Section: Overall Achievement + Dark Summary Card */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[320px]">
+            {/* Main Achievement Card (White) */}
+            <Card className="lg:col-span-2 bg-white border-slate-200 shadow-none flex flex-col justify-between p-8">
+              <div>
+                <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mb-2">
+                  CYCLE STATUS: Q3 {new Date().getFullYear()}
+                </div>
+                <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Overall MBO Achievement
+                </h2>
+              </div>
               
-              {/* Riepilogo MBO */}
-              <Card>
-                <CardHeader className="pb-2 pt-3">
-                  <CardTitle className="text-sm flex items-center gap-1 font-serif">
-                    <BarChart3 className="h-4 w-4" />
-                    Riepilogo MBO
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="bg-muted/50 rounded-lg p-2">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
-                        <Euro className="h-3 w-3" />
-                        MBO Target
-                      </div>
-                      <div className="text-lg font-semibold font-mono">
-                        {mboTarget.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {employee.mboPercentage}% della RAL
-                      </div>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-2">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
-                        <Target className="h-3 w-3" />
-                        Peso Assegnato
-                      </div>
-                      <div className="text-lg font-semibold font-mono">
-                        {totalWeight}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {objectives.length} obiettivi
-                      </div>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-2">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
-                        <TrendingUp className="h-3 w-3" />
-                        Percentuale Raggiungimento
-                      </div>
-                      <div className="text-lg font-semibold font-mono">
-                        {overallProgress}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Obiettivi raggiunti
-                      </div>
-                    </div>
+              <div className="flex justify-between items-end mt-8 relative">
+                <div className="text-slate-900">
+                  <span className="text-[5rem] font-bold leading-none tracking-tighter" style={{ fontSize: '100px' }}>
+                    {overallProgress}
+                  </span>
+                  <span className="text-3xl font-bold ml-2">%</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">PROJECTION</div>
+                  <div className="text-xl font-bold text-slate-900">On Track</div>
+                </div>
+
+                {/* Decorative Chart placeholder */}
+                <div className="absolute top-0 right-10 bottom-0 w-32 opacity-10 flex gap-2 items-end">
+                  <div className="w-4 bg-slate-900 h-1/4"></div>
+                  <div className="w-4 bg-slate-900 h-2/4"></div>
+                  <div className="w-4 bg-slate-900 h-3/4"></div>
+                  <div className="w-4 bg-slate-900 h-full"></div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                {/* Horizontal Bar */}
+                <div className="w-full flex h-3 bg-slate-100 mb-2 relative">
+                  <div className="bg-slate-700 h-full" style={{ width: `${Math.min(overallProgress, 100)}%` }}></div>
+                  {overallProgress > 100 && (
+                    <div className="absolute right-0 top-0 h-full bg-emerald-500" style={{ width: `${Math.min(overallProgress - 100, 20)}%` }}></div>
+                  )}
+                </div>
+                {/* Legend */}
+                <div className="flex justify-between text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+                  <span>BASE: 0%</span>
+                  <span>THRESHOLD: 70%</span>
+                  <span>TARGET: 100%</span>
+                  <span>STRETCH: 120%</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Dark Target Card */}
+            <Card className="lg:col-span-1 bg-[#111827] text-white border-0 shadow-none flex flex-col justify-between rounded-xl overflow-hidden p-8 h-full">
+              <div className="flex justify-between items-start mb-6">
+                 <div className="w-8 h-8 bg-white/10 rounded flex items-center justify-center">
+                   <Target className="h-4 w-4 text-white" />
+                 </div>
+                 <div className="border border-white/20 px-2 py-1 text-[9px] uppercase tracking-widest font-bold rounded">
+                   TALENT MODEL {new Date().getFullYear()}
+                 </div>
+              </div>
+              
+              <div className="space-y-8 flex-1 flex flex-col justify-center">
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest text-white/50 mb-2 uppercase">
+                    MBO Target Value
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="text-[32px] font-semibold tracking-tight font-serif">
+                    € {mboTarget.toLocaleString("it-IT", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                
+                <div className="w-full h-px bg-white/10 my-1"></div>
+
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest text-white/50 mb-2 uppercase">
+                    Estimated Payout
+                  </div>
+                  <div className="text-[40px] font-semibold tracking-tight leading-none font-serif">
+                    € {((mboTarget * overallProgress) / 100).toLocaleString("it-IT", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+
+              <Button className="w-full mt-8 bg-white text-slate-900 hover:bg-white/90 font-bold py-6 rounded-md">
+                View Detail Report
+              </Button>
+            </Card>
+          </div>
+
+          <div className="w-full my-8">
+             <div className="flex justify-between items-end mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Objective Clusters</h3>
+                <span className="text-xs font-semibold text-slate-500">Last calculated: 15 mins ago</span>
+             </div>
+             
+             {/* Objective Clusters — grouped by cluster */}
+             <div className="space-y-10">
+               {objectivesByCluster.map((cluster) => (
+                 <div key={cluster.clusterId}>
+                   {/* Cluster header */}
+                   <div className="flex items-center justify-between mb-4">
+                     <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500">{cluster.clusterName}</h4>
+                     <span className="text-[10px] font-bold tracking-widest uppercase bg-slate-100 text-slate-600 px-3 py-1 rounded">
+                       PESO CLUSTER: {cluster.totalWeight}%
+                     </span>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {cluster.objectives.map((objective) => (
+                       <Card key={objective.id} className="bg-white border-slate-200 shadow-none rounded-xl overflow-hidden relative" style={{ minHeight: '220px' }}>
+                         <div className="h-1 w-full bg-slate-800 absolute top-0 left-0"></div>
+                         <CardContent className="p-6 pt-8 flex flex-col h-full justify-between">
+                           <div className="flex justify-between items-start mb-6">
+                             <div className="w-10 h-10 bg-slate-50 rounded flex items-center justify-center">
+                               <BarChart3 className="w-5 h-5 text-slate-700" />
+                             </div>
+                             <div className="bg-blue-50 text-blue-800 px-3 py-1 text-[10px] font-bold tracking-widest uppercase rounded">
+                               WEIGHT: {objective.weight}%
+                             </div>
+                           </div>
+                           <div className="mb-6">
+                             <h4 className="text-lg font-bold text-slate-900 mb-2 leading-tight">{objective.title}</h4>
+                             <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                               {objective.description || "Corporate performance indicators and metrics."}
+                             </p>
+                           </div>
+                           <div className="mt-auto">
+                             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 pb-2">
+                               <span>Score</span>
+                               <span className={objective.progress > 100 ? "text-emerald-600" : "text-slate-900"}>
+                                 {objective.progress}%{objective.progress > 100 && " ↑"}
+                               </span>
+                             </div>
+                             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                               <div
+                                 className={`h-full rounded-full ${objective.progress > 100 ? "bg-emerald-500" : "bg-slate-700"}`}
+                                 style={{ width: `${Math.min(objective.progress, 100)}%` }}
+                               ></div>
+                             </div>
+                           </div>
+                         </CardContent>
+                       </Card>
+                     ))}
+                   </div>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          {/* Compliance & Activity Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+            {/* Compliance & Acceptance */}
+            <div className="bg-slate-50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-8 h-8 bg-slate-800 rounded flex items-center justify-center">
+                  <CheckCircle2 className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Compliance & Acceptance</h3>
+                  <p className="text-xs text-slate-500">Cycle Q3 Policy Finalization</p>
+                </div>
+              </div>
+              <div className="w-full h-px bg-slate-200 my-4" />
+              {documents.filter(d => d.requiresAcceptance && !d.accepted).length === 0 ? (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">Tutto in regola</p>
+                    <p className="text-xs text-green-600">Hai accettato tutti i documenti richiesti.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 mb-6">
+                  {documents.filter(d => d.requiresAcceptance && !d.accepted).map(doc => (
+                    <div key={doc.id} className="bg-white border border-slate-200 rounded-lg p-4 flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <FileText className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{doc.title}</p>
+                          {doc.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{doc.description}</p>}
+                          <div className="flex items-center gap-1 mt-2">
+                            <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                            <span className="text-xs font-semibold text-red-600">Awaiting Digital Signature</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-3">
+                {documents.filter(d => d.requiresAcceptance && !d.accepted).length > 0 ? (
+                  <>
+                    <Button
+                      className="flex-1 bg-slate-900 text-white hover:bg-slate-700 font-bold"
+                      onClick={() => setShowRegulationModal(true)}
+                    >
+                      Finalize & Accept
+                    </Button>
+                    <Button variant="outline" className="flex-1 font-semibold text-slate-600">
+                      Request Clarification
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" className="w-full font-semibold text-slate-600" onClick={() => setShowRegulationModal(false)}>
+                    Visualizza Documenti
+                  </Button>
+                )}
+              </div>
             </div>
 
-            <div className="lg:col-span-2">
-                <Tabs defaultValue="objectives" className="w-full">
-                  <TabsList className="w-full justify-start">
-                    <TabsTrigger value="objectives" data-testid="tab-objectives">
-                      I Miei Obiettivi
-                    </TabsTrigger>
-                    <TabsTrigger value="regulation" data-testid="tab-regulation">
-                      Regolamento MBO
-                    </TabsTrigger>
-                    <TabsTrigger value="documents" data-testid="tab-documents">
-                      Documenti
-                    </TabsTrigger>
-                    <TabsTrigger value="support" data-testid="tab-support">
-                      <HelpCircle className="h-4 w-4 mr-2" />
-                      Supporto
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="objectives" className="space-y-3 mt-4">
-                    {/* Lista Obiettivi */}
-                    <div className="space-y-3">
-                      {objectives.length === 0 ? (
-                        <Card>
-                          <CardContent className="pt-6 text-center text-muted-foreground">
-                            Nessun obiettivo assegnato al momento
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        objectives.map((objective) => (
-                          <Card key={objective.id} className="hover-elevate" data-testid={`card-objective-${objective.id}`}>
-                            <CardHeader className="pb-1 pt-3">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 space-y-0.5">
-                                  <h3 className="font-semibold text-sm leading-tight">{objective.title}</h3>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="outline" className="text-xs">
-                                      {objective.clusterName}
-                                    </Badge>
-                                    <Badge variant="secondary" className="text-xs">
-                                      <Calculator className="h-3 w-3 mr-1" />
-                                      {objective.calculationTypeName}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                {objective.reportedAt ? (
-                                  objective.qualitativeResult === "reached" ? (
-                                    <Badge className="text-xs bg-green-600 hover:bg-green-700">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Raggiunto
-                                    </Badge>
-                                  ) : objective.qualitativeResult === "partial" ? (
-                                    <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Raggiunto parzialmente
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="text-xs bg-red-600 hover:bg-red-700">
-                                      <XCircle className="h-3 w-3 mr-1" />
-                                      Non raggiunto
-                                    </Badge>
-                                  )
-                                ) : (
-                                  <StatusBadge status={objective.status} />
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-2 pb-3 pt-2">
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                {objective.description}
-                              </p>
-                              
-                              <Separator className="my-1" />
-                              
-                              {/* FASCIA 1: Info principali - Peso, Valore Teorico, Target */}
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-muted/30 p-2 rounded-lg">
-                                <div className="space-y-0.5">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                    <Target className="h-3 w-3" />
-                                    Peso
-                                  </div>
-                                  <div className="text-sm font-semibold font-mono">{objective.weight}%</div>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                    <Euro className="h-3 w-3" />
-                                    Valore Teorico
-                                  </div>
-                                  <div className="text-sm font-semibold font-mono text-primary">
-                                    {objective.economicValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
-                                  </div>
-                                </div>
-                                {objective.objectiveType === "numeric" && (
-                                  <div className="space-y-0.5">
-                                    <div className="text-xs text-muted-foreground">Risultato Target</div>
-                                    <div className="text-sm font-semibold font-mono">
-                                      {objective.targetValue ? objective.targetValue.toLocaleString() : "-"}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* FASCIA 2: Rendicontazione - solo dopo rendicontazione */}
-                              {objective.reportedAt && (
-                                <div className="bg-primary/10 p-2 rounded-lg space-y-2 border border-primary/20">
-                                  <div className="text-xs font-semibold text-primary">Rendicontazione</div>
-                                  
-                                  {objective.objectiveType === "numeric" && (
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div className="space-y-0.5">
-                                        <div className="text-xs text-muted-foreground">Valore Rendicontato</div>
-                                        <div className="text-sm font-semibold font-mono">
-                                          {objective.actualValue ? objective.actualValue.toLocaleString() : "-"}
-                                        </div>
-                                      </div>
-                                      <div className="space-y-0.5">
-                                        <div className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                          <Euro className="h-3 w-3" />
-                                          Valore Economico Raggiunto
-                                        </div>
-                                        <div className="text-sm font-semibold font-mono">
-                                          {(() => {
-                                            let multiplier = 0;
-                                            if (objective.objectiveType === "numeric") {
-                                              const actual = parseFloat(String(objective.actualValue || 0));
-                                              const target = parseFloat(String(objective.targetValue || 0));
-                                              const threshold = parseFloat(String(objective.thresholdValue || 0));
-                                              if (target > threshold && actual >= threshold) {
-                                                multiplier = (actual - threshold) / (target - threshold);
-                                                multiplier = Math.min(1, Math.max(0, multiplier));
-                                              } else if (actual >= target) {
-                                                multiplier = 1;
-                                              } else if (actual < threshold) {
-                                                multiplier = 0;
-                                              }
-                                            } else {
-                                              if (objective.qualitativeResult === "reached") {
-                                                multiplier = 1;
-                                              } else if (objective.qualitativeResult === "partial") {
-                                                multiplier = 0.5;
-                                              }
-                                            }
-                                            const reachedValue = objective.economicValue * multiplier;
-                                            return reachedValue.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-                                          })()}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="regulation" className="mt-6">
-                    <div className="space-y-4">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg font-serif">Regolamento MBO</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Consulta il regolamento completo del sistema MBO aziendale per
-                            comprendere i criteri di valutazione e le linee guida.
+            {/* Recent Activity */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-slate-900">Recent Activity</h3>
+                <TrendingUp className="h-5 w-5 text-slate-400" />
+              </div>
+              <div className="space-y-5">
+                {objectives.length > 0 ? (
+                  objectives.slice(0, 3).map((obj, idx) => {
+                    const icons = [BarChart3, CheckCircle2, Target];
+                    const Icon = icons[idx % icons.length];
+                    const colors = ["bg-blue-100 text-blue-600", "bg-indigo-100 text-indigo-600", "bg-slate-100 text-slate-600"];
+                    const color = colors[idx % colors.length];
+                    return (
+                      <div key={obj.id} className="flex gap-4">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${color}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{obj.title}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Cluster: {obj.clusterName} · Peso: {obj.weight}%
                           </p>
-                          <Button 
-                            variant="outline" 
-                            data-testid="button-view-regulation"
-                            onClick={() => setShowRegulationDialog(true)}
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Visualizza Regolamento
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="documents" className="mt-6">
-                    <div className="space-y-4">
-                      <DocumentList
-                        documents={documents}
-                        onAccept={(id) => console.log("Document accepted:", id)}
-                        onView={(id) => console.log("View document:", id)}
-                        onDownload={(id) => console.log("Download document:", id)}
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="support" className="mt-6">
-                    <div className="space-y-4">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg font-serif flex items-center gap-2">
-                            <HelpCircle className="h-5 w-5" />
-                            Domande Frequenti (FAQ)
-                          </CardTitle>
-                          <CardDescription>
-                            Trova risposte alle domande più comuni sul sistema MBO
-                          </CardDescription>
-                        </CardHeader>
-                      </Card>
-
-                      <div className="space-y-3">
-                        <Card className="hover-elevate cursor-default" data-testid="faq-what-is-mbo">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Cos'è un MBO?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              MBO (Management by Objectives) è un approccio gestionale che definisce obiettivi specifici, misurabili e raggiungibili. Ogni dipendente ha obiettivi chiari allineati con le strategie aziendali.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-how-scoring">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Come si calcolano i punteggi?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              I punteggi sono calcolati in base al raggiungimento degli obiettivi rispetto ai target stabiliti. Per obiettivi numerici, viene utilizzata l'interpolazione lineare tra il valore di soglia (threshold) e il valore target. Per obiettivi qualitativi, il risultato è categorizzato in: Raggiunto, Raggiunto parzialmente, o Non raggiunto.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-weight">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Che cosa significa "Peso"?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              Il peso è la percentuale di importanza di un obiettivo rispetto al totale. La somma di tutti i pesi deve essere del 100%. Un obiettivo con peso 20% contribuisce il 20% al risultato complessivo.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-economic-value">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Che cos'è il "Valore Teorico"?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              Il valore teorico è la parte del tuo MBO target corrispondente al peso dell'obiettivo. Ad esempio, se il tuo MBO target è €10.000 e un obiettivo ha peso del 20%, il valore teorico sarà €2.000.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-reporting">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Come si effettua la rendicontazione?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              La rendicontazione è il processo di comunicazione dei risultati raggiunti per ciascun obiettivo. Gli amministratori inseriscono i valori effettivi raggiungiti, e il sistema calcola automaticamente se gli obiettivi sono stati raggiunti, parzialmente raggiunti, o non raggiunti.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-threshold-target">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Differenza tra Soglia (Threshold) e Target?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              La <strong>soglia (threshold)</strong> è il valore minimo accettabile per considerare parzialmente raggiunto l'obiettivo. Il <strong>target</strong> è il valore ottimale che rappresenta il pieno raggiungimento. I valori tra soglia e target sono considerati parzialmente raggiunti.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-regulation">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Dove trovo il regolamento completo?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              Puoi consultare il regolamento completo nella tab "Regolamento MBO" di questo dashboard. Contiene informazioni dettagliate sulle condizioni di utilizzo della piattaforma MBO.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="hover-elevate cursor-default" data-testid="faq-support">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Come posso contattare il supporto?</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-muted-foreground space-y-2">
-                            <p>
-                              Per domande o problemi tecnici, contatta l'amministrazione dell'azienda o il team HR. Se hai domande specifiche su questa piattaforma, fai riferimento agli amministratori del sistema MBO.
-                            </p>
-                          </CardContent>
-                        </Card>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Avanzamento: {obj.progress}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <>
+                    <div className="flex gap-4">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                        <BarChart3 className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Nessun obiettivo assegnato</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Gli obiettivi appariranno qui una volta assegnati</p>
                       </div>
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        )}
+
+        </>
+      )}
     </div>
   );
+
 
   // Regulation acceptance modal
   const regulationModal = (
@@ -722,7 +644,7 @@ export default function EmployeeDashboard() {
 
         <div className="space-y-4 my-4 text-sm text-muted-foreground max-h-[40vh] overflow-y-auto">
           <p>
-            <strong>Regolamento della Piattaforma HR</strong>
+            <strong>Regolamento della Piattaforma Talent</strong>
           </p>
 
           <p>
@@ -760,7 +682,7 @@ export default function EmployeeDashboard() {
           </p>
 
           <p className="pt-2">
-            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma HR e ti impegni a rispettarle.
+            Accettando questo regolamento, dichiari di aver letto e compreso le condizioni di utilizzo della Piattaforma Talent e ti impegni a rispettarle.
           </p>
         </div>
 
@@ -784,40 +706,12 @@ export default function EmployeeDashboard() {
     </AlertDialog>
   );
 
-  // New floating layout
+  // New full-viewport layout matching "Enterprise HR"
   return (
-    <>
-      <AppHeader
-        userName={employee?.name || "Utente"}
-        userRole={isAdmin ? "Amministratore" : "Dipendente"}
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Il Mio Dashboard"
-        pageIcon={LayoutDashboard}
-        pageDescription={`Benvenuto, ${employee?.name || "Utente"}. Ecco il tuo progresso MBO.`}
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
-          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            {regulationModal}
-            {regulationViewDialog}
-            {dashboardContent}
-          </main>
-        </div>
-      </div>
-    </>
+    <div className="w-full font-sans text-slate-900 pb-8">
+      {regulationModal}
+      {regulationViewDialog}
+      {dashboardContent}
+    </div>
   );
 }

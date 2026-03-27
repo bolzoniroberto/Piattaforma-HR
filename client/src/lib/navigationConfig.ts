@@ -15,15 +15,18 @@ import {
   ClipboardCheck,
   TrendingUp,
   UserCheck,
+  Table2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
   id: string;
   title: string;
-  url?: string; // If undefined, opens panel
+  url?: string;
   icon: LucideIcon;
   adminOnly: boolean;
+  /** Matches a key in FeatureFlags — if the flag is false, the whole section is hidden */
+  moduleId?: string;
   children?: NavItem[];
 }
 
@@ -55,6 +58,7 @@ export const railNavigation: NavItem[] = [
     title: "Gestione Anagrafiche",
     icon: Users,
     adminOnly: true,
+    moduleId: "gestione_anagrafiche",
     children: [
       {
         id: "users",
@@ -81,9 +85,10 @@ export const railNavigation: NavItem[] = [
   },
   {
     id: "mbo",
-    title: "Gestione Obiettivi",
+    title: "Gestione MBO",
     icon: Target,
     adminOnly: true,
+    moduleId: "gestione_mbo",
     children: [
       {
         id: "objectives",
@@ -113,6 +118,13 @@ export const railNavigation: NavItem[] = [
         icon: CheckCircle,
         adminOnly: true,
       },
+      {
+        id: "tabellone",
+        title: "Tabellone MBO",
+        url: "/admin/tabellone",
+        icon: Table2,
+        adminOnly: true,
+      },
     ],
   },
   {
@@ -120,6 +132,7 @@ export const railNavigation: NavItem[] = [
     title: "Valutazione",
     icon: ClipboardCheck,
     adminOnly: false,
+    moduleId: "performance_management",
     children: [
       {
         id: "self-assessment",
@@ -146,9 +159,10 @@ export const railNavigation: NavItem[] = [
   },
   {
     id: "gestione-team",
-    title: "Gestione Team",
+    title: "Valutazioni Performance",
     icon: UserCheck,
     adminOnly: false,
+    moduleId: "performance_management",
     children: [
       {
         id: "team-evaluations",
@@ -171,6 +185,7 @@ export const railNavigation: NavItem[] = [
     title: "Competenze",
     icon: Award,
     adminOnly: true,
+    moduleId: "performance_management",
     children: [
       {
         id: "competencies-config",
@@ -212,9 +227,10 @@ export const railNavigation: NavItem[] = [
   },
   {
     id: "organigramma",
-    title: "Organigramma",
+    title: "Gestione Organizzazione",
     icon: Network,
     adminOnly: false,
+    moduleId: "gestione_organizzazione",
     children: [
       {
         id: "organigramma-view",

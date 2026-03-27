@@ -276,6 +276,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user's team context (manager, colleagues, direct reports) - accessible to all authenticated users
+  app.get("/api/my-team", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+      const allUsers = await storage.getAllUsers();
+
+      const manager = currentUser.managerId
+        ? allUsers.find((u) => u.id === currentUser.managerId) ?? null
+        : null;
+
+      const colleagues = currentUser.managerId
+        ? allUsers.filter((u) => u.managerId === currentUser.managerId && u.id !== userId && u.isActive)
+        : [];
+
+      const directReports = allUsers.filter((u) => u.managerId === userId && u.isActive);
+
+      res.json({ manager, colleagues, directReports });
+    } catch (error) {
+      console.error("Error fetching team:", error);
+      res.status(500).json({ message: "Failed to fetch team data" });
+    }
+  });
+
   app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const page = req.query.page ? parseInt(req.query.page as string) : undefined;
@@ -503,7 +529,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await storage.deleteCalculationType(req.params.id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "SQLITE_CONSTRAINT_FOREIGNKEY" || error?.message?.includes("FOREIGN KEY")) {
+        return res.status(400).json({ message: "Impossibile eliminare: questo tipo di calcolo è usato da uno o più obiettivi nel dizionario." });
+      }
       handleError(res, error);
     }
   });
@@ -661,6 +690,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tabellone MBO — full plan view per eligible user
+  app.get("/api/tabellone", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const eligibleUsers = allUsers.filter((u: any) => u.role === "employee" || u.role === "hr");
+
+      const rows = [];
+      for (const u of eligibleUsers) {
+        const assignments = await storage.getObjectiveAssignments(u.id);
+        if (assignments.length === 0) continue;
+
+        const ral = parseFloat(String(u.ral || 0));
+        const mboPerc = u.mboPercentage || 0;
+        const mboTarget = ral * (mboPerc / 100);
+        const totalWeight = assignments.reduce((s: number, a: any) => s + (a.weight || 0), 0);
+
+        rows.push({
+          user: {
+            id: u.id,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            codiceFiscale: u.codiceFiscale,
+            department: u.department,
+            livello: (u as any).livello || null,
+            ral,
+            mboPercentage: mboPerc,
+            mboTarget,
+          },
+          totalWeight,
+          objectives: assignments.map((a: any) => {
+            const obj = a.objective as any;
+            const weight = a.weight || 0;
+            const objMboTarget = mboTarget * (weight / 100);
+            return {
+              assignmentId: a.id,
+              title: obj?.title || "",
+              description: obj?.description || "",
+              targetDescription: obj?.targetDescription || "",
+              dataSource: obj?.dataSource || "",
+              clusterName: obj?.indicatorCluster?.name || "",
+              calculationTypeName: obj?.calculationType?.name || "",
+              thresholdValue: obj?.thresholdValue ?? null,
+              thresholdPayout: obj?.thresholdPayout ?? 50,
+              allowOverperformance: obj?.allowOverperformance ?? 0,
+              maxPayout: obj?.maxPayout ?? null,
+              targetValue: obj?.targetValue ?? null,
+              actualValue: obj?.actualValue ?? null,
+              qualitativeResult: obj?.qualitativeResult ?? null,
+              weight,
+              objMboTarget,
+              progress: a.progress || 0,
+              status: a.status,
+            };
+          }),
+        });
+      }
+
+      res.json(rows);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // Get all objectives with their assigned users (for reporting)
   app.get("/api/objectives-with-assignments", isAuthenticated, isAdmin, async (req, res) => {
     try {
@@ -694,29 +786,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const actual = parseFloat(String(actualValue));
           const threshold = dictionary.thresholdValue ? parseFloat(String(dictionary.thresholdValue)) : null;
 
-          // If threshold is defined: below threshold = not_reached, between threshold and target = partial, at/above target = reached
-          // If no threshold: simple comparison
+          const allowOverperformance = dictionary.allowOverperformance === 1;
+          const maxPayout = dictionary.maxPayout ?? 120;
+          const thresholdPayout = dictionary.thresholdPayout ?? 50;
+
+          // If threshold is defined: below threshold = 0%, at threshold = thresholdPayout%, linear to 100% at target
           if (threshold !== null) {
             if (actual < threshold) {
               finalQualitativeResult = "not_reached";
               calculatedProgress = 0;
+            } else if (actual > target && allowOverperformance) {
+              // Overperformance: linear above target, capped at maxPayout
+              finalQualitativeResult = "reached";
+              const overshoot = ((actual - target) / target) * 100;
+              calculatedProgress = Math.min(Math.round(100 + overshoot), maxPayout);
             } else if (actual >= target) {
               finalQualitativeResult = "reached";
               calculatedProgress = 100;
             } else {
-              // Between threshold and target = partial (proportional)
+              // Between threshold and target: interpolate from thresholdPayout% to 100%
               finalQualitativeResult = "partial";
-              // Calculate proportional progress between threshold and target
-              calculatedProgress = Math.round(((actual - threshold) / (target - threshold)) * 100);
+              const t = (actual - threshold) / (target - threshold);
+              calculatedProgress = Math.round(thresholdPayout + t * (100 - thresholdPayout));
             }
           } else {
-            // No threshold: simple comparison or proportional if actual < target
-            if (actual >= target) {
+            // No threshold
+            if (actual > target && allowOverperformance) {
+              finalQualitativeResult = "reached";
+              const overshoot = ((actual - target) / target) * 100;
+              calculatedProgress = Math.min(Math.round(100 + overshoot), maxPayout);
+            } else if (actual >= target) {
               finalQualitativeResult = "reached";
               calculatedProgress = 100;
             } else {
               finalQualitativeResult = "not_reached";
-              // Proportional progress
               calculatedProgress = Math.round((actual / target) * 100);
             }
           }
@@ -815,6 +918,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(assignment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Preview bulk assignment — returns which users would be skipped due to weight overflow
+  app.get("/api/assignments/bulk-preview", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { objectiveId, department, weight } = req.query as Record<string, string>;
+      if (!objectiveId || !department || !weight) {
+        return res.status(400).json({ message: "objectiveId, department, weight are required" });
+      }
+      const assignmentWeight = parseInt(weight, 10);
+      const allUsers = await storage.getAllUsers();
+      const departmentUsers = department === "all"
+        ? allUsers.filter((u: any) => u.role === "employee")
+        : allUsers.filter((u: any) => u.department === department && u.role === "employee");
+
+      const eligible: { id: string; name: string; currentWeight: number }[] = [];
+      const skipped: { id: string; name: string; currentWeight: number }[] = [];
+
+      for (const u of departmentUsers) {
+        const assignments = await storage.getObjectiveAssignments(u.id);
+        const currentWeight = assignments.reduce((s, a) => s + (a.weight || 0), 0);
+        const entry = { id: u.id, name: `${u.firstName || ""} ${u.lastName || ""}`.trim(), currentWeight };
+        if (currentWeight + assignmentWeight > 100) skipped.push(entry);
+        else eligible.push(entry);
+      }
+
+      res.json({ eligible, skipped, totalUsers: departmentUsers.length });
     } catch (error) {
       handleError(res, error);
     }
@@ -1105,6 +1238,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For demo mode, just accept it
       res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Feature Flags (platform module toggles)
+  app.get("/api/settings/features", isAuthenticated, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      res.json(flags);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/settings/features", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const flags = req.body as Record<string, boolean>;
+      await storage.setFeatureFlags(flags);
+      res.json(flags);
     } catch (error) {
       handleError(res, error);
     }

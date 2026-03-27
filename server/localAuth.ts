@@ -3,18 +3,21 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
-import connectPg from "connect-pg-simple";
+import SQLiteStore from "better-sqlite3-session-store";
+import { sqlite } from "./db";
 import { storage } from "./storage";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
+  const SqliteSessionStore = SQLiteStore(session);
+  const sessionStore = new SqliteSessionStore({
+    client: sqlite,
+    expired: {
+      clear: true,
+      intervalMs: 15 * 60 * 1000, // Clear expired sessions every 15 min
+    },
   });
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,

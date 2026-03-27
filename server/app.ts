@@ -10,6 +10,7 @@ import express, {
 import { registerRoutes } from "./routes";
 import { seed } from "./seed";
 import { storage } from "./storage";
+import { initializeDatabase } from "./db";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -69,6 +70,13 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
+  try {
+    initializeDatabase();
+  } catch (error) {
+    log(`Failed to initialize database: ${error}`, "database");
+    process.exit(1);
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

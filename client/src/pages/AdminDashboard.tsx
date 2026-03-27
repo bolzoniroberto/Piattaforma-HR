@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppActionsPanel from "@/components/AppActionsPanel";
-import AppHeader from "@/components/AppHeader";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import PageHeader from "@/components/PageHeader";
 import { Users, Target, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRail } from "@/contexts/RailContext";
@@ -120,253 +118,201 @@ export default function AdminDashboard() {
   };
 
   return (
-    <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Dashboard"
-        pageIcon={LayoutDashboard}
-        pageDescription="Gestione dipendenti e obiettivi"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
+    <div className="w-full space-y-6 flex flex-col pt-4" >
+      <div className="w-full space-y-6">
+        <PageHeader 
+          context="DASHBOARD" 
+          title="Pannello Amministratore" 
+          description="Gestione complessiva dei dipendenti, assegnazione obiettivi e stato generale del sistema."
+        />
+        <Tabs defaultValue="employees" className="w-full">
+          <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+            <TabsTrigger value="employees" data-testid="tab-employees" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">
+              <Users className="mr-2 h-4 w-4" />
+              Dipendenti
+            </TabsTrigger>
+            <TabsTrigger value="objectives" data-testid="tab-objectives" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">
+              <Target className="mr-2 h-4 w-4" />
+              Obiettivi
+            </TabsTrigger>
+          </TabsList>
 
-          {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-7xl mx-auto space-y-6">
-              <Tabs defaultValue="employees" className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                  <TabsTrigger value="employees" data-testid="tab-employees">
-                    <Users className="mr-2 h-4 w-4" />
-                    Dipendenti
-                  </TabsTrigger>
-                  <TabsTrigger value="objectives" data-testid="tab-objectives">
-                    <Target className="mr-2 h-4 w-4" />
-                    Obiettivi
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Tab Dipendenti */}
-                <TabsContent value="employees" className="space-y-4">
-                  <Card className="md3-surface md3-motion-standard">
-                    <CardHeader>
-                      <CardTitle className="md3-title-large">Dipendenti Eligibili ({allUsers.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4">
-                        {allUsers.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">
-                            Nessun dipendente disponibile
-                          </p>
-                        ) : (
-                          <div className="space-y-3">
-                            {allUsers.map((emp) => (
-                              <Card key={emp.id} className="p-4 md3-elevated md3-motion-standard">
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-base" data-testid={`text-employee-name-${emp.id}`}>
-                                      {emp.firstName} {emp.lastName}
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
-                                      <div>
-                                        <span className="font-medium">Email:</span> {emp.email}
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Dipartimento:</span>{" "}
-                                        {emp.department || "N/A"}
-                                      </div>
-                                      {emp.ral && (
-                                        <div>
-                                          <span className="font-medium">RAL:</span> €
-                                          {Number(emp.ral).toLocaleString("it-IT")}
-                                        </div>
-                                      )}
-                                      <div>
-                                        <span className="font-medium">MBO %:</span> {emp.mboPercentage}%
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        data-testid={`button-view-assignments-${emp.id}`}
-                                      >
-                                        Assegna
-                                      </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                      <DialogHeader>
-                                        <DialogTitle>
-                                          Assegna obiettivi a {emp.firstName} {emp.lastName}
-                                        </DialogTitle>
-                                      </DialogHeader>
-                                      <div className="text-sm text-muted-foreground">
-                                        <p>Usa il menu "Assegnazione Obiettivi" nella sidebar per gestire le assegnazioni.</p>
-                                      </div>
-                                    </DialogContent>
-                                  </Dialog>
+          {/* Tab Dipendenti */}
+          <TabsContent value="employees" className="space-y-4">
+            <Card className="md3-surface md3-motion-standard">
+              <CardHeader>
+                <CardTitle className="md3-title-large">Dipendenti Eligibili ({allUsers.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {allUsers.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      Nessun dipendente disponibile
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {allUsers.map((emp) => (
+                        <Card key={emp.id} className="p-4 md3-elevated md3-motion-standard">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-base" data-testid={`text-employee-name-${emp.id}`}>
+                                {emp.firstName} {emp.lastName}
+                              </h3>
+                              <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
+                                <div>
+                                  <span className="font-medium">Email:</span> {emp.email}
                                 </div>
-                              </Card>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Tab Obiettivi */}
-                <TabsContent value="objectives" className="space-y-4">
-                  <Card className="md3-surface md3-motion-standard">
-                    <CardHeader>
-                      <CardTitle className="md3-title-large">Obiettivi Disponibili ({objectivesDictionary.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4">
-                        {objectivesDictionary.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">
-                            Nessun obiettivo disponibile
-                          </p>
-                        ) : (
-                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                            {objectivesDictionary.map((obj) => (
-                              <Card
-                                key={obj.id}
-                                className="p-4 md3-elevated md3-motion-standard flex flex-col"
-                                data-testid={`card-objective-${obj.id}`}
-                              >
-                                {editingId === obj.id ? (
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label htmlFor={`title-${obj.id}`}>Titolo</Label>
-                                      <Input
-                                        id={`title-${obj.id}`}
-                                        value={editFormData.title}
-                                        onChange={(e) =>
-                                          setEditFormData({ ...editFormData, title: e.target.value })
-                                        }
-                                        data-testid={`input-objective-title-${obj.id}`}
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor={`description-${obj.id}`}>Descrizione</Label>
-                                      <Textarea
-                                        id={`description-${obj.id}`}
-                                        value={editFormData.description}
-                                        onChange={(e) =>
-                                          setEditFormData({ ...editFormData, description: e.target.value })
-                                        }
-                                        data-testid={`input-objective-description-${obj.id}`}
-                                      />
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        onClick={handleEditSave}
-                                        disabled={updateObjectiveMutation.isPending}
-                                        data-testid={`button-save-objective-${obj.id}`}
-                                      >
-                                        Salva
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleEditCancel}
-                                        data-testid={`button-cancel-objective-${obj.id}`}
-                                      >
-                                        Annulla
-                                      </Button>
-                                    </div>
+                                <div>
+                                  <span className="font-medium">Dipartimento:</span>{" "}
+                                  {emp.department || "N/A"}
+                                </div>
+                                {emp.ral && (
+                                  <div>
+                                    <span className="font-medium">RAL:</span> €
+                                    {Number(emp.ral).toLocaleString("it-IT")}
                                   </div>
-                                ) : (
-                                  <>
-                                    <div className="flex-1">
-                                      <h3 className="font-semibold text-sm mb-2" data-testid={`text-objective-title-${obj.id}`}>
-                                        {obj.title}
-                                      </h3>
-                                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                                        {obj.description}
-                                      </p>
-                                      <div className="flex flex-wrap gap-2 mb-3">
-                                        {obj.indicatorCluster && (
-                                          <div className="inline-block bg-secondary px-2 py-1 rounded text-xs">
-                                            {obj.indicatorCluster.name}
-                                          </div>
-                                        )}
-                                        {obj.calculationType && (
-                                          <div className="inline-block bg-secondary px-2 py-1 rounded text-xs">
-                                            {obj.calculationType.name}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleEditStart(obj)}
-                                      data-testid={`button-edit-objective-${obj.id}`}
-                                    >
-                                      Modifica
-                                    </Button>
-                                  </>
                                 )}
-                              </Card>
-                            ))}
+                                <div>
+                                  <span className="font-medium">MBO %:</span> {emp.mboPercentage}%
+                                </div>
+                              </div>
+                            </div>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  data-testid={`button-view-assignments-${emp.id}`}
+                                >
+                                  Assegna
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Assegna obiettivi a {emp.firstName} {emp.lastName}
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <div className="text-sm text-muted-foreground">
+                                  <p>Usa il menu "Assegnazione Obiettivi" nella sidebar per gestire le assegnazioni.</p>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </main>
-
-          {/* Sidebar Level 3 - Actions Panel (destra) */}
-          {isActionsPanelOpen && (
-            <AppActionsPanel isOpen={isActionsPanelOpen} onClose={() => setIsActionsPanelOpen(false)} title="Dashboard Admin">
-              {/* Quick Stats */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Statistiche Rapide</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10 text-center">
-                    <div className="text-lg font-bold text-primary">{allUsers.length}</div>
-                    <div className="text-xs text-muted-foreground">Utenti</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-primary/10 text-center">
-                    <div className="text-lg font-bold text-primary">{objectivesDictionary.length}</div>
-                    <div className="text-xs text-muted-foreground">Obiettivi</div>
-                  </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              <div className="border-t my-4" />
-
-              {/* Info */}
-              <div className="text-xs text-muted-foreground space-y-2">
-                <p className="font-medium text-foreground">Panoramica Sistema</p>
-                <p>Utilizza i tab sopra per gestire dipendenti e obiettivi</p>
-                <p className="pt-2">Usa il menu laterale per accedere alle altre sezioni di amministrazione</p>
-              </div>
-            </AppActionsPanel>
-          )}
-        </div>
+          {/* Tab Obiettivi */}
+          <TabsContent value="objectives" className="space-y-4">
+            <Card className="md3-surface md3-motion-standard">
+              <CardHeader>
+                <CardTitle className="md3-title-large">Obiettivi Disponibili ({objectivesDictionary.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {objectivesDictionary.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      Nessun obiettivo disponibile
+                    </p>
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {objectivesDictionary.map((obj) => (
+                        <Card
+                          key={obj.id}
+                          className="p-4 md3-elevated md3-motion-standard flex flex-col"
+                          data-testid={`card-objective-${obj.id}`}
+                        >
+                          {editingId === obj.id ? (
+                            <div className="space-y-4">
+                              <div>
+                                <Label htmlFor={`title-${obj.id}`}>Titolo</Label>
+                                <Input
+                                  id={`title-${obj.id}`}
+                                  value={editFormData.title}
+                                  onChange={(e) =>
+                                    setEditFormData({ ...editFormData, title: e.target.value })
+                                  }
+                                  data-testid={`input-objective-title-${obj.id}`}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`description-${obj.id}`}>Descrizione</Label>
+                                <Textarea
+                                  id={`description-${obj.id}`}
+                                  value={editFormData.description}
+                                  onChange={(e) =>
+                                    setEditFormData({ ...editFormData, description: e.target.value })
+                                  }
+                                  data-testid={`input-objective-description-${obj.id}`}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={handleEditSave}
+                                  disabled={updateObjectiveMutation.isPending}
+                                  data-testid={`button-save-objective-${obj.id}`}
+                                >
+                                  Salva
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleEditCancel}
+                                  data-testid={`button-cancel-objective-${obj.id}`}
+                                >
+                                  Annulla
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-sm mb-2" data-testid={`text-objective-title-${obj.id}`}>
+                                  {obj.title}
+                                </h3>
+                                <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                                  {obj.description}
+                                </p>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                  {obj.indicatorCluster && (
+                                    <div className="inline-block bg-secondary px-2 py-1 rounded text-xs">
+                                      {obj.indicatorCluster.name}
+                                    </div>
+                                  )}
+                                  {obj.calculationType && (
+                                    <div className="inline-block bg-secondary px-2 py-1 rounded text-xs">
+                                      {obj.calculationType.name}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditStart(obj)}
+                                data-testid={`button-edit-objective-${obj.id}`}
+                              >
+                                Modifica
+                              </Button>
+                            </>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-    </>
+    </div>
   );
 }

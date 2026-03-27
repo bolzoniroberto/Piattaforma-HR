@@ -1,8 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import PageHeader from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -270,46 +268,22 @@ export default function AdminCompetenciesPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
           {/* MAIN CONTENT */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-6xl mx-auto space-y-6">
-              <div>
-                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-primary/10">
-                    <Award className="h-6 w-6 text-primary" />
-                  </div>
-                  Gestione Competenze
-                </h1>
-                <p className="md3-body-large text-muted-foreground">
-                  Configura modelli di competenze e competenze per ogni persona
-                </p>
-              </div>
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+            <div className="w-full space-y-6">
+              <PageHeader 
+                context="CONFIGURAZIONE" 
+                title="Gestione Competenze" 
+                description="Configura modelli di competenze e competenze per ogni persona"
+              />
 
               <Tabs defaultValue="models" className="w-full">
-                <TabsList className="mb-6">
-                  <TabsTrigger value="models">Modelli Competenze</TabsTrigger>
-                  <TabsTrigger value="competencies">Competenze</TabsTrigger>
+                <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+                  <TabsTrigger value="models" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Modelli Competenze</TabsTrigger>
+                  <TabsTrigger value="competencies" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Competenze</TabsTrigger>
                 </TabsList>
 
                 {/* MODELS TAB */}

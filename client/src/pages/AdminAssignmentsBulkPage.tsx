@@ -1,9 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,8 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import PageHeader from "@/components/PageHeader";
 import { Progress } from "@/components/ui/progress";
-import { Search, Target, Users, Building, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { Search, Target, Users, Building, CheckCircle, ArrowRight, ArrowLeft, AlertTriangle, Trash2, ShieldAlert } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,6 +22,15 @@ import {
 } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { User, IndicatorCluster } from "@shared/schema";
 
 interface ObjectiveDictionary {
@@ -46,6 +53,8 @@ export default function AdminAssignmentsBulkPage() {
   const [selectedObjective, setSelectedObjective] = useState<ObjectiveDictionary | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [weight, setWeight] = useState<number>(20);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState("");
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -114,6 +123,44 @@ export default function AdminAssignmentsBulkPage() {
     return allUsers.filter((u) => u.department === selectedDepartment && u.role === "employee");
   }, [allUsers, selectedDepartment]);
 
+  // Preview: fetch weight conflicts when entering step 3
+  const { data: preview } = useQuery<{
+    eligible: { id: string; name: string; currentWeight: number }[];
+    skipped: { id: string; name: string; currentWeight: number }[];
+    totalUsers: number;
+  }>({
+    queryKey: ["/api/assignments/bulk-preview", selectedObjective?.id, selectedDepartment, weight],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        objectiveId: selectedObjective!.id,
+        department: selectedDepartment,
+        weight: String(weight),
+      });
+      const res = await apiRequest("GET", `/api/assignments/bulk-preview?${params}`);
+      return res.json();
+    },
+    enabled: step === 3 && !!selectedObjective && !!selectedDepartment,
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/assignments/clear-all", {});
+      if (!res.ok) throw new Error((await res.json()).message || "Errore");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].includes("/api/assignments") });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-objectives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-with-assignments"] });
+      toast({ title: "Disassociazione completata", description: `${data.deletedCount || 0} assegnazioni rimosse` });
+      setShowClearConfirm(false);
+      setClearConfirmText("");
+    },
+    onError: (error) => {
+      toast({ title: "Errore", description: error instanceof Error ? error.message : "Impossibile completare", variant: "destructive" });
+    },
+  });
+
   const bulkAssignMutation = useMutation({
     mutationFn: async (data: { objectiveId: string; department: string; weight: number }) => {
       const res = await apiRequest("POST", "/api/assignments/bulk", data);
@@ -167,31 +214,16 @@ export default function AdminAssignmentsBulkPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle="Assegnazione Obiettivi in Bulk"
-        pageIcon={Target}
-        pageDescription="Assegna un obiettivo a tutti i dipendenti di un dipartimento"
-      />
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail
-              activeSection={activeSection}
-              onSectionClick={handleSectionClick}
-            />
-            <AppPanel
-              activeSection={activeSection}
-              className="transition-opacity duration-200"
-            />
-          </div>
-
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-          <div className="space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <div className="w-full space-y-6">
+              <PageHeader 
+                context="GESTIONE ASSEGNAZIONI" 
+                title="Assegnazione Massiva" 
+                description="Utilizza la procedura guidata per assegnare obiettivi in blocco a team o dipartimenti in pochi passaggi."
+              />
               {/* Progress Steps */}
               <div className="flex items-center gap-4">
                 <div className={`flex items-center gap-2 ${step >= 1 ? "text-primary" : "text-muted-foreground"}`}>
@@ -401,7 +433,7 @@ export default function AdminAssignmentsBulkPage() {
                         <p className="text-xs text-muted-foreground mb-1">Destinatari</p>
                         <p className="font-medium">{selectedDepartment === "all" ? "Tutti gli utenti" : selectedDepartment}</p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {usersInDepartment.length} dipendenti
+                          {preview ? `${preview.eligible.length} di ${preview.totalUsers} dipendenti` : `${usersInDepartment.length} dipendenti`}
                         </p>
                       </div>
                     </div>
@@ -412,29 +444,60 @@ export default function AdminAssignmentsBulkPage() {
                       <Progress value={weight} className="mt-2 h-2" />
                     </div>
 
-                    <div className="p-4 bg-muted rounded-md">
-                      <p className="font-medium text-sm mb-3">Dipendenti che riceveranno l'obiettivo:</p>
-                      <div className="space-y-2 max-h-[200px] overflow-auto">
-                        {usersInDepartment.map((u) => (
-                          <div key={u.id} className="flex items-center gap-3 p-2 bg-background rounded">
-                            <Avatar className="h-8 w-8">
-                              {u.profileImageUrl && (
-                                <AvatarImage src={u.profileImageUrl} alt={u.firstName || ""} />
-                              )}
-                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                {getInitials(u.firstName, u.lastName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">
-                                {u.firstName} {u.lastName}
-                              </p>
-                              <p className="text-xs text-muted-foreground">{u.email}</p>
+                    {/* Weight overflow warning */}
+                    {preview && preview.skipped.length > 0 && (
+                      <div className="p-4 bg-amber-50 border border-amber-300 rounded-md space-y-3">
+                        <div className="flex items-center gap-2 text-amber-800">
+                          <AlertTriangle className="h-4 w-4 shrink-0" />
+                          <p className="font-semibold text-sm">
+                            {preview.skipped.length} {preview.skipped.length === 1 ? "dipendente superererebbe" : "dipendenti supererebbero"} il 100% — {preview.skipped.length === 1 ? "verrà escluso" : "verranno esclusi"}
+                          </p>
+                        </div>
+                        <div className="space-y-1 max-h-[120px] overflow-auto">
+                          {preview.skipped.map((u) => (
+                            <div key={u.id} className="flex items-center justify-between text-xs text-amber-700 bg-amber-100 rounded px-2 py-1">
+                              <span>{u.name}</span>
+                              <span className="font-semibold">{u.currentWeight}% già assegnato → {u.currentWeight + weight}% con nuovo</span>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        <p className="text-xs text-amber-600">
+                          Per assegnare l'obiettivo anche a questi utenti, riduci il peso o disassocia prima alcuni obiettivi.
+                        </p>
                       </div>
-                    </div>
+                    )}
+
+                    {preview && preview.eligible.length === 0 && (
+                      <div className="p-4 bg-red-50 border border-red-300 rounded-md">
+                        <div className="flex items-center gap-2 text-red-800">
+                          <AlertTriangle className="h-4 w-4" />
+                          <p className="font-semibold text-sm">Nessun utente può ricevere questo obiettivo con il peso selezionato</p>
+                        </div>
+                        <p className="text-xs text-red-600 mt-1">Tutti i dipendenti supererebbero il 100%. Riduci il peso o disassocia prima degli obiettivi.</p>
+                      </div>
+                    )}
+
+                    {/* Eligible users list */}
+                    {preview && preview.eligible.length > 0 && (
+                      <div className="p-4 bg-muted rounded-md">
+                        <p className="font-medium text-sm mb-3">Dipendenti che riceveranno l'obiettivo ({preview.eligible.length}):</p>
+                        <div className="space-y-2 max-h-[200px] overflow-auto">
+                          {preview.eligible.map((u) => (
+                            <div key={u.id} className="flex items-center justify-between p-2 bg-background rounded">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                    {u.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <p className="text-sm font-medium">{u.name}</p>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{u.currentWeight}% → {u.currentWeight + weight}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                   <div className="p-4 border-t flex justify-between">
                     <Button variant="outline" onClick={() => setStep(2)}>
@@ -443,7 +506,7 @@ export default function AdminAssignmentsBulkPage() {
                     </Button>
                     <Button
                       onClick={handleConfirmAssignment}
-                      disabled={bulkAssignMutation.isPending}
+                      disabled={bulkAssignMutation.isPending || (preview !== undefined && preview.eligible.length === 0)}
                       data-testid="button-confirm-bulk"
                     >
                       {bulkAssignMutation.isPending ? "Assegnazione in corso..." : "Conferma Assegnazione"}
@@ -451,8 +514,59 @@ export default function AdminAssignmentsBulkPage() {
                   </div>
               </Card>
             )}
+
+              {/* Danger Zone */}
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50/50 p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-red-600" />
+                  <h3 className="font-semibold text-red-800 text-sm uppercase tracking-wide">Zona di Pericolo</h3>
+                </div>
+                <p className="text-sm text-red-700">
+                  Disassocia tutti gli obiettivi da tutti i dipendenti. <strong>L'operazione è irreversibile</strong> — gli obiettivi rimarranno nel dizionario ma tutte le assegnazioni verranno eliminate definitivamente.
+                </p>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { setShowClearConfirm(true); setClearConfirmText(""); }}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Disassocia tutti gli obiettivi
+                </Button>
+              </div>
           </div>
         </main>
+
+          <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <ShieldAlert className="h-5 w-5" />
+                  Disassocia tutti gli obiettivi
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <span className="block">Stai per rimuovere <strong>tutte le assegnazioni</strong> da <strong>tutti i dipendenti</strong>. Questa azione <strong>non può essere annullata</strong>.</span>
+                  <span className="block text-sm">Digita <strong>CONFERMA</strong> per procedere:</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Input
+                placeholder="Digita CONFERMA"
+                value={clearConfirmText}
+                onChange={(e) => setClearConfirmText(e.target.value)}
+                className="border-destructive/50 focus-visible:ring-destructive"
+              />
+              <div className="flex gap-3 justify-end mt-2">
+                <AlertDialogCancel onClick={() => setClearConfirmText("")}>Annulla</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => clearAllMutation.mutate()}
+                  disabled={clearConfirmText !== "CONFERMA" || clearAllMutation.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
+                >
+                  {clearAllMutation.isPending ? "Rimozione in corso..." : "Disassocia tutti"}
+                </AlertDialogAction>
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {isActionsPanelOpen && (
             <AppActionsPanel
@@ -494,7 +608,7 @@ export default function AdminAssignmentsBulkPage() {
                 <div className="p-2 rounded-lg bg-blue-500/10">
                   <p className="text-sm font-medium">{selectedDepartment}</p>
                   <p className="text-xs text-muted-foreground">
-                    {targetUsers.length} {targetUsers.length === 1 ? "dipendente" : "dipendenti"}
+                    {usersInDepartment.length} {usersInDepartment.length === 1 ? "dipendente" : "dipendenti"}
                   </p>
                 </div>
               </div>

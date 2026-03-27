@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
-import AppHeader from "@/components/AppHeader";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -426,22 +423,9 @@ export default function AdminUserProfilePage() {
   if (isLoading) {
     return (
       <>
-        <AppHeader
-          userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Amministratore" : "Amministratore"}
-          userRole="Amministratore"
-          notificationCount={0}
-          showSidebarTrigger={true}
-          pageTitle="Profilo Dipendente"
-          pageIcon={Users}
-          pageDescription="Caricamento profilo..."
-        />
-        <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-          <div className="flex gap-6 max-w-[1800px] mx-auto">
-            <div className="w-[312px] shrink-0 flex gap-3">
-              <AppRail activeSection={activeSection} onSectionClick={handleSectionClick} />
-              <AppPanel activeSection={activeSection} className="transition-opacity duration-200" />
-            </div>
-            <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: "var(--shadow-2)" }}>
+        <div className="w-full">
+          <div className="w-full">
+            <main className="w-full space-y-6 flex flex-col pt-4" >
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
             </main>
           </div>
@@ -452,27 +436,12 @@ export default function AdminUserProfilePage() {
 
   return (
     <>
-      <AppHeader
-        userName={user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Amministratore" : "Amministratore"}
-        userRole="Amministratore"
-        notificationCount={0}
-        showSidebarTrigger={true}
-        pageTitle={`Profilo - ${formData.persona.cognome} ${formData.persona.nome}`}
-        pageIcon={Users}
-        pageDescription={`CF: ${formData.persona.codiceFiscale}`}
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail activeSection={activeSection} onSectionClick={handleSectionClick} />
-            <AppPanel activeSection={activeSection} className="transition-opacity duration-200" />
-          </div>
-
           {/* Main Content */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: "var(--shadow-2)" }}>
-            <div className="max-w-7xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+            <div className="w-full space-y-6">
               <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={() => navigate("/admin/users")}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -485,15 +454,15 @@ export default function AdminUserProfilePage() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-8">
-                  <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
-                  <TabsTrigger value="contatti">Contatti</TabsTrigger>
-                  <TabsTrigger value="organizzazione">Organizzazione</TabsTrigger>
-                  <TabsTrigger value="contratto">Contratto</TabsTrigger>
-                  <TabsTrigger value="parttime">Part-time</TabsTrigger>
-                  <TabsTrigger value="retribuzione">Retribuzione</TabsTrigger>
-                  <TabsTrigger value="ruoli">Ruoli</TabsTrigger>
-                  <TabsTrigger value="smartworking">Smart Working</TabsTrigger>
+                <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+                  <TabsTrigger value="anagrafica" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Anagrafica</TabsTrigger>
+                  <TabsTrigger value="contatti" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Contatti</TabsTrigger>
+                  <TabsTrigger value="organizzazione" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Organizzazione</TabsTrigger>
+                  <TabsTrigger value="contratto" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Contratto</TabsTrigger>
+                  <TabsTrigger value="parttime" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Part-time</TabsTrigger>
+                  <TabsTrigger value="retribuzione" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Retribuzione</TabsTrigger>
+                  <TabsTrigger value="ruoli" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Ruoli</TabsTrigger>
+                  <TabsTrigger value="smartworking" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Smart Working</TabsTrigger>
                 </TabsList>
 
                 {/* TAB 1: Dati Anagrafici */}

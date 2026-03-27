@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import AppRail from "@/components/AppRail";
-import AppPanel from "@/components/AppPanel";
-import AppHeader from "@/components/AppHeader";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -280,24 +277,12 @@ export default function ManagerEmployeeEvaluationPage() {
 
   return (
     <>
-      <AppHeader
-        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Manager"}
-        userRole={user?.role === "admin" ? "Amministratore" : "Manager"}
-        notificationCount={0}
-        showSidebarTrigger={true}
-      />
-
-      <div className="min-h-[calc(100vh-4rem)] bg-background pl-2 pr-6 py-6">
-        <div className="flex gap-6 max-w-[1800px] mx-auto">
+      <div className="w-full">
+        <div className="w-full">
           {/* SIDEBAR CONTAINER */}
-          <div className="w-[312px] shrink-0 flex gap-3">
-            <AppRail activeSection={activeSection} onSectionClick={handleSectionClick} />
-            <AppPanel activeSection={activeSection} className="transition-opacity duration-200" />
-          </div>
-
           {/* MAIN CONTENT */}
-          <main className="flex-1 bg-card rounded-2xl p-8 min-h-[calc(100vh-7rem)]" style={{ boxShadow: 'var(--shadow-2)' }}>
-            <div className="max-w-6xl mx-auto space-y-6">
+          <main className="w-full space-y-6 flex flex-col pt-4" >
+            <div className="w-full space-y-6">
               {/* Header */}
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" onClick={() => navigate("/manager/team-evaluations")}>
@@ -336,16 +321,16 @@ export default function ManagerEmployeeEvaluationPage() {
 
               {competencies.length > 0 ? (
                 <Tabs defaultValue="my-evaluation" className="w-full">
-                  <TabsList className="mb-6">
-                    <TabsTrigger value="self-assessment">Autovalutazione</TabsTrigger>
-                    <TabsTrigger value="peer-feedback">
+                  <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
+                    <TabsTrigger value="self-assessment" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Autovalutazione</TabsTrigger>
+                    <TabsTrigger value="peer-feedback" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">
                       Feedback 360°
                       {peerFeedback.length > 0 && (
                         <Badge variant="secondary" className="ml-2">{peerFeedback.length}</Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="my-evaluation">La Mia Valutazione</TabsTrigger>
-                    {isSubmitted && <TabsTrigger value="comparison">Confronto</TabsTrigger>}
+                    <TabsTrigger value="my-evaluation" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">La Mia Valutazione</TabsTrigger>
+                    {isSubmitted && <TabsTrigger value="comparison" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Confronto</TabsTrigger>}
                   </TabsList>
 
                   {/* Tab: Self Assessment */}
