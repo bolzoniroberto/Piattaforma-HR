@@ -1,10 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn } from "lucide-react";
+import { Target, ArrowLeft, LogIn } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
@@ -24,30 +23,23 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          email,
-          password,
-        }),
+        body: new URLSearchParams({ email, password }),
       });
 
       if (response.ok) {
-        toast({
-          title: "Login successful",
-          description: "Welcome back!",
-        });
         navigate("/");
-        window.location.reload(); // Reload to update auth state
+        window.location.reload();
       } else {
         toast({
-          title: "Login failed",
-          description: "Invalid email or password",
+          title: "Accesso negato",
+          description: "Email o password non validi",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
-        title: "Error",
-        description: "An error occurred during login",
+        title: "Errore",
+        description: "Si è verificato un errore durante il login",
         variant: "destructive",
       });
     } finally {
@@ -61,94 +53,101 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary flex items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl">MBO System</CardTitle>
-          <CardDescription>
-            Corporate Objectives Management System
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+    <div className="min-h-screen bg-slate-950 flex flex-col">
+      {/* Navbar */}
+      <nav className="h-16 flex items-center px-6 border-b border-white/5">
+        <Link href="/">
+          <a className="flex items-center gap-2 group">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <Target className="h-4 w-4 text-slate-900" />
+            </div>
+            <span className="font-bold text-white text-lg">TalentHub</span>
+          </a>
+        </Link>
+      </nav>
+
+      {/* Main */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm">
+          {/* Back link */}
+          <Link href="/">
+            <a className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors mb-8">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Torna alla home
+            </a>
+          </Link>
+
+          <h1 className="text-3xl font-bold text-white mb-1">Bentornato</h1>
+          <p className="text-slate-400 mb-8">Accedi alla tua piattaforma HR</p>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-slate-300 text-sm font-medium">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="your.email@company.com"
+                placeholder="nome@azienda.it"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20 h-11"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-slate-300 text-sm font-medium">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter any password (dev mode)"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
+                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20 h-11"
               />
             </div>
 
             <Button
               type="submit"
               size="lg"
-              className="w-full"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold h-11 gap-2"
               disabled={isLoading}
             >
-              <LogIn className="mr-2 h-4 w-4" />
-              {isLoading ? "Logging in..." : "Login"}
+              <LogIn className="h-4 w-4" />
+              {isLoading ? "Accesso in corso..." : "Accedi"}
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t"></span>
+          {/* Dev quick login */}
+          <div className="mt-8 pt-6 border-t border-white/5">
+            <p className="text-xs text-slate-500 mb-3 text-center">Accesso rapido (modalità sviluppo)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => quickLogin("employee@example.com")}
+                type="button"
+                className="text-xs px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+              >
+                <span className="block text-slate-400 text-[10px] uppercase tracking-wide mb-0.5">Dipendente</span>
+                employee@example.com
+              </button>
+              <button
+                onClick={() => quickLogin("admin@example.com")}
+                type="button"
+                className="text-xs px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+              >
+                <span className="block text-slate-400 text-[10px] uppercase tracking-wide mb-0.5">Admin</span>
+                admin@example.com
+              </button>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Quick Login (Dev)</span>
-            </div>
           </div>
-
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground text-center mb-2">
-              Available demo users:
-            </p>
-            <Button
-              onClick={() => quickLogin("employee@example.com")}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              type="button"
-            >
-              <span className="font-semibold mr-2">Employee:</span>
-              <span className="text-muted-foreground">employee@example.com</span>
-            </Button>
-            <Button
-              onClick={() => quickLogin("admin@example.com")}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              type="button"
-            >
-              <span className="font-semibold mr-2">Admin:</span>
-              <span className="text-muted-foreground">admin@example.com</span>
-            </Button>
-          </div>
-
-          <div className="text-center text-xs text-muted-foreground">
-            <p className="mb-2">💡 In development mode, any password works</p>
-            <p>By logging in, you accept the terms of service</p>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -87,7 +87,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(competencyModels)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(competencyModels.id, id))
         .returning();
       return result[0];
@@ -197,7 +197,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(competencies)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(competencies.id, id))
         .returning();
       return result[0];
@@ -278,7 +278,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(evaluationCycles)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(evaluationCycles.id, id))
         .returning();
       return result[0];
@@ -292,7 +292,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(evaluationCycles)
-        .set({ status, updatedAt: new Date() })
+        .set({ status, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(evaluationCycles.id, id))
         .returning();
       return result[0];
@@ -355,7 +355,7 @@ export class CompetenciesStorage {
         // Update existing
         const result = await db
           .update(selfAssessments)
-          .set({ ...data, updatedAt: new Date() })
+          .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
           .where(eq(selfAssessments.id, existing[0].id))
           .returning();
         return result[0];
@@ -374,7 +374,7 @@ export class CompetenciesStorage {
     try {
       await db
         .update(selfAssessments)
-        .set({ submittedAt: new Date(), updatedAt: new Date() })
+        .set({ submittedAt: Math.floor(Date.now() / 1000), updatedAt: Math.floor(Date.now() / 1000) })
         .where(and(eq(selfAssessments.cycleId, cycleId), eq(selfAssessments.userId, userId)));
     } catch (error) {
       console.error("Error submitting self assessments:", error);
@@ -441,7 +441,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(peerFeedbackRequests)
-        .set({ status, completedAt: status === "completed" ? new Date() : null, updatedAt: new Date() })
+        .set({ status, completedAt: status === "completed" ? Math.floor(Date.now() / 1000) : null, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(peerFeedbackRequests.id, requestId))
         .returning();
       return result[0];
@@ -577,7 +577,7 @@ export class CompetenciesStorage {
         // Update existing
         const result = await db
           .update(managerEvaluations)
-          .set({ ...data, updatedAt: new Date() })
+          .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
           .where(eq(managerEvaluations.id, existing[0].id))
           .returning();
         return result[0];
@@ -596,7 +596,7 @@ export class CompetenciesStorage {
     try {
       await db
         .update(managerEvaluations)
-        .set({ submittedAt: new Date(), updatedAt: new Date() })
+        .set({ submittedAt: Math.floor(Date.now() / 1000), updatedAt: Math.floor(Date.now() / 1000) })
         .where(
           and(
             eq(managerEvaluations.cycleId, cycleId),
@@ -663,7 +663,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(developmentPlans)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(developmentPlans.id, id))
         .returning();
       return result[0];
@@ -677,7 +677,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(developmentPlans)
-        .set({ status, updatedAt: new Date() })
+        .set({ status, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(developmentPlans.id, id))
         .returning();
       return result[0];
@@ -732,7 +732,7 @@ export class CompetenciesStorage {
     try {
       const result = await db
         .update(evaluationNotifications)
-        .set({ isRead: true, readAt: new Date() })
+        .set({ isRead: true, readAt: Math.floor(Date.now() / 1000) })
         .where(eq(evaluationNotifications.id, id))
         .returning();
       return result[0];
@@ -925,7 +925,7 @@ export class CompetenciesStorage {
       const teamEvaluations = await Promise.all(
         teamMembers.map(async (member) => {
           // Check if has self assessment
-          const selfAssessments = await db
+          const saSub = await db
             .select()
             .from(selfAssessments)
             .where(
@@ -935,21 +935,21 @@ export class CompetenciesStorage {
               )
             );
 
-          const hasSelfAssessment = selfAssessments.length > 0 && selfAssessments.some(sa => sa.submittedAt !== null);
+          const hasSelfAssessment = saSub.length > 0 && saSub.some(sa => sa.submittedAt !== null);
 
           // Get aggregated peer feedback count
-          const peerFeedbacks = await db
+          const pfSub = await db
             .select()
             .from(peerFeedbacks)
             .where(
               and(
                 eq(peerFeedbacks.cycleId, cycleId),
-                eq(peerFeedbacks.targetUserId, member.id)
+                eq(peerFeedbacks.peerUserId, member.id)
               )
             );
 
-          const peerFeedbackCount = peerFeedbacks.length > 0
-            ? [...new Set(peerFeedbacks.map(pf => pf.requestorUserId))].length
+          const peerFeedbackCount = pfSub.length > 0
+            ? pfSub.filter((v: any, i: number, a: any[]) => a.findIndex((t: any) => t.requestorUserId === v.requestorUserId) === i).length
             : 0;
 
           // Check manager evaluation status
@@ -971,7 +971,7 @@ export class CompetenciesStorage {
             userId: member.id,
             userName: `${member.firstName || ""} ${member.lastName || ""}`.trim(),
             userDepartment: member.department,
-            personaType: member.personaType,
+            personaType: (member as any).personaType,
             hasSelfAssessment,
             peerFeedbackCount,
             hasManagerEvaluation,
@@ -1075,7 +1075,7 @@ export class CompetenciesStorage {
       if (data.isCurrent) {
         await db
           .update(userCompetencyModelAssignments)
-          .set({ isCurrent: false, updatedAt: new Date() })
+          .set({ isCurrent: false, updatedAt: Math.floor(Date.now() / 1000) })
           .where(eq(userCompetencyModelAssignments.userId, data.userId));
       }
 
@@ -1104,14 +1104,14 @@ export class CompetenciesStorage {
         if (existing[0]) {
           await db
             .update(userCompetencyModelAssignments)
-            .set({ isCurrent: false, updatedAt: new Date() })
+            .set({ isCurrent: false, updatedAt: Math.floor(Date.now() / 1000) })
             .where(eq(userCompetencyModelAssignments.userId, existing[0].userId));
         }
       }
 
       const [assignment] = await db
         .update(userCompetencyModelAssignments)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(userCompetencyModelAssignments.id, id))
         .returning();
 
@@ -1165,9 +1165,8 @@ export class CompetenciesStorage {
           .update(overallSelfAssessments)
           .set({
             ...data,
-            updatedAt: new Date(),
-            // Don't change submittedAt unless explicitly provided
-            submittedAt: data.submittedAt ?? existing.submittedAt
+            updatedAt: Math.floor(Date.now() / 1000),
+            submittedAt: (data as any).submittedAt ?? (existing as any).submittedAt
           })
           .where(eq(overallSelfAssessments.id, existing.id))
           .returning();
@@ -1196,14 +1195,50 @@ export class CompetenciesStorage {
       await db
         .update(overallSelfAssessments)
         .set({
-          submittedAt: new Date(),
-          updatedAt: new Date()
+          submittedAt: Math.floor(Date.now() / 1000),
+          updatedAt: Math.floor(Date.now() / 1000)
         })
         .where(eq(overallSelfAssessments.id, existing.id));
     } catch (error) {
       console.error(`Error submitting overall self assessment for cycle ${cycleId} and user ${userId}:`, error);
       throw error;
     }
+  }
+
+  async getCompetenciesByDepartment(cycleId: string): Promise<any[]> {
+    const usersList = await db.select().from(users);
+    const selfAss = await db.select().from(selfAssessments).where(eq(selfAssessments.cycleId, cycleId));
+    
+    const depthMap = new Map<string, { name: string; total: number; completed: number }>();
+    
+    usersList.forEach(u => {
+      if (!u.department) return;
+      const dept = depthMap.get(u.department) || { name: u.department, total: 0, completed: 0 };
+      dept.total++;
+      if (selfAss.some(sa => sa.userId === u.id && sa.submittedAt)) {
+        dept.completed++;
+      }
+      depthMap.set(u.department, dept);
+    });
+    
+    return Array.from(depthMap.values());
+  }
+
+  async getProcessProgress(cycleId: string): Promise<any> {
+    const overview = await this.getCompetenciesOverview(cycleId);
+    return {
+      selfAssessment: overview.totalSelfAssessments > 0 ? (overview.completedSelfAssessments / overview.totalSelfAssessments) * 100 : 0,
+      managerEvaluation: overview.totalManagerEvaluations > 0 ? (overview.completedManagerEvaluations / overview.totalManagerEvaluations) * 100 : 0,
+    };
+  }
+
+  async getDevelopmentPlansStatus(cycleId: string): Promise<any> {
+    const plans = await db.select().from(developmentPlans).where(eq(developmentPlans.cycleId, cycleId));
+    return {
+      total: plans.length,
+      approved: plans.filter(p => p.status === 'approved').length,
+      pending: plans.filter(p => p.status === 'pending').length,
+    };
   }
 }
 

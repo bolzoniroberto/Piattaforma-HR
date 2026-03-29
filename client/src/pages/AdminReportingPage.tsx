@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/PageHeader";
-import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, BarChart3 } from "lucide-react";
+import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, BarChart3, Mail, History } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -56,6 +56,8 @@ export default function AdminReportingPage() {
   const [selectedObjective, setSelectedObjective] = useState<ObjectiveWithAssignments | null>(null);
   const [reportValue, setReportValue] = useState<string>("");
   const [qualitativeResult, setQualitativeResult] = useState<string>("");
+  const [emailConfirmId, setEmailConfirmId] = useState<string | null>(null);
+  const [storicoId, setStoricoId] = useState<string | null>(null);
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -98,6 +100,26 @@ export default function AdminReportingPage() {
         variant: "destructive",
       });
     },
+  });
+
+  const sendEmailMutation = useMutation({
+    mutationFn: async (dictionaryId: string) => {
+      const res = await apiRequest("POST", `/api/dictionary/${dictionaryId}/request-reporting`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Email inviata con successo" });
+      setEmailConfirmId(null);
+    },
+    onError: () => {
+      toast({ title: "Errore nell'invio email", variant: "destructive" });
+      setEmailConfirmId(null);
+    },
+  });
+
+  const { data: storicoLog = [] } = useQuery<any[]>({
+    queryKey: [`/api/dictionary/${storicoId}/reporting-log`],
+    enabled: !!storicoId,
   });
 
   const filteredObjectives = useMemo(() => {
@@ -356,14 +378,35 @@ export default function AdminReportingPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Button
-                                    size="sm"
-                                    variant={isReported ? "outline" : "default"}
-                                    onClick={() => openReportDialog(item)}
-                                    data-testid={`button-report-${item.dictionary.id}`}
-                                  >
-                                    {isReported ? "Modifica" : "Rendiconta"}
-                                  </Button>
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {(item.dictionary as any).dataSourceEmail && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setEmailConfirmId(item.dictionary.id)}
+                                        title={`Invia email a ${(item.dictionary as any).dataSourceEmail}`}
+                                      >
+                                        <Mail className="h-3.5 w-3.5 mr-1" />
+                                        Email
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setStoricoId(item.dictionary.id)}
+                                      title="Storico rendicontazioni"
+                                    >
+                                      <History className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={isReported ? "outline" : "default"}
+                                      onClick={() => openReportDialog(item)}
+                                      data-testid={`button-report-${item.dictionary.id}`}
+                                    >
+                                      {isReported ? "Modifica" : "Rendiconta"}
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
@@ -460,6 +503,75 @@ export default function AdminReportingPage() {
           )}
         </div>
       </div>
+
+      {/* Email confirm dialog */}
+      <Dialog open={!!emailConfirmId} onOpenChange={(open) => !open && setEmailConfirmId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Invia Email di Rendicontazione</DialogTitle>
+            <DialogDescription>
+              Verrà inviata una email al responsabile della fonte dati con un link per inserire il valore consuntivo.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailConfirmId(null)}>Annulla</Button>
+            <Button
+              onClick={() => emailConfirmId && sendEmailMutation.mutate(emailConfirmId)}
+              disabled={sendEmailMutation.isPending}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              {sendEmailMutation.isPending ? "Invio..." : "Invia Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Storico dialog */}
+      <Dialog open={!!storicoId} onOpenChange={(open) => !open && setStoricoId(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Storico Rendicontazioni</DialogTitle>
+            <DialogDescription>
+              Tutte le rendicontazioni registrate per questo obiettivo.
+            </DialogDescription>
+          </DialogHeader>
+          {storicoLog.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nessuna rendicontazione registrata.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Canale</TableHead>
+                    <TableHead>Valore</TableHead>
+                    <TableHead>Esito</TableHead>
+                    <TableHead>Note</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {storicoLog.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs">{log.reportedAt ? new Date(log.reportedAt * 1000).toLocaleString("it-IT") : "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {log.reportingChannel === "email_link" ? "Email" : log.reportingChannel === "rendicontatore" ? "Rendicontatore" : "Admin"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{log.actualValue != null ? log.actualValue : "—"}</TableCell>
+                      <TableCell className="text-sm">{log.qualitativeResult || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{log.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStoricoId(null)}>Chiudi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={reportDialogOpen} onOpenChange={handleCloseReportDialog}>
         <DialogContent>

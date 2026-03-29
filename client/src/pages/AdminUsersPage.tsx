@@ -67,6 +67,7 @@ const COLUMNS: ColDef[] = [
       { value: "employee", label: "Dipendente" },
       { value: "admin",    label: "Admin" },
       { value: "hr",       label: "HR" },
+      { value: "manager",  label: "Manager" },
     ],
   },
   { key: "department",    label: "Dipartimento",    type: "text",      width: 150, editable: true,  defaultVisible: true },
@@ -76,6 +77,16 @@ const COLUMNS: ColDef[] = [
   { key: "telefono",      label: "Telefono",        type: "text",      width: 130, editable: true,  defaultVisible: true },
   { key: "citta",         label: "Città",           type: "text",      width: 100, editable: true,  defaultVisible: true },
   { key: "isActive",      label: "Attivo",          type: "boolean",   width: 65,  editable: true,  defaultVisible: true },
+  {
+    key: "beneficiaryType", label: "Tipo MBO", type: "select", width: 110, editable: true, defaultVisible: true,
+    options: [
+      { value: "standard", label: "Standard" },
+      { value: "DIRS",     label: "DIRS" },
+      { value: "CEO",      label: "CEO" },
+    ],
+  },
+  { key: "isRendicontatore", label: "Rendicontatore", type: "boolean", width: 110, editable: true, defaultVisible: true },
+  { key: "hireDate",      label: "Data Assunzione", type: "text",      width: 120, editable: true,  defaultVisible: false },
   // ── hidden by default ───────────────────────────────────────────────────────
   { key: "indirizzo",              label: "Indirizzo",           type: "text",      width: 180, editable: true,  defaultVisible: false },
   { key: "cap",                    label: "CAP",                 type: "text",      width: 80,  editable: true,  defaultVisible: false },
@@ -397,14 +408,14 @@ export default function AdminUsersPage() {
                 style={{ width: totalWidth, minWidth: totalWidth }}
               >
                 <thead>
-                  <tr className="border-b-2 border-border bg-muted/50 sticky top-0 z-10">
-                    <th className="w-10 border-r border-border px-2 text-center text-xs font-medium text-muted-foreground">
+                  <tr className="bg-slate-900 text-white text-xs font-semibold uppercase tracking-wider sticky top-0 z-10">
+                    <th className="w-10 px-2 py-2.5 text-center text-white/60">
                       #
                     </th>
                     {activeColumns.map(col => (
                       <th
                         key={col.key}
-                        className="border-r border-border px-2 py-2.5 text-left text-xs font-semibold cursor-pointer select-none hover:bg-muted transition-colors"
+                        className="px-3 py-2.5 text-left whitespace-nowrap cursor-pointer select-none hover:bg-slate-800 transition-colors"
                         style={{ width: col.width, minWidth: col.width }}
                         onClick={() => toggleSort(col.key)}
                       >
@@ -412,14 +423,14 @@ export default function AdminUsersPage() {
                           <span>{col.label}</span>
                           {sortField === col.key
                             ? sortDir === "asc"
-                              ? <ChevronUp   className="h-3 w-3 text-primary shrink-0" />
-                              : <ChevronDown className="h-3 w-3 text-primary shrink-0" />
-                            : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                              ? <ChevronUp   className="h-3 w-3 text-white/70 shrink-0" />
+                              : <ChevronDown className="h-3 w-3 text-white/70 shrink-0" />
+                            : <ChevronsUpDown className="h-3 w-3 text-white/30 shrink-0" />
                           }
                         </div>
                       </th>
                     ))}
-                    <th className="w-20 px-2 py-2.5 text-center text-xs font-semibold">
+                    <th className="w-20 px-3 py-2.5 text-center">
                       Azioni
                     </th>
                   </tr>

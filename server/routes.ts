@@ -26,7 +26,7 @@ import { eq, and, asc, desc, sql } from "drizzle-orm";
 // Replit OAuth is not available in Railway deployment
 const authModule = await import("./localAuth");
 
-const { setupAuth, isAuthenticated, isAdmin } = authModule;
+const { setupAuth, isAuthenticated, isAdmin, canRendiconta, isManager } = authModule;
 import {
   insertIndicatorClusterSchema,
   insertCalculationTypeSchema,
@@ -63,6 +63,7 @@ import {
   insertCompensationSchema,
   insertRuoliSchema,
   insertSmartWorkingStoricoSchema,
+  insertEntryGateSchema,
 } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -97,6 +98,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check - no auth required (used for deployment health checks)
   app.get("/api/health", async (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Accept MBO regulation
+  app.post("/api/accept-mbo-regulation", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const now = Math.floor(Date.now() / 1000);
+    await storage.updateUser((req.user as any).id, { mboRegulationAcceptedAt: now });
+    res.sendStatus(200);
+  });
+
+  // Mark FAQs as read
+  app.post("/api/read-faq", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const now = Math.floor(Date.now() / 1000);
+    await storage.updateUser((req.user as any).id, { faqReadAt: now });
+    res.sendStatus(200);
   });
 
   // Admin endpoint to manually seed database if needed
@@ -397,8 +414,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: u.email,
         role: u.role,
         isActive: u.isActive,
-        location: u.location,
-        businessFunction: u.businessFunction,
+        citta: u.citta, // Map existing citta instead of non-existent location
+        cdc: u.cdc, // Map existing cdc instead of non-existent businessFunction
       }));
 
       // Ritorna dati con metadata
@@ -691,8 +708,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tabellone MBO — full plan view per eligible user
-  app.get("/api/tabellone", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/tabellone", isAuthenticated, canRendiconta, async (req, res) => {
     try {
+      const requestingUserId = getUserId(req);
+      const requestingUser = await storage.getUser(requestingUserId);
+      const isAdmin = requestingUser?.role === "admin";
+
       const allUsers = await storage.getAllUsers();
       const eligibleUsers = allUsers.filter((u: any) => u.role === "employee" || u.role === "hr");
 
@@ -717,18 +738,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ral,
             mboPercentage: mboPerc,
             mboTarget,
+            beneficiaryType: u.beneficiaryType || "standard",
+            hireDate: u.hireDate || null,
           },
           totalWeight,
-          objectives: assignments.map((a: any) => {
+          objectives: assignments
+            .filter((a: any) => {
+              if (isAdmin) return true;
+              // Rendicontatore sees only objectives where their email matches dataSourceEmail
+              const obj = a.objective as any;
+              return obj?.dataSourceEmail && obj.dataSourceEmail === requestingUser?.email;
+            })
+            .map((a: any) => {
             const obj = a.objective as any;
             const weight = a.weight || 0;
             const objMboTarget = mboTarget * (weight / 100);
             return {
               assignmentId: a.id,
+              dictionaryId: obj?.dictionaryId || null,
               title: obj?.title || "",
               description: obj?.description || "",
               targetDescription: obj?.targetDescription || "",
               dataSource: obj?.dataSource || "",
+              dataSourceEmail: obj?.dataSourceEmail || null,
               clusterName: obj?.indicatorCluster?.name || "",
               calculationTypeName: obj?.calculationType?.name || "",
               thresholdValue: obj?.thresholdValue ?? null,
@@ -742,6 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               objMboTarget,
               progress: a.progress || 0,
               status: a.status,
+              deadline: obj?.deadline ?? null,
             };
           }),
         });
@@ -764,9 +797,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Report on a dictionary (updates all related objectives and assignments)
-  app.patch("/api/dictionary/:id/report", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/dictionary/:id/report", isAuthenticated, canRendiconta, async (req, res) => {
     try {
-      const { actualValue, qualitativeResult } = req.body;
+      const { actualValue, qualitativeResult, notes } = req.body;
+      const reportingUserId = getUserId(req);
+      const reportingUser = await storage.getUser(reportingUserId);
+      const channel = reportingUser?.role === "admin" ? "admin_manual" : "rendicontatore";
       const dictionary = await storage.getObjectivesDictionaryItem(req.params.id);
 
       if (!dictionary) {
@@ -846,6 +882,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actualValue: finalActualValue,
         qualitativeResult: finalQualitativeResult,
         progress: calculatedProgress,
+        channel: channel as "admin_manual" | "rendicontatore",
+        reportedByUserId: reportingUserId,
+        notes: notes ?? undefined,
       });
 
       const updatedDictionary = await storage.getObjectivesDictionaryItem(req.params.id);
@@ -878,7 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/assignments", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { userId, objectiveId, status, progress, weight, objectiveType, targetValue } = req.body;
-      
+
       if (!userId || !objectiveId) {
         return res.status(400).json({ message: "userId and objectiveId are required" });
       }
@@ -888,24 +927,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if total weight would exceed 100%
       const existingAssignments = await storage.getObjectiveAssignments(userId);
       const currentTotalWeight = existingAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
-      
+
       if (currentTotalWeight + assignmentWeight > 100) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: `Impossibile assegnare: il peso totale supererebbe il 100%. Peso attuale: ${currentTotalWeight}%, nuovo peso: ${assignmentWeight}%, disponibile: ${100 - currentTotalWeight}%`
         });
       }
 
-      // Get the dictionary item to retrieve clusterId
+      // Get the dictionary item to retrieve clusterId and deadline
       const dictionaryItem = await storage.getObjectivesDictionaryItem(objectiveId);
       if (!dictionaryItem) {
         return res.status(404).json({ message: "Objective dictionary item not found" });
       }
 
-      // Create an objective instance from dictionary with clusterId
+      // Create an objective instance from dictionary — inherit deadline from dictionary
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
-        deadline: null,
+        deadline: (dictionaryItem as any).deadline ?? null,
       });
 
       // Create the assignment with the new objective
@@ -957,14 +996,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/assignments/bulk", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { objectiveId, department, weight, objectiveType, targetValue } = req.body;
-      
+
       if (!objectiveId || !department) {
         return res.status(400).json({ message: "objectiveId and department are required" });
       }
 
       const assignmentWeight = weight || 20;
 
-      // Get the dictionary item to retrieve clusterId
+      // Get the dictionary item to retrieve clusterId and deadline
       const dictionaryItem = await storage.getObjectivesDictionaryItem(objectiveId);
       if (!dictionaryItem) {
         return res.status(404).json({ message: "Objective dictionary item not found" });
@@ -985,11 +1024,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check weight limits for each user before creating assignments
       const skippedUsers: string[] = [];
       const eligibleUsers = [];
-      
+
       for (const user of departmentUsers) {
         const existingAssignments = await storage.getObjectiveAssignments(user.id);
         const currentTotalWeight = existingAssignments.reduce((sum, a) => sum + (a.weight || 0), 0);
-        
+
         if (currentTotalWeight + assignmentWeight > 100) {
           skippedUsers.push(`${user.firstName || ''} ${user.lastName || ''} (${currentTotalWeight}% assegnato)`);
         } else {
@@ -998,16 +1037,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (eligibleUsers.length === 0) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: `Nessun utente può ricevere questo obiettivo: tutti supererebbero il 100%. Utenti esclusi: ${skippedUsers.join(', ')}`
         });
       }
 
-      // Create an objective instance from dictionary with clusterId
+      // Create an objective instance from dictionary — inherit deadline from dictionary
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
-        deadline: null,
+        deadline: (dictionaryItem as any).deadline ?? null,
       });
 
       // Create assignments for each eligible user
@@ -1263,6 +1302,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company name setting
+  app.get("/api/settings/company", isAuthenticated, async (req, res) => {
+    try {
+      const name = await storage.getAppSetting("company_name");
+      res.json({ companyName: name ?? "" });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/settings/company", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { companyName } = req.body as { companyName: string };
+      await storage.setAppSetting("company_name", companyName ?? "");
+      res.json({ companyName: companyName ?? "" });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Manager assignment feature flag
+  app.get("/api/settings/manager-assignment", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const value = await storage.getAppSetting("manager_autonomous_assignment");
+      res.json({ enabled: value === null ? true : value === "true" });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/settings/manager-assignment", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { enabled } = req.body as { enabled: boolean };
+      await storage.setAppSetting("manager_autonomous_assignment", String(!!enabled));
+      res.json({ enabled: !!enabled });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ─── Manager MBO Assignment Endpoints ────────────────────────────────────────
+
+  app.get("/api/manager/mbo/team-members", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      let members;
+      if (user?.role === "admin") {
+        // Admin sees all users with MBO
+        const all = await storage.getAllUsers();
+        members = all.filter(u => (u.mboPercentage ?? 0) > 0 && u.isActive);
+      } else {
+        members = await storage.getMboTeamMembers(userId);
+      }
+      res.json(members);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/manager/mbo/objectives", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const objectives = await storage.getObjectivesDictionary();
+      res.json(objectives);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/manager/mbo/team-member/:userId/assignments", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const manager = await storage.getUser(managerId);
+      const targetUserId = req.params.userId;
+
+      // Verify direct report relationship (skip for admin)
+      if (manager?.role !== "admin") {
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || targetUser.managerId !== managerId) {
+          return res.status(403).json({ message: "User is not your direct report" });
+        }
+      }
+
+      const assignments = await storage.getObjectiveAssignments(targetUserId);
+      res.json(assignments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/manager/mbo/assignments", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const manager = await storage.getUser(managerId);
+      const { userId, dictionaryId, weight } = req.body;
+
+      if (!userId || !dictionaryId || weight === undefined) {
+        return res.status(400).json({ message: "userId, dictionaryId e weight sono obbligatori" });
+      }
+      if (typeof weight !== "number" || weight % 5 !== 0 || weight < 5 || weight > 100) {
+        return res.status(400).json({ message: "Il peso deve essere un multiplo di 5 tra 5 e 100" });
+      }
+
+      // Verify direct report (skip for admin)
+      if (manager?.role !== "admin") {
+        const targetUser = await storage.getUser(userId);
+        if (!targetUser || targetUser.managerId !== managerId) {
+          return res.status(403).json({ message: "User is not your direct report" });
+        }
+      }
+
+      // Weight check
+      const existing = await storage.getObjectiveAssignments(userId);
+      const currentTotal = existing.reduce((sum, a) => sum + (a.weight || 0), 0);
+      if (currentTotal + weight > 100) {
+        return res.status(400).json({
+          message: `Peso insufficiente. Disponibile: ${100 - currentTotal}%`
+        });
+      }
+
+      // Get dictionary item
+      const dictItem = await storage.getObjectivesDictionaryItem(dictionaryId);
+      if (!dictItem) return res.status(404).json({ message: "Obiettivo non trovato" });
+
+      // Create objective instance + assignment
+      const objective = await storage.createObjective({
+        dictionaryId,
+        clusterId: dictItem.indicatorClusterId,
+        deadline: (dictItem as any).deadline ?? null,
+      });
+      const assignment = await storage.createObjectiveAssignment({
+        userId,
+        objectiveId: objective.id,
+        status: "assegnato",
+        progress: 0,
+        weight,
+      });
+
+      res.status(201).json(assignment);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/manager/mbo/assignments/new", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const managerId = getUserId(req);
+      const manager = await storage.getUser(managerId);
+      const { userId, weight, title, description, objectiveType, targetValue, thresholdValue, thresholdPayout, clusterId } = req.body;
+
+      if (!userId || !weight || !title || !objectiveType || !clusterId) {
+        return res.status(400).json({ message: "userId, weight, title, objectiveType e clusterId sono obbligatori" });
+      }
+      if (typeof weight !== "number" || weight % 5 !== 0 || weight < 5 || weight > 100) {
+        return res.status(400).json({ message: "Il peso deve essere un multiplo di 5 tra 5 e 100" });
+      }
+
+      // Verify direct report (skip for admin)
+      if (manager?.role !== "admin") {
+        const targetUser = await storage.getUser(userId);
+        if (!targetUser || targetUser.managerId !== managerId) {
+          return res.status(403).json({ message: "User is not your direct report" });
+        }
+      }
+
+      // Weight check
+      const existing = await storage.getObjectiveAssignments(userId);
+      const currentTotal = existing.reduce((sum, a) => sum + (a.weight || 0), 0);
+      if (currentTotal + weight > 100) {
+        return res.status(400).json({
+          message: `Peso insufficiente. Disponibile: ${100 - currentTotal}%`
+        });
+      }
+
+      // Create new dictionary entry
+      const dictItem = await storage.createObjectivesDictionaryItem({
+        title,
+        description: description || null,
+        objectiveType,
+        targetValue: targetValue != null ? parseFloat(targetValue) : null,
+        thresholdValue: thresholdValue != null ? parseFloat(thresholdValue) : null,
+        thresholdPayout: thresholdPayout != null ? parseFloat(thresholdPayout) : 50,
+        indicatorClusterId: clusterId,
+        calculationTypeId: null as any,
+      });
+
+      // Create objective instance + assignment
+      const objective = await storage.createObjective({
+        dictionaryId: dictItem.id,
+        clusterId,
+        deadline: null,
+      });
+      const assignment = await storage.createObjectiveAssignment({
+        userId,
+        objectiveId: objective.id,
+        status: "assegnato",
+        progress: 0,
+        weight,
+      });
+
+      res.status(201).json({ assignment, dictionaryItem: dictItem });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // MBO Regulation acceptance endpoint
   app.post("/api/accept-mbo-regulation", isAuthenticated, async (req, res) => {
     try {
@@ -1281,9 +1526,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mboRegulationAcceptedAt: acceptance.acceptedAt,
       });
 
+      // Return only necessary data to avoid any circular references in large user objects
       res.json({ 
         message: "MBO regulation accepted", 
-        acceptedAt: updatedUser.mboRegulationAcceptedAt 
+        acceptedAt: updatedUser.mboRegulationAcceptedAt ?? null
       });
     } catch (error) {
       handleError(res, error);
@@ -2099,7 +2345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!cycleId) {
         return res.status(400).json({ message: "cycleId is required" });
       }
-      const data = await competenciesStorage.getCompetenciesByPersona(cycleId as string);
+      const data = await competenciesStorage.getCompetenciesByDepartment(cycleId as string);
       res.json(data);
     } catch (error) {
       handleError(res, error);
@@ -2262,13 +2508,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/livelli-contrattuali", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { ccnlId } = req.query;
-      let query = db.select().from(livelliContrattuali);
-
-      if (ccnlId) {
-        query = query.where(eq(livelliContrattuali.ccnlId, ccnlId as string));
-      }
-
-      const result = await query.orderBy(asc(livelliContrattuali.ordinamento), desc(livelliContrattuali.updatedAt));
+      const result = await db
+        .select()
+        .from(livelliContrattuali)
+        .where(ccnlId ? eq(livelliContrattuali.ccnlId, ccnlId as string) : undefined)
+        .orderBy(asc(livelliContrattuali.ordinamento), desc(livelliContrattuali.updatedAt));
       res.json(result);
     } catch (error) {
       handleError(res, error);
@@ -2377,13 +2621,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/configurazioni-orario", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { tipo } = req.query;
-      let query = db.select().from(configurazioniOrario);
-
-      if (tipo) {
-        query = query.where(eq(configurazioniOrario.tipo, tipo as string));
-      }
-
-      const result = await query.orderBy(desc(configurazioniOrario.updatedAt));
+      const result = await db
+        .select()
+        .from(configurazioniOrario)
+        .where(tipo ? eq(configurazioniOrario.tipo, tipo as string) : undefined)
+        .orderBy(desc(configurazioniOrario.updatedAt));
       res.json(result);
     } catch (error) {
       handleError(res, error);
@@ -2610,7 +2852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let updatedPersona = existing[0];
       if (personaPayload) {
         const personaValidated = insertPersonaSchema.partial().parse(personaPayload);
-        [updatedPersona] = await db.update(persona).set({ ...personaValidated, updatedAt: new Date() }).where(eq(persona.codiceFiscale, codiceFiscale)).returning();
+        [updatedPersona] = await db.update(persona).set({ ...personaValidated, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(persona.codiceFiscale, codiceFiscale)).returning();
       }
 
       // Update or insert contatti
@@ -2620,7 +2862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contattiValidated = insertContattiSchema.partial().parse({ ...contattiPayload, codiceFiscale });
 
         if (existingContatti.length > 0) {
-          [updatedContatti] = await db.update(contatti).set({ ...contattiValidated, updatedAt: new Date() }).where(eq(contatti.codiceFiscale, codiceFiscale)).returning();
+          [updatedContatti] = await db.update(contatti).set({ ...contattiValidated, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(contatti.codiceFiscale, codiceFiscale)).returning();
         } else {
           const fullValidated = insertContattiSchema.parse({ ...contattiPayload, codiceFiscale });
           [updatedContatti] = await db.insert(contatti).values(fullValidated).returning();
@@ -2634,7 +2876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const orgValidated = insertOrganizzazioneSchema.partial().parse({ ...orgPayload, codiceFiscale });
 
         if (existingOrg.length > 0) {
-          [updatedOrg] = await db.update(organizzazione).set({ ...orgValidated, updatedAt: new Date() }).where(eq(organizzazione.codiceFiscale, codiceFiscale)).returning();
+          [updatedOrg] = await db.update(organizzazione).set({ ...orgValidated, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(organizzazione.codiceFiscale, codiceFiscale)).returning();
         } else {
           const fullValidated = insertOrganizzazioneSchema.parse({ ...orgPayload, codiceFiscale });
           [updatedOrg] = await db.insert(organizzazione).values(fullValidated).returning();
@@ -2648,7 +2890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contrattoValidated = insertContrattiSchema.partial().parse({ ...contrattoPayload, codiceFiscale, matricola: updatedPersona.matricola });
 
         if (existingContratto.length > 0) {
-          [updatedContratto] = await db.update(contratti).set({ ...contrattoValidated, updatedAt: new Date() }).where(eq(contratti.id, existingContratto[0].id)).returning();
+          [updatedContratto] = await db.update(contratti).set({ ...contrattoValidated, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(contratti.id, existingContratto[0].id)).returning();
         } else {
           const fullValidated = insertContrattiSchema.parse({ ...contrattoPayload, codiceFiscale, matricola: updatedPersona.matricola });
           [updatedContratto] = await db.insert(contratti).values(fullValidated).returning();
@@ -2662,7 +2904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const compensationValidated = insertCompensationSchema.partial().parse({ ...compensationPayload, codiceFiscale });
 
         if (existingCompensation.length > 0) {
-          [updatedCompensation] = await db.update(compensation).set({ ...compensationValidated, updatedAt: new Date() }).where(eq(compensation.id, existingCompensation[0].id)).returning();
+          [updatedCompensation] = await db.update(compensation).set({ ...compensationValidated, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(compensation.id, existingCompensation[0].id)).returning();
         } else {
           const fullValidated = insertCompensationSchema.parse({ ...compensationPayload, codiceFiscale, isCurrent: true });
           [updatedCompensation] = await db.insert(compensation).values(fullValidated).returning();
@@ -2676,7 +2918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const ruoliValidated = insertRuoliSchema.partial().parse({ ...ruoliPayload, codiceFiscale });
 
         if (existingRuoli.length > 0) {
-          [updatedRuoli] = await db.update(ruoli).set({ ...ruoliValidated, updatedAt: new Date() }).where(eq(ruoli.codiceFiscale, codiceFiscale)).returning();
+          [updatedRuoli] = await db.update(ruoli).set({ ...ruoliValidated, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(ruoli.codiceFiscale, codiceFiscale)).returning();
         } else {
           const fullValidated = insertRuoliSchema.parse({ ...ruoliPayload, codiceFiscale });
           [updatedRuoli] = await db.insert(ruoli).values(fullValidated).returning();
@@ -2725,7 +2967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If this is marked as current, set all other periods for this CF as not current
       if (data.isCurrent) {
         await db.update(smartWorkingStorico)
-          .set({ isCurrent: false, updatedAt: new Date() })
+          .set({ isCurrent: false, updatedAt: Math.floor(Date.now() / 1000) })
           .where(and(
             eq(smartWorkingStorico.codiceFiscale, data.codiceFiscale),
             eq(smartWorkingStorico.isCurrent, true)
@@ -2749,7 +2991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existing = await db.select().from(smartWorkingStorico).where(eq(smartWorkingStorico.id, req.params.id));
         if (existing.length > 0) {
           await db.update(smartWorkingStorico)
-            .set({ isCurrent: false, updatedAt: new Date() })
+            .set({ isCurrent: false, updatedAt: Math.floor(Date.now() / 1000) })
             .where(and(
               eq(smartWorkingStorico.codiceFiscale, existing[0].codiceFiscale),
               eq(smartWorkingStorico.isCurrent, true)
@@ -2758,7 +3000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const [updated] = await db.update(smartWorkingStorico)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(smartWorkingStorico.id, req.params.id))
         .returning();
 
@@ -2787,9 +3029,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const [updated] = await db.update(smartWorkingStorico)
         .set({
-          dataScadenza: new Date(),
-          isCurrent: false,
-          updatedAt: new Date(),
+          dataScadenza: Math.floor(Date.now() / 1000),
+          isCurrent: true,
+          updatedAt: Math.floor(Date.now() / 1000),
         })
         .where(eq(smartWorkingStorico.id, req.params.id))
         .returning();
@@ -2907,7 +3149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/peer-feedback-requests/:cycleId", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const requests = await competenciesStorage.getPeerFeedbackRequests(req.params.cycleId, userId);
+      const requests = await competenciesStorage.getPeerFeedbackRequests(req.params.cycleId, userId, "received");
       res.json(requests);
     } catch (error) {
       handleError(res, error);
@@ -3352,6 +3594,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await competenciesStorage.deleteUserCompetencyModelAssignment(req.params.assignmentId);
       res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Entry Gate ────────────────────────────────────────────────────────────
+
+  app.get("/api/entry-gates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const gates = await storage.getEntryGates(year);
+      res.json(gates);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/entry-gates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertEntryGateSchema.parse(req.body);
+      const gate = await storage.createEntryGate(data);
+      res.status(201).json(gate);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/entry-gates/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = insertEntryGateSchema.partial().parse(req.body);
+      const gate = await storage.updateEntryGate(req.params.id, data);
+      res.json(gate);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/entry-gates/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteEntryGate(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ─── Rendicontazione multi-canale ────────────────────────────────────────────
+
+  // Import email service lazily to avoid crashing on missing SMTP config
+  const { generateReportingToken, verifyReportingToken, sendReportingRequestEmail } = await import("./emailService");
+  const { calculateProgress } = await import("./reportingUtils");
+
+  // POST /api/dictionary/:id/request-reporting — invia email con link token
+  app.post("/api/dictionary/:id/request-reporting", isAuthenticated, canRendiconta, async (req, res) => {
+    try {
+      const dictionary = await storage.getObjectivesDictionaryItem(req.params.id);
+      if (!dictionary) return res.status(404).json({ message: "Obiettivo non trovato" });
+      if (!dictionary.dataSourceEmail) return res.status(400).json({ message: "Nessuna email configurata per questo obiettivo" });
+
+      const token = generateReportingToken(dictionary.id);
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+      await sendReportingRequestEmail(dictionary.dataSourceEmail, {
+        dictionaryTitle: dictionary.title,
+        targetValue: dictionary.targetValue,
+        dataSource: dictionary.dataSource,
+        objectiveType: dictionary.objectiveType,
+        token,
+        baseUrl,
+      });
+
+      // Log email sent (audit only — no value update, only insert into reportingLog)
+      await storage.createReportingLogEntry({
+        dictionaryId: dictionary.id,
+        reportedByUserId: getUserId(req),
+        reportingChannel: "email_link",
+        notes: `Richiesta email inviata a ${dictionary.dataSourceEmail}`,
+      });
+
+      res.json({ success: true, sentTo: dictionary.dataSourceEmail });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // GET /api/r/:token — public, no auth — restituisce dati obiettivo dal token
+  app.get("/api/r/:token", async (req, res) => {
+    try {
+      const payload = verifyReportingToken(req.params.token);
+      if (!payload) return res.status(401).json({ message: "Link non valido o scaduto" });
+
+      const dictionary = await storage.getObjectivesDictionaryItem(payload.dictionaryId);
+      if (!dictionary) return res.status(404).json({ message: "Obiettivo non trovato" });
+
+      res.json({
+        id: dictionary.id,
+        title: dictionary.title,
+        description: dictionary.description,
+        objectiveType: dictionary.objectiveType,
+        targetValue: dictionary.targetValue,
+        dataSource: dictionary.dataSource,
+        actualValue: dictionary.actualValue,
+        qualitativeResult: dictionary.qualitativeResult,
+        reportedAt: dictionary.reportedAt,
+      });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // POST /api/r/:token — public, no auth — invia consuntivo via token
+  app.post("/api/r/:token", async (req, res) => {
+    try {
+      const payload = verifyReportingToken(req.params.token);
+      if (!payload) return res.status(401).json({ message: "Link non valido o scaduto" });
+
+      const dictionary = await storage.getObjectivesDictionaryItem(payload.dictionaryId);
+      if (!dictionary) return res.status(404).json({ message: "Obiettivo non trovato" });
+
+      const { actualValue, qualitativeResult, notes } = req.body;
+      const { progress, finalQualitativeResult, finalActualValue } = calculateProgress(
+        dictionary,
+        actualValue !== undefined ? parseFloat(actualValue) : undefined,
+        qualitativeResult,
+      );
+
+      await storage.reportOnDictionary(payload.dictionaryId, {
+        actualValue: finalActualValue,
+        qualitativeResult: finalQualitativeResult,
+        progress,
+        channel: "email_link",
+        notes: notes ?? undefined,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // GET /api/dictionary/:id/reporting-log — storico per obiettivo
+  app.get("/api/dictionary/:id/reporting-log", isAuthenticated, canRendiconta, async (req, res) => {
+    try {
+      const log = await storage.getReportingLogByDictionary(req.params.id);
+      res.json(log);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // GET /api/reporting-log — log globale (admin only)
+  app.get("/api/reporting-log", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const log = await storage.getAllReportingLog();
+      res.json(log);
     } catch (error) {
       handleError(res, error);
     }

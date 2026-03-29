@@ -30,7 +30,6 @@ export default function ProfilePage() {
   // Initialize form with user data
   useEffect(() => {
     if (user) {
-      console.log("User data loaded:", user);
       setFormData({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
@@ -47,29 +46,15 @@ export default function ProfilePage() {
   // Mutation for updating profile
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/auth/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        console.error("Profile update failed:", error);
-        throw new Error(error.message || "Failed to update profile");
-      }
-      return response.json();
+      const res = await apiRequest("POST", "/api/auth/profile", data);
+      return res.json();
     },
     onSuccess: async () => {
-      toast({
-        title: "Successo",
-        description: "Profilo aggiornato correttamente",
-      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Profilo aggiornato" });
       setIsEditing(false);
-      // Invalidate all queries to force refetch
-      await queryClient.invalidateQueries();
     },
     onError: (error: any) => {
-      console.error("Update error:", error);
       toast({
         title: "Errore",
         description: error?.message || "Impossibile aggiornare il profilo",
@@ -138,164 +123,192 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Row 1: First Name and Last Name */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium">Nome</Label>
-                    <Input
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="bg-muted/50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium">Cognome</Label>
-                    <Input
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="bg-muted/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 2: Email and Department (read-only) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      disabled
-                      className="bg-muted/50 text-muted-foreground"
-                    />
-                    <p className="text-xs text-muted-foreground">Non è possibile modificare l'email</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="department" className="text-sm font-medium">Dipartimento</Label>
-                    <Input
-                      id="department"
-                      name="department"
-                      value={formData.department}
-                      disabled
-                      className="bg-muted/50 text-muted-foreground"
-                    />
-                    <p className="text-xs text-muted-foreground">Informazione di sistema</p>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t pt-6" />
-
-                {/* Contact Information Section */}
-                <div>
-                  <h3 className="text-base font-semibold mb-4">Informazioni di Contatto</h3>
-
-                  {/* Row 3: Phone */}
-                  <div className="space-y-2 mb-4">
-                    <Label htmlFor="telefono" className="text-sm font-medium">Numero di Telefono</Label>
-                    <Input
-                      id="telefono"
-                      name="telefono"
-                      type="tel"
-                      value={formData.telefono}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="es. +39 123 456 7890"
-                      className="bg-muted/50"
-                    />
-                  </div>
-
-                  {/* Row 4: Address */}
-                  <div className="space-y-2 mb-4">
-                    <Label htmlFor="indirizzo" className="text-sm font-medium">Indirizzo</Label>
-                    <Textarea
-                      id="indirizzo"
-                      name="indirizzo"
-                      value={formData.indirizzo}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="es. Via Roma 123"
-                      className="bg-muted/50 min-h-[100px]"
-                    />
-                  </div>
-
-                  {/* Row 5: CAP and City */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="cap" className="text-sm font-medium">CAP</Label>
-                      <Input
-                        id="cap"
-                        name="cap"
-                        value={formData.cap}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="es. 20100"
-                        className="bg-muted/50"
-                      />
+              {!isEditing ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm font-medium text-slate-500 mb-1">Nome</p>
+                      <p className="font-semibold text-slate-900 border-b border-transparent py-1">{formData.firstName || "-"}</p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="citta" className="text-sm font-medium">Città</Label>
-                      <Input
-                        id="citta"
-                        name="citta"
-                        value={formData.citta}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="es. Milano"
-                        className="bg-muted/50"
-                      />
+                    <div>
+                      <p className="text-sm font-medium text-slate-500 mb-1">Cognome</p>
+                      <p className="font-semibold text-slate-900 border-b border-transparent py-1">{formData.lastName || "-"}</p>
                     </div>
                   </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-6 border-t">
-                  {!isEditing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm font-medium text-slate-500 mb-1">Email</p>
+                      <p className="font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-md inline-block">{formData.email || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-500 mb-1">Dipartimento</p>
+                      <p className="font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-md inline-block">{formData.department || "-"}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-bold mb-4 text-slate-900">Informazioni di Contatto</h3>
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 mb-1">Numero di Telefono</p>
+                        <p className="font-semibold text-slate-900 py-1">{formData.telefono || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 mb-1">Indirizzo</p>
+                        <p className="font-semibold text-slate-900 py-1">{formData.indirizzo || "-"}</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-sm font-medium text-slate-500 mb-1">CAP</p>
+                          <p className="font-semibold text-slate-900 py-1">{formData.cap || "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-500 mb-1">Città</p>
+                          <p className="font-semibold text-slate-900 py-1">{formData.citta || "-"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-6 border-t">
                     <Button
                       type="button"
-                      onClick={() => {
-                        console.log("Edit button clicked");
-                        setIsEditing(true);
-                      }}
-                      className="gap-2 bg-primary hover:bg-primary/90"
+                      onClick={(e) => { e.preventDefault(); setIsEditing(true); }}
+                      className="gap-2 bg-slate-900 hover:bg-slate-800 text-white"
                       size="lg"
                     >
                       <Edit className="h-4 w-4" />
                       Modifica Profilo
                     </Button>
-                  ) : (
-                    <>
-                      <Button
-                        type="submit"
-                        disabled={updateProfileMutation.isPending}
-                        className="gap-2"
-                        size="lg"
-                      >
-                        <Save className="h-4 w-4" />
-                        {updateProfileMutation.isPending ? "Salvataggio..." : "Salva Modifiche"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancel}
-                        disabled={updateProfileMutation.isPending}
-                        size="lg"
-                      >
-                        Annulla
-                      </Button>
-                    </>
-                  )}
+                  </div>
                 </div>
-              </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6 bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden">
+                  {/* Etichetta stile nastro (Ribbon) per far capire che è in modifica */}
+                  <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider py-1 px-8 translate-x-1/4 translate-y-1/2 rotate-45 shadow-sm hidden sm:block">
+                    Modifica in corso
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="firstName" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Nome</Label>
+                      <Input
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="lastName" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Cognome</Label>
+                      <Input
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-500">Email (Sola Lettura)</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        disabled
+                        className="bg-slate-100 text-slate-500 border-slate-200 opacity-80 cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="department" className="text-xs font-bold uppercase tracking-wider text-slate-500">Dipartimento (Sola Lettura)</Label>
+                      <Input
+                        id="department"
+                        name="department"
+                        value={formData.department}
+                        disabled
+                        className="bg-slate-100 text-slate-500 border-slate-200 opacity-80 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-indigo-100 pt-6 mt-4 relative z-10">
+                    <h3 className="text-base font-bold mb-5 text-indigo-900">Informazioni di Contatto</h3>
+                    <div className="space-y-5">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="telefono" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Numero di Telefono</Label>
+                        <Input
+                          id="telefono"
+                          name="telefono"
+                          type="tel"
+                          value={formData.telefono}
+                          onChange={handleInputChange}
+                          className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="indirizzo" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Indirizzo</Label>
+                        <Textarea
+                          id="indirizzo"
+                          name="indirizzo"
+                          value={formData.indirizzo}
+                          onChange={handleInputChange}
+                          className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm min-h-[80px]"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="cap" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">CAP</Label>
+                          <Input
+                            id="cap"
+                            name="cap"
+                            value={formData.cap}
+                            onChange={handleInputChange}
+                            className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="citta" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Città</Label>
+                          <Input
+                            id="citta"
+                            name="citta"
+                            value={formData.citta}
+                            onChange={handleInputChange}
+                            className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-6 border-t border-indigo-200 relative z-10">
+                    <Button
+                      type="submit"
+                      disabled={updateProfileMutation.isPending}
+                      className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+                      size="lg"
+                    >
+                      <Save className="h-4 w-4" />
+                      {updateProfileMutation.isPending ? "Salvataggio in corso..." : "Salva Modifiche"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(e) => { e.preventDefault(); handleCancel(); }}
+                      disabled={updateProfileMutation.isPending}
+                      size="lg"
+                      className="border-indigo-200 text-indigo-900 hover:bg-indigo-100"
+                    >
+                      Annulla
+                    </Button>
+                  </div>
+                </form>
+              )}
             </CardContent>
           </Card>
 

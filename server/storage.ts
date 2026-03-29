@@ -32,6 +32,11 @@ import {
   type InsertMboRegulationAcceptance,
   appSettings,
   type AppSetting,
+  entryGate,
+  type EntryGate,
+  type InsertEntryGate,
+  reportingLog,
+  type ReportingLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -59,6 +64,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  getMboTeamMembers(managerId: string): Promise<User[]>;
   getAllUsersPaginated(params?: PaginationParams): Promise<PaginatedResponse<User>>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
   deleteUser(id: string): Promise<void>;
@@ -132,7 +138,21 @@ export interface IStorage {
   // App Settings
   getFeatureFlags(): Promise<Record<string, boolean>>;
   setFeatureFlags(flags: Record<string, boolean>): Promise<void>;
-  
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string): Promise<void>;
+
+  // Entry Gate
+  getEntryGates(year?: number): Promise<EntryGate[]>;
+  getEntryGate(id: string): Promise<EntryGate | undefined>;
+  createEntryGate(data: InsertEntryGate): Promise<EntryGate>;
+  updateEntryGate(id: string, data: Partial<InsertEntryGate>): Promise<EntryGate>;
+  deleteEntryGate(id: string): Promise<void>;
+
+  // Reporting Log
+  createReportingLogEntry(entry: { dictionaryId: string; reportedByUserId?: string | null; reportingChannel: string; actualValue?: number | null; qualitativeResult?: string | null; notes?: string | null; }): Promise<void>;
+  getReportingLogByDictionary(dictionaryId: string): Promise<ReportingLog[]>;
+  getAllReportingLog(): Promise<ReportingLog[]>;
+
   // Statistics
   getUserStats(userId: string): Promise<{ totalObjectives: number; completedObjectives: number }>;
 
@@ -168,6 +188,20 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(users.lastName, users.firstName);
+  }
+
+  async getMboTeamMembers(managerId: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.managerId, managerId),
+          sql`${users.mboPercentage} > 0`,
+          eq(users.isActive, true)
+        )
+      )
+      .orderBy(users.lastName, users.firstName);
   }
 
   async getAllUsersPaginated(params: PaginationParams = {}): Promise<PaginatedResponse<User>> {
@@ -612,6 +646,9 @@ export class DatabaseStorage implements IStorage {
     actualValue?: number;
     qualitativeResult?: string;
     progress: number;
+    channel?: "email_link" | "admin_manual" | "rendicontatore";
+    reportedByUserId?: string;
+    notes?: string;
   }): Promise<void> {
     // Update the dictionary
     await db
@@ -643,6 +680,49 @@ export class DatabaseStorage implements IStorage {
       // Update all assignments for this objective
       await this.updateAssignmentProgressByObjective(objective.id, reportData.progress);
     }
+
+    // Log the reporting event
+    await db.insert(reportingLog).values({
+      dictionaryId,
+      reportedByUserId: reportData.reportedByUserId ?? null,
+      reportingChannel: reportData.channel ?? "admin_manual",
+      actualValue: reportData.actualValue ?? null,
+      qualitativeResult: reportData.qualitativeResult ?? null,
+      notes: reportData.notes ?? null,
+    });
+  }
+
+  async createReportingLogEntry(entry: {
+    dictionaryId: string;
+    reportedByUserId?: string | null;
+    reportingChannel: string;
+    actualValue?: number | null;
+    qualitativeResult?: string | null;
+    notes?: string | null;
+  }): Promise<void> {
+    await db.insert(reportingLog).values({
+      dictionaryId: entry.dictionaryId,
+      reportedByUserId: entry.reportedByUserId ?? null,
+      reportingChannel: entry.reportingChannel,
+      actualValue: entry.actualValue ?? null,
+      qualitativeResult: entry.qualitativeResult ?? null,
+      notes: entry.notes ?? null,
+    });
+  }
+
+  async getReportingLogByDictionary(dictionaryId: string): Promise<ReportingLog[]> {
+    return await db
+      .select()
+      .from(reportingLog)
+      .where(eq(reportingLog.dictionaryId, dictionaryId))
+      .orderBy(desc(reportingLog.reportedAt));
+  }
+
+  async getAllReportingLog(): Promise<ReportingLog[]> {
+    return await db
+      .select()
+      .from(reportingLog)
+      .orderBy(desc(reportingLog.reportedAt));
   }
 
   // MBO Regulation Acceptance operations
@@ -666,7 +746,16 @@ export class DatabaseStorage implements IStorage {
 
   // App Settings
   async getFeatureFlags(): Promise<Record<string, boolean>> {
-    const defaults = { gestione_anagrafiche: true, gestione_mbo: true, performance_management: true, gestione_organizzazione: true };
+    const defaults = {
+      gestione_anagrafiche_admin: true,
+      gestione_anagrafiche_user: false,
+      gestione_mbo_admin: true,
+      gestione_mbo_user: true,
+      performance_management_admin: true,
+      performance_management_user: true,
+      gestione_organizzazione_admin: false,
+      gestione_organizzazione_user: true,
+    };
     const [row] = await db.select().from(appSettings).where(eq(appSettings.key, "feature_flags"));
     if (!row) return defaults;
     try {
@@ -680,6 +769,17 @@ export class DatabaseStorage implements IStorage {
     await db.insert(appSettings)
       .values({ key: "feature_flags", value: JSON.stringify(flags) })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: JSON.stringify(flags), updatedAt: nowUnix() } });
+  }
+
+  async getAppSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setAppSetting(key: string, value: string): Promise<void> {
+    await db.insert(appSettings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: nowUnix() } });
   }
 
   // Statistics
@@ -808,6 +908,34 @@ export class DatabaseStorage implements IStorage {
   async deleteCustomFieldValue(fieldId: string, userId: string) {
     const { customFieldsStorage } = await import("./customFieldsStorage");
     return customFieldsStorage.deleteCustomFieldValue(fieldId, userId);
+  }
+
+  // ── Entry Gate ────────────────────────────────────────────────────────────
+
+  async getEntryGates(year?: number): Promise<EntryGate[]> {
+    if (year !== undefined) {
+      return db.select().from(entryGate).where(eq(entryGate.year, year)).orderBy(desc(entryGate.createdAt));
+    }
+    return db.select().from(entryGate).orderBy(desc(entryGate.createdAt));
+  }
+
+  async getEntryGate(id: string): Promise<EntryGate | undefined> {
+    const [row] = await db.select().from(entryGate).where(eq(entryGate.id, id));
+    return row;
+  }
+
+  async createEntryGate(data: InsertEntryGate): Promise<EntryGate> {
+    const [row] = await db.insert(entryGate).values(data).returning();
+    return row;
+  }
+
+  async updateEntryGate(id: string, data: Partial<InsertEntryGate>): Promise<EntryGate> {
+    const [row] = await db.update(entryGate).set({ ...data, updatedAt: nowUnix() }).where(eq(entryGate.id, id)).returning();
+    return row;
+  }
+
+  async deleteEntryGate(id: string): Promise<void> {
+    await db.delete(entryGate).where(eq(entryGate.id, id));
   }
 }
 

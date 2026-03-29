@@ -59,6 +59,13 @@ interface ObjectiveDictionary {
   objectiveType?: string;
   targetValue?: number | null;
   thresholdValue?: number | null;
+  thresholdPayout?: number | null;
+  allowOverperformance?: number | null;
+  maxPayout?: number | null;
+  targetDescription?: string | null;
+  dataSource?: string | null;
+  dataSourceEmail?: string | null;
+  deadline?: number | null;
   indicatorCluster?: {
     id: string;
     name: string;
@@ -102,6 +109,7 @@ export default function AdminObjectivesPage() {
     description: "",
     targetDescription: "",
     dataSource: "",
+    dataSourceEmail: "",
     indicatorClusterId: "",
     calculationTypeId: "",
     objectiveType: "numeric",
@@ -110,6 +118,7 @@ export default function AdminObjectivesPage() {
     thresholdPayout: "50",
     allowOverperformance: false,
     maxPayout: "120",
+    deadline: "",
   });
 
   const handleSectionClick = (sectionId: string) => {
@@ -152,6 +161,7 @@ export default function AdminObjectivesPage() {
         description: data.description,
         targetDescription: data.targetDescription || null,
         dataSource: data.dataSource || null,
+        dataSourceEmail: data.dataSourceEmail || null,
         indicatorClusterId: data.indicatorClusterId,
         calculationTypeId: data.calculationTypeId,
         objectiveType: data.objectiveType,
@@ -160,6 +170,7 @@ export default function AdminObjectivesPage() {
         thresholdPayout: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdPayout) : null,
         allowOverperformance: data.allowOverperformance ? 1 : 0,
         maxPayout: data.allowOverperformance ? parseFloat(data.maxPayout) : null,
+        deadline: data.deadline ? Math.floor(new Date(data.deadline).getTime() / 1000) : null,
       };
       const res = await apiRequest("POST", "/api/objectives-dictionary", payload);
       return res.json();
@@ -168,7 +179,7 @@ export default function AdminObjectivesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/objectives-dictionary"] });
       toast({ title: "Obiettivo creato con successo" });
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120" });
+      setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", dataSourceEmail: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120", deadline: "" });
     },
     onError: (error) => {
       toast({
@@ -180,12 +191,13 @@ export default function AdminObjectivesPage() {
   });
 
   const updateObjectiveMutation = useMutation({
-    mutationFn: async (data: { id: string; title: string; description: string; targetDescription: string; dataSource: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string; thresholdValue: string; thresholdPayout: string; allowOverperformance: boolean; maxPayout: string }) => {
+    mutationFn: async (data: { id: string; title: string; description: string; targetDescription: string; dataSource: string; dataSourceEmail: string; indicatorClusterId: string; calculationTypeId: string; objectiveType: string; targetValue: string; thresholdValue: string; thresholdPayout: string; allowOverperformance: boolean; maxPayout: string; deadline: string }) => {
       const payload = {
         title: data.title,
         description: data.description,
         targetDescription: data.targetDescription || null,
         dataSource: data.dataSource || null,
+        dataSourceEmail: data.dataSourceEmail || null,
         indicatorClusterId: data.indicatorClusterId,
         calculationTypeId: data.calculationTypeId,
         objectiveType: data.objectiveType,
@@ -194,6 +206,7 @@ export default function AdminObjectivesPage() {
         thresholdPayout: data.objectiveType === "numeric" && data.thresholdValue ? parseFloat(data.thresholdPayout) : null,
         allowOverperformance: data.allowOverperformance ? 1 : 0,
         maxPayout: data.allowOverperformance ? parseFloat(data.maxPayout) : null,
+        deadline: data.deadline ? Math.floor(new Date(data.deadline).getTime() / 1000) : null,
       };
       const res = await apiRequest("PATCH", `/api/objectives-dictionary/${data.id}`, payload);
       return res.json();
@@ -203,7 +216,7 @@ export default function AdminObjectivesPage() {
       toast({ title: "Obiettivo aggiornato con successo" });
       setEditingId(null);
       setIsDialogOpen(false);
-      setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120" });
+      setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", dataSourceEmail: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120", deadline: "" });
     },
     onError: (error) => {
       toast({
@@ -297,13 +310,15 @@ export default function AdminObjectivesPage() {
       maxPayout: (obj.maxPayout ?? 120).toString(),
       targetDescription: obj.targetDescription || "",
       dataSource: obj.dataSource || "",
+      dataSourceEmail: obj.dataSourceEmail || "",
+      deadline: obj.deadline ? new Date(obj.deadline * 1000).toISOString().split("T")[0] : "",
     });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setEditingId(null);
-    setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120" });
+    setNewObjective({ title: "", description: "", targetDescription: "", dataSource: "", dataSourceEmail: "", indicatorClusterId: "", calculationTypeId: "", objectiveType: "numeric", targetValue: "", thresholdValue: "", thresholdPayout: "50", allowOverperformance: false, maxPayout: "120", deadline: "" });
     setIsDialogOpen(false);
   };
 
@@ -356,14 +371,37 @@ export default function AdminObjectivesPage() {
                           onChange={(e) => setNewObjective({ ...newObjective, targetDescription: e.target.value })}
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="data-source">Fonte Dati</Label>
+                          <Input
+                            id="data-source"
+                            placeholder="Es. Dati consuntivazione al 31 dic. — [Fonte: Controlling]"
+                            value={newObjective.dataSource}
+                            onChange={(e) => setNewObjective({ ...newObjective, dataSource: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="data-source-email">Email Responsabile Fonte</Label>
+                          <Input
+                            id="data-source-email"
+                            type="email"
+                            placeholder="Es. controlling@azienda.it"
+                            value={newObjective.dataSourceEmail}
+                            onChange={(e) => setNewObjective({ ...newObjective, dataSourceEmail: e.target.value })}
+                          />
+                          <p className="text-[10px] text-muted-foreground">Riceverà link per rendicontare via email</p>
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="data-source">Fonte Dati</Label>
+                        <Label htmlFor="deadline">Data di Scadenza / Verifica</Label>
                         <Input
-                          id="data-source"
-                          placeholder="Es. Dati consuntivazione al 31 dic. — [Fonte: Controlling]"
-                          value={newObjective.dataSource}
-                          onChange={(e) => setNewObjective({ ...newObjective, dataSource: e.target.value })}
+                          id="deadline"
+                          type="date"
+                          value={newObjective.deadline}
+                          onChange={(e) => setNewObjective({ ...newObjective, deadline: e.target.value })}
                         />
+                        <p className="text-[10px] text-muted-foreground">Il dipendente riceve alert 60 e 30 giorni prima</p>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

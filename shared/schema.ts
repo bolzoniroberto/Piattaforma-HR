@@ -38,7 +38,11 @@ export const users = sqliteTable("users", {
   ral: real("ral"), // Annual salary
   mboPercentage: integer("mbo_percentage"), // MBO percentage (in multiples of 5)
   mboRegulationAcceptedAt: integer("mbo_regulation_accepted_at"), // When user accepted MBO regulation
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1), // Whether user is active
+  faqReadAt: integer("faq_read_at"), // When user last read the FAQs
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true), // Whether user is active
+  beneficiaryType: text("beneficiary_type").notNull().default("standard"), // MBO beneficiary type: standard, DIRS, CEO
+  hireDate: text("hire_date"), // ISO date of hire in current MBO year (for pro-rata alerts)
+  isRendicontatore: integer("is_rendicontatore", { mode: "boolean" }).notNull().default(false), // Can report actuals centrally
   telefono: text("telefono"), // Phone number
   indirizzo: text("indirizzo"), // Address
   cap: text("cap", { length: 10 }), // Postal code
@@ -63,6 +67,7 @@ const baseUpsertUserSchema = createInsertSchema(users).pick({
   ral: true,
   mboPercentage: true,
   mboRegulationAcceptedAt: true,
+  faqReadAt: true,
   isActive: true,
   telefono: true,
   indirizzo: true,
@@ -84,6 +89,10 @@ export const upsertUserSchema = baseUpsertUserSchema.omit({
   indirizzo: z.string().nullable().optional(),
   cap: z.string().nullable().optional(),
   citta: z.string().nullable().optional(),
+  beneficiaryType: z.enum(["standard", "DIRS", "CEO"]).optional(),
+  hireDate: z.string().nullable().optional(),
+  isRendicontatore: z.boolean().optional(),
+  faqReadAt: z.number().nullable().optional(),
 });
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
@@ -213,7 +222,7 @@ export const contratti = sqliteTable("contratti", {
   categoriaProtettaId: text("categoria_protetta_id").references(() => categorieProtette.id),
   // Altri
   aziendaProvenienza: text("azienda_provenienza", { length: 255 }),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
@@ -246,7 +255,7 @@ export const compensation = sqliteTable("compensation", {
   // Periodo di validità
   validoDa: integer("valido_da").notNull(),
   validoA: integer("valido_a"),
-  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -309,7 +318,7 @@ export const sedi = sqliteTable("sedi", {
   indirizzo: text("indirizzo"),
   cap: text("cap", { length: 10 }),
   provincia: text("provincia", { length: 2 }),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -328,7 +337,7 @@ export const ccnl = sqliteTable("ccnl", {
   id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   codiceCcnl: text("codice_ccnl", { length: 50 }).unique().notNull(),
   descrizioneCcnl: text("descrizione_ccnl", { length: 255 }).notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -349,7 +358,7 @@ export const livelliContrattuali = sqliteTable("livelli_contrattuali", {
   codiceLivello: text("codice_livello", { length: 50 }).notNull(),
   descrizioneLivello: text("descrizione_livello", { length: 255 }).notNull(),
   ordinamento: integer("ordinamento").default(0),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => ({
@@ -370,7 +379,7 @@ export const categorieProtette = sqliteTable("categorie_protette", {
   id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   codice: text("codice", { length: 50 }).unique().notNull(),
   descrizione: text("descrizione", { length: 255 }).notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -390,7 +399,7 @@ export const configurazioniOrario = sqliteTable("configurazioni_orario", {
   codice: text("codice", { length: 50 }).unique().notNull(),
   tipo: text("tipo", { length: 50 }).notNull(), // "tipo_orario" o "timbra_firma"
   descrizione: text("descrizione", { length: 255 }).notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -411,7 +420,7 @@ export const causaliAssunzione = sqliteTable("causali_assunzione", {
   id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   codice: text("codice", { length: 50 }).unique().notNull(),
   descrizione: text("descrizione").notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -432,7 +441,7 @@ export const smartWorkingStorico = sqliteTable("smart_working_storico", {
   tipologiaSmartWorking: text("tipologia_smart_working", { length: 100 }).notNull(),
   dataDecorrenza: integer("data_decorrenza").notNull(),
   dataScadenza: integer("data_scadenza"),
-  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(true),
   note: text("note"),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
@@ -457,7 +466,7 @@ export const livelliContrattualiStorico = sqliteTable("livelli_contrattuali_stor
   livelloContrattualeId: text("livello_contrattuale_id").references(() => livelliContrattuali.id),
   dataDecorrenza: integer("data_decorrenza").notNull(),
   dataFine: integer("data_fine"),
-  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
@@ -546,9 +555,11 @@ export const objectivesDictionary = sqliteTable("objectives_dictionary", {
   maxPayout: real("max_payout").default(120), // Max payout % when overperformance is enabled
   targetDescription: text("target_description"), // Detailed description of what reaching the target means
   dataSource: text("data_source"), // Data source / where result data comes from
+  dataSourceEmail: text("data_source_email"), // Email of the person responsible for reporting this data source
   actualValue: real("actual_value"), // Actual value reported (for numeric objectives)
   qualitativeResult: text("qualitative_result"), // "reached", "partial", "not_reached"
   reportedAt: integer("reported_at"), // When the objective was reported
+  deadline: integer("deadline"), // Unix timestamp — data di scadenza/verifica dell'obiettivo
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -566,6 +577,8 @@ export const insertObjectivesDictionarySchema = createInsertSchema(objectivesDic
   maxPayout: z.coerce.number().min(100).nullable().optional(),
   targetDescription: z.string().nullable().optional(),
   dataSource: z.string().nullable().optional(),
+  dataSourceEmail: z.string().email().nullable().optional(),
+  deadline: z.coerce.number().int().nullable().optional(),
 });
 
 export type InsertObjectivesDictionary = z.infer<typeof insertObjectivesDictionarySchema>;
@@ -632,7 +645,7 @@ export const documents = sqliteTable("documents", {
   description: text("description"),
   type: text("type").notNull(), // regulation, policy, contract
   filePath: text("file_path"),
-  requiresAcceptance: integer("requires_acceptance", { mode: "boolean" }).notNull().default(0),
+  requiresAcceptance: integer("requires_acceptance", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -681,6 +694,33 @@ export const insertMboRegulationAcceptanceSchema = createInsertSchema(mboRegulat
 export type InsertMboRegulationAcceptance = z.infer<typeof insertMboRegulationAcceptanceSchema>;
 export type MboRegulationAcceptance = typeof mboRegulationAcceptances.$inferSelect;
 
+// Entry Gate - Indicatore aziendale che condiziona l'erogazione del bonus MBO
+export const entryGate = sqliteTable("entry_gate", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  year: integer("year").notNull(),
+  indicatorName: text("indicator_name").notNull(), // Es. "EBITDA", "Fatturato", "Margine Operativo"
+  targetValue: real("target_value").notNull(),
+  actualValue: real("actual_value"),
+  thresholdPct: integer("threshold_pct").notNull().default(95), // Soglia % (default 95%)
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
+
+export const insertEntryGateSchema = createInsertSchema(entryGate).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  targetValue: z.coerce.number(),
+  actualValue: z.coerce.number().nullable().optional(),
+  thresholdPct: z.number().int().min(1).max(100).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export type InsertEntryGate = z.infer<typeof insertEntryGateSchema>;
+export type EntryGate = typeof entryGate.$inferSelect;
+
 // App Settings - key/value store for platform configuration
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
@@ -689,6 +729,22 @@ export const appSettings = sqliteTable("app_settings", {
 });
 
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// Reporting Log - Audit trail of all rendicontazione events
+export const reportingLog = sqliteTable("reporting_log", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  dictionaryId: text("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "cascade" }),
+  reportedByUserId: text("reported_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reportingChannel: text("reporting_channel").notNull(), // "email_link" | "admin_manual" | "rendicontatore"
+  actualValue: real("actual_value"),
+  qualitativeResult: text("qualitative_result"),
+  notes: text("notes"),
+  reportedAt: integer("reported_at").default(sql`(unixepoch())`),
+});
+
+export const insertReportingLogSchema = createInsertSchema(reportingLog).omit({ id: true, reportedAt: true });
+export type InsertReportingLog = z.infer<typeof insertReportingLogSchema>;
+export type ReportingLog = typeof reportingLog.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -920,9 +976,9 @@ export const customFieldDefinitions = sqliteTable("custom_field_definitions", {
   fieldType: text("field_type").notNull(), // text, number, date, select, multiselect, boolean, email, phone, url
   category: text("category").notNull(), // personal, contact, organizational, professional, custom
   section: text("section"), // Which section of the profile to display in
-  isRequired: integer("is_required", { mode: "boolean" }).notNull().default(0),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
-  isSearchable: integer("is_searchable", { mode: "boolean" }).notNull().default(0),
+  isRequired: integer("is_required", { mode: "boolean" }).notNull().default(false),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isSearchable: integer("is_searchable", { mode: "boolean" }).notNull().default(false),
   displayOrder: integer("display_order").default(0),
   placeholder: text("placeholder"),
   helpText: text("help_text"),
@@ -999,7 +1055,7 @@ export const competencyModels = sqliteTable("competency_models", {
   name: text("name").notNull(), // "Executive Competencies", "Manager Competencies"
   description: text("description"),
   personaType: text("persona_type").notNull(), // "executive", "manager", "professional", "individual_contributor"
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(1),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
@@ -1025,7 +1081,7 @@ export const userCompetencyModelAssignments = sqliteTable("user_competency_model
   assignedBy: text("assigned_by").references(() => users.id, { onDelete: "set null" }),
   validFrom: integer("valid_from").notNull().default(sql`(unixepoch())`),
   validTo: integer("valid_to"),
-  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(1),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(true),
   notes: text("notes"),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
@@ -1039,8 +1095,12 @@ export const insertUserCompetencyModelAssignmentSchema = createInsertSchema(user
   updatedAt: true,
   assignedAt: true,
 }).extend({
-  validFrom: z.union([z.string(), z.date()]).transform(val => new Date(val)),
-  validTo: z.union([z.string(), z.date(), z.null()]).transform(val => val ? new Date(val) : null).nullable().optional(),
+  validFrom: z.union([z.string(), z.number(), z.date()]).transform(val => 
+    typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000)
+  ),
+  validTo: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => 
+    val === null ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))
+  ).nullable().optional(),
 });
 
 export type InsertUserCompetencyModelAssignment = z.infer<typeof insertUserCompetencyModelAssignmentSchema>;
@@ -1053,7 +1113,7 @@ export const competencies = sqliteTable("competencies", {
   name: text("name").notNull(), // "Leadership", "Problem Solving", "Communication"
   description: text("description"),
   category: text("category"), // "technical", "behavioral", "leadership", "transversal"
-  isTransversal: integer("is_transversal", { mode: "boolean" }).notNull().default(0), // Shared across multiple personas
+  isTransversal: integer("is_transversal", { mode: "boolean" }).notNull().default(false), // Shared across multiple personas
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
@@ -1088,7 +1148,7 @@ export const evaluationCycles = sqliteTable("evaluation_cycles", {
   feedbackDeliveryEnd: integer("feedback_delivery_end"),
 
   // Configuration
-  enable360Feedback: integer("enable_360_feedback", { mode: "boolean" }).notNull().default(0),
+  enable360Feedback: integer("enable_360_feedback", { mode: "boolean" }).notNull().default(false),
 
   // Metadata
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
@@ -1104,14 +1164,14 @@ export const insertEvaluationCycleSchema = createInsertSchema(evaluationCycles).
   status: z.enum(["draft", "active", "completed", "archived"]).default("draft"),
   createdBy: z.string().optional(),
   // Convert date strings to Date objects, handle empty strings and null values
-  selfAssessmentStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  selfAssessmentEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  peerFeedbackStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  peerFeedbackEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  managerEvaluationStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  managerEvaluationEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  feedbackDeliveryStart: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
-  feedbackDeliveryEnd: z.union([z.string(), z.date(), z.null()]).transform(val => !val || val === '' ? null : new Date(val)).nullable().optional(),
+  selfAssessmentStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  selfAssessmentEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  peerFeedbackStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  peerFeedbackEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  managerEvaluationStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  managerEvaluationEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  feedbackDeliveryStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  feedbackDeliveryEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
 });
 
 export type InsertEvaluationCycle = z.infer<typeof insertEvaluationCycleSchema>;
@@ -1212,7 +1272,7 @@ export const peerFeedbacks = sqliteTable("peer_feedbacks", {
   competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
-  isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(1),
+  isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(true),
   submittedAt: integer("submitted_at"),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
@@ -1313,7 +1373,7 @@ export const evaluationNotifications = sqliteTable("evaluation_notifications", {
   phase: text("phase").notNull(), // "self_assessment", "peer_feedback", "manager_evaluation", "feedback_delivery"
   title: text("title").notNull(),
   message: text("message").notNull(),
-  isRead: integer("is_read", { mode: "boolean" }).notNull().default(0),
+  isRead: integer("is_read", { mode: "boolean" }).notNull().default(false),
   sentAt: integer("sent_at").default(sql`(unixepoch())`),
   readAt: integer("read_at"),
   createdAt: integer("created_at").default(sql`(unixepoch())`),

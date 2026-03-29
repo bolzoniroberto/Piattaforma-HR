@@ -9,9 +9,10 @@ interface AppLayoutProps {
   pageTitle?: string;
   pageDescription?: string;
   pageIcon?: any;
+  actions?: React.ReactNode;
 }
 
-export default function AppLayout({ children, pageTitle }: AppLayoutProps) {
+export default function AppLayout({ children, pageTitle, actions }: AppLayoutProps) {
   const { user } = useAuth();
   
   const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
@@ -40,6 +41,7 @@ export default function AppLayout({ children, pageTitle }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-6">
+            {actions && <div className="flex items-center gap-3 pr-6 border-r border-slate-200">{actions}</div>}
             <button className="text-slate-500 hover:text-slate-900 transition-colors">
               <Bell className="w-5 h-5" />
             </button>

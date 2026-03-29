@@ -16,6 +16,8 @@ import {
   TrendingUp,
   UserCheck,
   Table2,
+  HelpCircle,
+  ClipboardList,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -25,6 +27,10 @@ export interface NavItem {
   url?: string;
   icon: LucideIcon;
   adminOnly: boolean;
+  /** If true, visible only to admin OR users with isRendicontatore = true */
+  rendicontatoreOnly?: boolean;
+  /** If true, visible only to admin OR users with role = "manager" */
+  managerOnly?: boolean;
   /** Matches a key in FeatureFlags — if the flag is false, the whole section is hidden */
   moduleId?: string;
   children?: NavItem[];
@@ -49,6 +55,20 @@ export const railNavigation: NavItem[] = [
         title: "Profilo",
         url: "/profilo",
         icon: UserCircle,
+        adminOnly: false,
+      },
+      {
+        id: "regulation",
+        title: "Regolamento MBO",
+        url: "/regulation",
+        icon: FileText,
+        adminOnly: false,
+      },
+      {
+        id: "regulation-faq",
+        title: "FAQ Regolamento",
+        url: "/regulation/faq",
+        icon: HelpCircle,
         adminOnly: false,
       },
     ],
@@ -128,6 +148,23 @@ export const railNavigation: NavItem[] = [
     ],
   },
   {
+    id: "rendicontazione",
+    title: "Rendicontazione",
+    icon: ClipboardList,
+    adminOnly: false,
+    rendicontatoreOnly: true,
+    children: [
+      {
+        id: "rendiconta",
+        title: "Rendiconta Obiettivi",
+        url: "/rendiconta",
+        icon: ClipboardList,
+        adminOnly: false,
+        rendicontatoreOnly: true,
+      },
+    ],
+  },
+  {
     id: "valutazione",
     title: "Valutazione",
     icon: ClipboardCheck,
@@ -179,6 +216,15 @@ export const railNavigation: NavItem[] = [
         adminOnly: false,
       },
     ],
+  },
+  {
+    id: "manager-mbo",
+    title: "MBO Team",
+    icon: Target,
+    adminOnly: false,
+    managerOnly: true,
+    moduleId: "gestione_mbo",
+    children: [],
   },
   {
     id: "competenze",

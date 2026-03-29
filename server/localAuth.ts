@@ -149,3 +149,40 @@ export const isAdmin: RequestHandler = async (req, res, next) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const isManager: RequestHandler = async (req, res, next) => {
+  try {
+    const userId = (req.user as any)?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user || (user.role !== "admin" && user.role !== "manager")) {
+      return res.status(403).json({ message: "Forbidden - manager access required" });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Allows admin OR users with isRendicontatore = true
+export const canRendiconta: RequestHandler = async (req, res, next) => {
+  try {
+    const userId = (req.user as any)?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user || (user.role !== "admin" && !user.isRendicontatore)) {
+      return res.status(403).json({ message: "Forbidden - Rendicontatore access required" });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

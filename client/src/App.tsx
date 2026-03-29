@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,11 +8,13 @@ import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
+import LandingPage from "@/pages/LandingPage";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import ProfilePage from "@/pages/ProfilePage";
 import ProfiloPage from "@/pages/ProfiloPage";
 import TeamPage from "@/pages/TeamPage";
-import RegulationPage from "@/pages/RegulationPage";
+import RegulationPage, { RegulationPageActions } from "@/pages/RegulationPage";
+import RegulationFAQPage, { RegulationFAQPageActions } from "@/pages/RegulationFAQPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
@@ -36,9 +38,11 @@ import ManagerTeamEvaluationsPage from "@/pages/ManagerTeamEvaluationsPage";
 import ManagerEmployeeEvaluationPage from "@/pages/ManagerEmployeeEvaluationPage";
 import ManagerDevelopmentPlansPage from "@/pages/ManagerDevelopmentPlansPage";
 import OrgChartPage from "@/pages/OrgChartPage";
+import RendicontatorePage from "@/pages/RendicontatorePage";
+import RendicontaPublicPage from "@/pages/RendicontaPublicPage";
+import ManagerMboAssignPage from "@/pages/ManagerMboAssignPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
 
 // Initialize demo mode BEFORE React render (at module load time)
 // Only activate if ?demo=admin or ?demo=employee is explicitly passed
@@ -52,21 +56,14 @@ if (typeof window !== "undefined") {
 }
 
 function RootPage() {
-  const [, navigate] = useLocation();
   const { user, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      navigate("/login");
-    }
-  }, [user, isLoading, navigate]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Caricamento...</p></div>;
   }
 
   if (!user) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Reindirizzamento al login...</p></div>;
+    return <LandingPage />;
   }
 
   return (
@@ -82,8 +79,13 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/" component={RootPage} />
       <Route path="/regulation" component={() => (
-        <ProtectedRoute>
+        <ProtectedRoute pageTitle="MBO Regulation 2026" actions={<RegulationPageActions />}>
           <RegulationPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/regulation/faq" component={() => (
+        <ProtectedRoute pageTitle="Frequently Asked Questions" actions={<RegulationFAQPageActions />}>
+          <RegulationFAQPage />
         </ProtectedRoute>
       )} />
       <Route path="/profile" component={() => (
@@ -214,6 +216,17 @@ function Router() {
       <Route path="/team" component={() => (
         <ProtectedRoute>
           <TeamPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/rendiconta" component={() => (
+        <ProtectedRoute>
+          <RendicontatorePage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/r/:token" component={RendicontaPublicPage} />
+      <Route path="/manager/mbo-assign" component={() => (
+        <ProtectedRoute>
+          <ManagerMboAssignPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />

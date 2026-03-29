@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import EmployeeCard from "@/components/EmployeeCard";
 import DocumentList, { type Document } from "@/components/DocumentList";
@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard, HelpCircle, ChevronDown } from "lucide-react";
+import { FileText, AlertCircle, Target, Users, Leaf, Building, Calculator, Euro, TrendingUp, BarChart3, CheckCircle2, XCircle, Check, LayoutDashboard, HelpCircle, ChevronDown, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRail } from "@/contexts/RailContext";
@@ -44,6 +44,8 @@ interface EnrichedObjective {
   calculationTypeId: string;
   status: ObjectiveStatus;
   deadline?: string;
+  deadlineTs?: number | null;
+  daysToDeadline?: number | null;
   progress: number;
   weight: number;
   economicValue: number;
@@ -141,6 +143,21 @@ export default function EmployeeDashboard() {
     },
   });
 
+  // Mutation for reading FAQs
+  const readFaqMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/read-faq", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ 
+        title: "FAQ consultate",
+        description: "Abbiamo registrato che hai letto le FAQ"
+      });
+    },
+  });
+
   // Transform API data to component format
   const employee = useMemo(() => {
     if (!user) return null;
@@ -213,8 +230,12 @@ export default function EmployeeDashboard() {
         calculationTypeId: obj?.calculationType?.id || "",
         status: assignment.status as ObjectiveStatus,
         deadline: obj?.deadline
-          ? new Date(obj.deadline).toLocaleDateString("it-IT")
+          ? new Date(obj.deadline * 1000).toLocaleDateString("it-IT")
           : undefined,
+        deadlineTs: obj?.deadline ?? null,
+        daysToDeadline: obj?.deadline
+          ? Math.ceil((obj.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+          : null,
         progress: assignment.progress || 0,
         weight,
         economicValue,
@@ -227,6 +248,18 @@ export default function EmployeeDashboard() {
       };
     });
   }, [objectiveAssignments, mboTarget]);
+
+  // Deadline alerts: objectives with deadline in ≤60 days and not completed
+  const deadlineAlerts = useMemo(() => {
+    return objectives
+      .filter(o =>
+        o.daysToDeadline !== null &&
+        o.daysToDeadline !== undefined &&
+        o.daysToDeadline <= 60 &&
+        o.status !== "completato"
+      )
+      .sort((a, b) => (a.daysToDeadline ?? 0) - (b.daysToDeadline ?? 0));
+  }, [objectives]);
 
   // Group objectives by cluster
   const objectivesByCluster = useMemo(() => {
@@ -254,6 +287,83 @@ export default function EmployeeDashboard() {
       accepted: acceptedDocIds.has(doc.id),
     }));
   }, [allDocuments, acceptedDocs]);
+
+  // Generate natural language activity feed
+  const activityFeed = useMemo(() => {
+    if (!user) return [];
+    const activities: Array<{ id: string; title: string; description: string; icon: any; color: string }> = [];
+
+    // 1. Regulation Activity
+    if (!user.mboRegulationAcceptedAt) {
+      activities.push({
+        id: "reg-pending",
+        title: "Compliance Necessaria",
+        description: "Non hai ancora firmato il regolamento MBO. È importante farlo per sbloccare tutte le funzionalità.",
+        icon: AlertCircle,
+        color: "bg-amber-100 text-amber-600"
+      });
+    } else {
+      activities.push({
+        id: "reg-signed",
+        title: "Regolamento Firmato",
+        description: `Ottimo! Hai firmato il regolamento MBO il ${new Date(user.mboRegulationAcceptedAt * 1000).toLocaleDateString("it-IT")}. Sei in regola!`,
+        icon: CheckCircle2,
+        color: "bg-emerald-100 text-emerald-600"
+      });
+    }
+
+    // 2. FAQ Activity
+    if (!user.faqReadAt) {
+      activities.push({
+        id: "faq-pending",
+        title: "Dubbi sulla piattaforma?",
+        description: "Ti consigliamo di leggere le FAQ per chiarire ogni dubbio sul calcolo dei premi e sugli obiettivi.",
+        icon: HelpCircle,
+        color: "bg-blue-100 text-blue-600"
+      });
+    } else {
+      activities.push({
+        id: "faq-read",
+        title: "FAQ Consultate",
+        description: "Hai già letto le FAQ. Resta sintonizzato per nuovi aggiornamenti sulle policy!",
+        icon: HelpCircle,
+        color: "bg-slate-100 text-slate-600"
+      });
+    }
+
+    // 3. Objectives Activity (Top 2 based on deadline urgency)
+    const urgentObjectives = [...objectives]
+      .filter(o => o.status !== "completato")
+      .sort((a, b) => (a.daysToDeadline ?? 999) - (b.daysToDeadline ?? 999))
+      .slice(0, 2);
+
+    urgentObjectives.forEach(obj => {
+      let desc = "";
+      if (obj.daysToDeadline !== null && obj.daysToDeadline !== undefined) {
+        if (obj.daysToDeadline < 0) {
+          desc = `L'obiettivo "${obj.title}" è scaduto da ${Math.abs(obj.daysToDeadline)} giorni. Parlane con il tuo manager.`;
+        } else if (obj.daysToDeadline === 0) {
+          desc = `Oggi è l'ultimo giorno per completare "${obj.title}"! Sei al ${obj.progress}%, manca poco!`;
+        } else if (obj.daysToDeadline < 10) {
+          desc = `Mancano solo ${obj.daysToDeadline} giorni alla scadenza di "${obj.title}". Sei al ${obj.progress}%, forza!`;
+        } else {
+          desc = `Hai ancora ${obj.daysToDeadline} giorni per "${obj.title}". Sei al ${obj.progress}%, continua così!`;
+        }
+      } else {
+        desc = `L'obiettivo "${obj.title}" è al ${obj.progress}%. Mantieni il ritmo!`;
+      }
+
+      activities.push({
+        id: `obj-${obj.id}`,
+        title: "Focus Obiettivo",
+        description: desc,
+        icon: Target,
+        color: obj.progress >= 100 ? "bg-emerald-100 text-emerald-600" : "bg-indigo-100 text-indigo-600"
+      });
+    });
+
+    return activities;
+  }, [user, objectives]);
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -290,10 +400,12 @@ export default function EmployeeDashboard() {
     );
   }
 
-  // Show modal if regulation not accepted
-  if (regulationNotAccepted && !showRegulationModal) {
-    setShowRegulationModal(true);
-  }
+  // Show modal if regulation not accepted - wrapped in useEffect to prevent infinite re-render
+  useEffect(() => {
+    if (regulationNotAccepted && !showRegulationModal) {
+      setShowRegulationModal(true);
+    }
+  }, [regulationNotAccepted, showRegulationModal]);
 
   // Regulation view modal (dialog) - defined before any usage
   const regulationViewDialog = (
@@ -364,6 +476,44 @@ export default function EmployeeDashboard() {
         </div>
       ) : (
         <>
+          {/* Deadline Alerts */}
+          {deadlineAlerts.length > 0 && (
+            <div className="space-y-2">
+              {deadlineAlerts.map(obj => {
+                const isUrgent = (obj.daysToDeadline ?? 999) <= 30;
+                return (
+                  <div
+                    key={obj.id}
+                    className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-sm ${
+                      isUrgent
+                        ? "bg-red-50 border-red-200 text-red-800"
+                        : "bg-amber-50 border-amber-200 text-amber-800"
+                    }`}
+                  >
+                    <Clock className={`h-4 w-4 mt-0.5 shrink-0 ${isUrgent ? "text-red-600" : "text-amber-600"}`} />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold">{obj.title}</span>
+                      {" "}—{" "}
+                      {obj.daysToDeadline !== null && obj.daysToDeadline !== undefined && obj.daysToDeadline <= 0
+                        ? <span className="font-bold">Scaduto!</span>
+                        : <>
+                            scade il <span className="font-semibold">{obj.deadline}</span>
+                            {" "}(<span className="font-bold">{obj.daysToDeadline} giorni</span>)
+                          </>
+                      }
+                      {" "}— Avanzamento: <span className="font-semibold">{obj.progress}%</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded font-semibold shrink-0 ${
+                      isUrgent ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                    }`}>
+                      {isUrgent ? "Urgente" : "In scadenza"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Top Section: Overall Achievement + Dark Summary Card */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[320px]">
             {/* Main Achievement Card (White) */}
@@ -490,6 +640,18 @@ export default function EmployeeDashboard() {
                              <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
                                {objective.description || "Corporate performance indicators and metrics."}
                              </p>
+                             {objective.deadline && (
+                               <div className={`inline-flex items-center gap-1 mt-2 text-[10px] font-semibold px-2 py-0.5 rounded ${
+                                 (objective.daysToDeadline ?? 999) <= 30
+                                   ? "bg-red-100 text-red-700"
+                                   : (objective.daysToDeadline ?? 999) <= 60
+                                   ? "bg-amber-100 text-amber-700"
+                                   : "bg-slate-100 text-slate-600"
+                               }`}>
+                                 <Clock className="h-3 w-3" />
+                                 Scadenza: {objective.deadline}
+                               </div>
+                             )}
                            </div>
                            <div className="mt-auto">
                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 pb-2">
@@ -583,41 +745,39 @@ export default function EmployeeDashboard() {
                 <TrendingUp className="h-5 w-5 text-slate-400" />
               </div>
               <div className="space-y-5">
-                {objectives.length > 0 ? (
-                  objectives.slice(0, 3).map((obj, idx) => {
-                    const icons = [BarChart3, CheckCircle2, Target];
-                    const Icon = icons[idx % icons.length];
-                    const colors = ["bg-blue-100 text-blue-600", "bg-indigo-100 text-indigo-600", "bg-slate-100 text-slate-600"];
-                    const color = colors[idx % colors.length];
-                    return (
-                      <div key={obj.id} className="flex gap-4">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${color}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{obj.title}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            Cluster: {obj.clusterName} · Peso: {obj.weight}%
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Avanzamento: {obj.progress}%
-                          </p>
-                        </div>
+                {activityFeed.length > 0 ? (
+                  activityFeed.map((activity) => (
+                    <div key={activity.id} className="flex gap-4 group">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${activity.color}`}>
+                        <activity.icon className="h-4 w-4" />
                       </div>
-                    );
-                  })
-                ) : (
-                  <>
-                    <div className="flex gap-4">
-                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                        <BarChart3 className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">Nessun obiettivo assegnato</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Gli obiettivi appariranno qui una volta assegnati</p>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-900">{activity.title}</p>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                          {activity.description}
+                        </p>
+                        {activity.id === "faq-pending" && (
+                          <Button 
+                            variant="link" 
+                            className="p-0 h-auto text-[10px] font-bold text-indigo-600 mt-2 uppercase tracking-widest"
+                            onClick={() => readFaqMutation.mutate()}
+                          >
+                            Segna come lette →
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  </>
+                  ))
+                ) : (
+                  <div className="flex gap-4">
+                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                      <BarChart3 className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Nessuna attività</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Le attività appariranno qui man mano che il ciclo procede</p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

@@ -9,9 +9,10 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: "admin" | "employee";
   pageTitle?: string;
+  actions?: React.ReactNode;
 }
 
-export function ProtectedRoute({ children, requiredRole, pageTitle }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRole, pageTitle, actions }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -79,7 +80,7 @@ export function ProtectedRoute({ children, requiredRole, pageTitle }: ProtectedR
   }
 
   return (
-    <AppLayout pageTitle={pageTitle}>
+    <AppLayout pageTitle={pageTitle} actions={actions}>
       {children}
     </AppLayout>
   );

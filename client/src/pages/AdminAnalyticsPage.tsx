@@ -2,14 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3 } from "lucide-react";
+import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3, ChevronRight, ClipboardCheck, Sparkles } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { useAuth } from "@/hooks/useAuth";
 
-const COLORS = ['#DC2626', '#6B7280', '#9CA3AF', '#D1D5DB', '#EF4444', '#991B1B'];
+// Nuovo schema colori "Sovereign Ledger" / Enterprise
+const COLORS = [
+  '#0F172A', // Slate 900
+  '#334155', // Slate 700
+  '#64748B', // Slate 500
+  '#4F46E5', // Indigo 600
+  '#4338CA', // Indigo 700
+  '#6366F1', // Indigo 500
+];
 
 interface OverviewStats {
   totalObjectives: number;
@@ -67,18 +75,13 @@ export default function AdminAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <>
-        <div className="w-full">
-          <div className="w-full">
-            {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-            <main className="w-full space-y-6 flex flex-col pt-4" >
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">Loading analytics...</p>
-            </div>
-          </main>
-        </div>
+      <div className="w-full">
+        <main className="w-full space-y-6 flex flex-col pt-4">
+          <div className="flex items-center justify-center h-[50vh]">
+            <p className="text-muted-foreground animate-pulse text-lg tracking-wide uppercase">Caricamento Analisi Dati...</p>
+          </div>
+        </main>
       </div>
-      </>
     );
   }
 
@@ -92,12 +95,6 @@ export default function AdminAnalyticsPage() {
     totalEmployees: 0,
     activeEmployees: 0,
   };
-
-  const completionData = [
-    { name: 'Completed', value: overviewStats.completedObjectives, color: '#6B7280' },
-    { name: 'In Progress', value: overviewStats.inProgressObjectives, color: '#9CA3AF' },
-    { name: 'Not Started', value: overviewStats.notStartedObjectives, color: '#DC2626' },
-  ];
 
   // Department statistics - from API
   const departmentStats = departmentData || [];
@@ -124,442 +121,395 @@ export default function AdminAnalyticsPage() {
     departmentPayouts: []
   };
 
+  // Custom Tooltip component for Recharts to match the theme
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white border border-slate-200 p-3 shadow-lg rounded-md">
+          <p className="font-bold text-slate-800 text-sm mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={`item-${index}`} className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="w-3 h-3 rounded-[2px]" style={{ backgroundColor: entry.color || entry.fill }} />
+              <span className="font-medium">{entry.name}:</span>
+              <span>{typeof entry.value === 'number' && entry.name.includes('€') ? `€${entry.value.toLocaleString()}` : entry.value}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <>
-      <div className="w-full">
-        <div className="w-full">
-          {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
-          <div className="space-y-6">
-          <PageHeader 
-            context="ANALYTICS" 
-            title="Overview Piattaforma" 
-            description="Panoramica generale sulle performance e distribuzione degli obiettivi"
-          />
+    <div className="w-full">
+      <main className="w-full space-y-8 flex flex-col pt-4 pb-12">
+        <PageHeader 
+          context="DATA & INTELLIGENCE" 
+          title="Performance Analytics" 
+          description="Cruscotto dirigenziale per l'analisi delle performance aziendali, stato avanzamento obiettivi e proiezioni finanziarie MBO."
+        />
 
-          {/* KPI Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="md3-elevated md3-motion-standard">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="md3-title-small text-muted-foreground">Obiettivi Assegnati</CardTitle>
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Target className="h-4 w-4 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-1">
-                <div className="md3-headline-medium">{overviewStats.totalObjectives}</div>
-                <p className="md3-body-medium text-muted-foreground mt-1">Assegnati ai dipendenti</p>
-              </CardContent>
-            </Card>
-
-            <Card className="md3-elevated md3-motion-standard">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="md3-title-small text-muted-foreground">Completion Rate</CardTitle>
-                <div className="p-2 rounded-full bg-primary/10">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-1">
-                <div className="md3-headline-medium">{overviewStats.averageCompletion}%</div>
-                <p className="md3-body-medium text-muted-foreground mt-1">Media su tutti gli obiettivi</p>
-              </CardContent>
-            </Card>
-
-            <Card className="md3-elevated md3-motion-standard">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="md3-title-small text-muted-foreground">Dipendenti Attivi</CardTitle>
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Users className="h-4 w-4 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-1">
-                <div className="md3-headline-medium">{overviewStats.activeEmployees}</div>
-                <p className="md3-body-medium text-muted-foreground mt-1">Su {overviewStats.totalEmployees} totali</p>
-              </CardContent>
-            </Card>
-
-            <Card className="md3-elevated md3-motion-standard">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="md3-title-small text-muted-foreground">Completati</CardTitle>
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Award className="h-4 w-4 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-1">
-                <div className="md3-headline-medium">{overviewStats.completedObjectives}</div>
-                <p className="md3-body-medium text-muted-foreground mt-1">Obiettivi raggiunti</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Charts Section */}
-          <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="mb-6 bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 space-x-8">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Overview</TabsTrigger>
-              <TabsTrigger value="departments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">By Department</TabsTrigger>
-              <TabsTrigger value="financial" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Financial MBO</TabsTrigger>
-            </TabsList>
-
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* Obiettivi per Cluster */}
-                <Card className="md3-surface md3-motion-standard">
-                  <CardHeader>
-                    <CardTitle className="md3-title-large">Obiettivi per Cluster</CardTitle>
-                    <CardDescription className="md3-body-medium">Distribuzione obiettivi per tipologia</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={clusterData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={(entry) => `${entry.count}`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                        >
-                          {clusterData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Eligibles per Dipartimento */}
-                <Card className="md3-surface md3-motion-standard">
-                  <CardHeader>
-                    <CardTitle className="md3-title-large">Eligibles per Dipartimento</CardTitle>
-                    <CardDescription className="md3-body-medium">Dipendenti con MBO attivo</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={eligiblesByDepartment}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="eligibles" fill="#DC2626" name="Eligibles" />
-                        <Bar dataKey="total" fill="#6B7280" name="Totali" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Completion Progress Aggregato */}
-                <Card className="md3-surface md3-motion-standard">
-                  <CardHeader>
-                    <CardTitle className="md3-title-large">Livello Completamento</CardTitle>
-                    <CardDescription className="md3-body-medium">Percentuale obiettivi completati</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[300px] flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl font-bold text-primary mb-4">
-                        {overviewStats.averageCompletion}%
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {overviewStats.completedObjectives} su {overviewStats.totalObjectives} obiettivi
-                      </p>
-                      <div className="mt-6 w-full bg-secondary rounded-full h-4">
-                        <div
-                          className="bg-primary h-4 rounded-full transition-all"
-                          style={{ width: `${overviewStats.averageCompletion}%` }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Completion by Department */}
-              <Card className="md3-surface md3-motion-standard">
-                <CardHeader>
-                  <CardTitle className="md3-title-large">Livello Completamento per Dipartimento</CardTitle>
-                  <CardDescription className="md3-body-medium">Percentuale di completamento obiettivi per ogni dipartimento</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={departmentStats} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" domain={[0, 100]} />
-                      <YAxis dataKey="name" type="category" />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="avgCompletion" fill="#DC2626" name="Completion %">
-                        {departmentStats.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Departments Tab */}
-            <TabsContent value="departments" className="space-y-4">
-              <Card className="md3-surface md3-motion-standard">
-                <CardHeader>
-                  <CardTitle className="md3-title-large">Performance by Department</CardTitle>
-                  <CardDescription className="md3-body-medium">Comparison of objective completion across departments</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={departmentStats}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="completed" fill="#6B7280" name="Completed" />
-                      <Bar dataKey="inProgress" fill="#9CA3AF" name="In Progress" />
-                      <Bar dataKey="total" fill="#DC2626" name="Total" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card className="md3-surface md3-motion-standard">
-                <CardHeader>
-                  <CardTitle className="md3-title-large">Average Completion Rate by Department</CardTitle>
-                  <CardDescription className="md3-body-medium">Percentage completion rates</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={departmentStats} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" domain={[0, 100]} />
-                      <YAxis dataKey="name" type="category" />
-                      <Tooltip />
-                      <Bar dataKey="avgCompletion" fill="#DC2626" name="Completion %">
-                        {departmentStats.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Financial MBO Tab */}
-            <TabsContent value="financial" className="space-y-4">
-              {/* Financial KPI Cards */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Target Teorico MBO</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <Euro className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium">€{(financialData.theoreticalTargetPayout || 0).toLocaleString()}</div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Potenziale massimo payout</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Payout Effettivo</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium">€{(financialData.actualProjectedPayout || 0).toLocaleString()}</div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Basato su performance reale</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">Risparmio</CardTitle>
-                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/20">
-                      <TrendingDown className="h-4 w-4 text-green-600" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium text-green-600">€{(financialData.savings || 0).toLocaleString()}</div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Differenza target vs effettivo</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">% Risparmio</CardTitle>
-                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/20">
-                      <Activity className="h-4 w-4 text-green-600" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium text-green-600">{(financialData.savingsPercentage || 0)}%</div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Sul budget totale MBO</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="md3-elevated md3-motion-standard">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="md3-title-small text-muted-foreground">MBO Medio per Dipendente</CardTitle>
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <Users className="h-4 w-4 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="md3-headline-medium">€{(financialData.averageTheoreticalMBO || 0).toLocaleString()}</div>
-                    <p className="md3-body-medium text-muted-foreground mt-1">Target medio teorico</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Charts */}
-              <Card className="md3-surface md3-motion-standard">
-                <CardHeader>
-                  <CardTitle className="md3-title-large">Target vs Effettivo per Reparto</CardTitle>
-                  <CardDescription className="md3-body-medium">Confronto payout teorico e reale</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={financialData.departmentPayouts}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => `€${value.toLocaleString()}`} />
-                      <Legend />
-                      <Bar dataKey="theoretical" fill="#DC2626" name="Target Teorico €" />
-                      <Bar dataKey="actual" fill="#6B7280" name="Payout Effettivo €" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Detailed Table */}
-              <Card className="md3-surface md3-motion-standard">
-                <CardHeader>
-                  <CardTitle className="md3-title-large">Dettaglio Payout per Dipendente</CardTitle>
-                  <CardDescription className="md3-body-medium">Analisi dettagliata RAL, MBO% e performance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Dipendente</th>
-                          <th className="text-right p-2">RAL</th>
-                          <th className="text-right p-2">MBO %</th>
-                          <th className="text-right p-2">Target MBO €</th>
-                          <th className="text-right p-2">Completion %</th>
-                          <th className="text-right p-2">Payout Effettivo €</th>
-                          <th className="text-right p-2">Differenza €</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {financialData.employeePayouts.map((emp, index) => {
-                          const difference = emp.theoreticalMbo - emp.actualMbo;
-                          return (
-                            <tr key={index} className="border-b hover:bg-muted/50">
-                              <td className="p-2 font-medium">{emp.name}</td>
-                              <td className="text-right p-2">€{emp.ral.toLocaleString()}</td>
-                              <td className="text-right p-2">{emp.mboPercentage}%</td>
-                              <td className="text-right p-2">€{emp.theoreticalMbo.toLocaleString()}</td>
-                              <td className="text-right p-2">{emp.completion}%</td>
-                              <td className="text-right p-2 font-semibold text-green-600">
-                                €{emp.actualMbo.toLocaleString()}
-                              </td>
-                              <td className="text-right p-2 text-muted-foreground">
-                                -€{difference.toLocaleString()}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 font-bold">
-                          <td className="p-2" colSpan={3}>TOTALE</td>
-                          <td className="text-right p-2">
-                            €{(financialData.theoreticalTargetPayout || 0).toLocaleString()}
-                          </td>
-                          <td className="text-right p-2">-</td>
-                          <td className="text-right p-2 text-green-600">
-                            €{(financialData.actualProjectedPayout || 0).toLocaleString()}
-                          </td>
-                          <td className="text-right p-2">
-                            -€{(financialData.savings || 0).toLocaleString()}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-          </div>
-        </main>
-
-          {isActionsPanelOpen && (
-            <AppActionsPanel
-              isOpen={isActionsPanelOpen}
-              onClose={() => setIsActionsPanelOpen(false)}
-              title="Analytics"
+        {/* Dynamic Tabs Section */}
+        <Tabs defaultValue="raggiungimento" className="space-y-6">
+          <TabsList className="bg-transparent border-b border-slate-200 w-full justify-start rounded-none h-auto p-0 flex gap-8">
+            <TabsTrigger 
+              value="raggiungimento" 
+              className="px-0 py-4 font-semibold text-slate-500 rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-slate-800 transition-colors flex items-center gap-2"
             >
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">KPI Principali</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 rounded-lg bg-primary/10 text-center">
-                  <div className="text-lg font-bold text-primary">{overviewStats.totalObjectives}</div>
-                  <div className="text-xs text-muted-foreground">Obiettivi</div>
+              <TrendingUp className="w-4 h-4" /> Raggiungimento Obiettivi
+            </TabsTrigger>
+            <TabsTrigger 
+              value="rendicontazione" 
+              className="px-0 py-4 font-semibold text-slate-500 rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-700 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-slate-800 transition-colors flex items-center gap-2"
+            >
+              <ClipboardCheck className="w-4 h-4" /> Rendicontazione & Payout
+            </TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: RAGGIUNGIMENTO (Achievement View) */}
+          <TabsContent value="raggiungimento" className="mt-6 space-y-8 focus:outline-none focus-visible:ring-0 focus:ring-0">
+            
+            {/* KPI Cards specific to Achievement */}
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Obiettivi Attivi</h3>
+                  <div className="p-2 bg-slate-50 rounded-md border border-slate-100">
+                    <Target className="h-4 w-4 text-slate-700" />
+                  </div>
                 </div>
-                <div className="p-2 rounded-lg bg-green-500/10 text-center">
-                  <div className="text-lg font-bold text-green-600">{overviewStats.completedObjectives}</div>
-                  <div className="text-xs text-muted-foreground">Completati</div>
+                <div className="text-3xl font-bold tracking-tight text-slate-900">{overviewStats.totalObjectives}</div>
+                <p className="text-xs font-medium text-slate-500 mt-2">Totale assegnati a sistema</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Completion Rate</h3>
+                  <div className="p-2 bg-indigo-50 rounded-md border border-indigo-100">
+                    <TrendingUp className="h-4 w-4 text-indigo-600" />
+                  </div>
                 </div>
-                <div className="p-2 rounded-lg bg-blue-500/10 text-center">
-                  <div className="text-lg font-bold text-blue-600">{overviewStats.totalEmployees}</div>
-                  <div className="text-xs text-muted-foreground">Dipendenti</div>
+                <div className="text-3xl font-bold tracking-tight text-indigo-600">{overviewStats.averageCompletion}%</div>
+                <p className="text-xs font-medium text-slate-500 mt-2">Media avanzamento globale</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Obiettivi Chiusi</h3>
+                  <div className="p-2 bg-green-50 rounded-md border border-green-100">
+                    <Award className="h-4 w-4 text-green-600" />
+                  </div>
                 </div>
-                <div className="p-2 rounded-lg bg-purple-500/10 text-center">
-                  <div className="text-lg font-bold text-purple-600">{overviewStats.averageCompletion}%</div>
-                  <div className="text-xs text-muted-foreground">Media Completamento</div>
+                <div className="text-3xl font-bold tracking-tight text-green-600">{overviewStats.completedObjectives}</div>
+                <p className="text-xs font-medium text-slate-500 mt-2">Terminati con successo</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Dipendenti Coinvolti</h3>
+                  <div className="p-2 bg-slate-50 rounded-md border border-slate-100">
+                    <Users className="h-4 w-4 text-slate-700" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold tracking-tight text-slate-900">{overviewStats.activeEmployees}</div>
+                <p className="text-xs font-medium text-slate-500 mt-2">Su {overviewStats.totalEmployees} totali</p>
+              </div>
+            </div>
+
+            {/* Achievement Content: Cluster and Progress */}
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 col-span-1">
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Distribuzione Cluster</h3>
+                  <p className="text-sm text-slate-500 mt-1">Tipologia di obiettivi per natura / area</p>
+                </div>
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={clusterData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="count"
+                        stroke="none"
+                      >
+                        {clusterData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Progress Summary Card */}
+              <div className="bg-slate-900 text-white border border-slate-800 rounded-xl shadow-lg p-8 col-span-2 relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500 rounded-full blur-3xl opacity-20"></div>
+                <div className="relative z-10 h-full flex flex-col justify-between">
+                  <div className="flex flex-col md:flex-row items-center gap-10">
+                    <div className="md:w-1/3 text-center md:text-left">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Avanzamento Globale</h3>
+                      <div className="text-7xl font-light tracking-tighter text-white mb-2">{overviewStats.averageCompletion}%</div>
+                      <p className="text-sm text-slate-400 font-medium">Stato di avanzamento calcolato su tutti i KPI attivi.</p>
+                    </div>
+                    
+                    <div className="md:w-2/3 w-full">
+                      <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700 mb-8">
+                        <div 
+                          className="h-full bg-gradient-to-r from-indigo-500 to-blue-400 rounded-full transition-all duration-1000 relative"
+                          style={{ width: `${Math.max(5, overviewStats.averageCompletion)}%` }}
+                        >
+                          <div className="absolute inset-0 bg-white/20 w-full animate-[pulse_2s_ease-in-out_infinite]"></div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">In Corso</p>
+                          <p className="text-xl font-semibold text-white">{overviewStats.inProgressObjectives}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Iniziati</p>
+                          <p className="text-xl font-semibold text-slate-300">{overviewStats.totalObjectives - overviewStats.notStartedObjectives}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Status</p>
+                          <p className="text-xl font-semibold text-green-400 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Ottimo</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Finanziari</p>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Budget Teorico</span>
-                  <span className="font-semibold">€{(financialData.theoreticalBudget || 0).toLocaleString()}</span>
+            {/* Performance by Dept comparison */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+              <div className="mb-8 border-b border-slate-50 pb-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Achievement per Reparto</h3>
+                <p className="text-sm text-slate-500 mt-1">Percentuale media di completamento e distribuzione stati per unità organizzativa</p>
+              </div>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={departmentStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 11}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 11}} />
+                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#F1F5F9'}} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
+                    <Bar dataKey="completed" fill="#0F172A" name="Completati" stackId="a" radius={[0, 0, 4, 4]} maxBarSize={45} />
+                    <Bar dataKey="inProgress" fill="#64748B" name="In Corso" stackId="a" maxBarSize={45} />
+                    <Bar dataKey="notStarted" fill="#CBD5E1" name="Non Iniziati" stackId="a" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 2: RENDICONTAZIONE (Financial/Reporting View) */}
+          <TabsContent value="rendicontazione" className="mt-6 space-y-8 focus:outline-none focus-visible:ring-0 focus:ring-0">
+            {/* Financial KPI Cards */}
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              <div className="bg-gradient-to-br from-indigo-900 to-indigo-800 border border-indigo-700 rounded-xl p-5 shadow-sm text-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-200">Bonus Pool Totale</h3>
+                  <div className="p-2 bg-indigo-950/50 rounded-md border border-indigo-700">
+                    <Euro className="h-4 w-4 text-indigo-300" />
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Proiezione Effettiva</span>
-                  <span className="font-semibold">€{(financialData.actualProjectedPayout || 0).toLocaleString()}</span>
+                <div className="text-3xl font-bold tracking-tight">€{(financialData.theoreticalTargetPayout || 0).toLocaleString()}</div>
+                <p className="text-xs font-medium text-indigo-300 mt-2">Budget massimo teorico erogabile</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Payout Effettivo</h3>
+                  <div className="p-2 bg-slate-50 rounded-md border border-slate-100">
+                    <TrendingUp className="h-4 w-4 text-slate-700" />
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Risparmio</span>
-                  <span className="font-semibold text-green-600">€{(financialData.savings || 0).toLocaleString()}</span>
+                <div className="text-3xl font-bold tracking-tight text-slate-900">€{(financialData.actualProjectedPayout || 0).toLocaleString()}</div>
+                <p className="text-xs font-medium text-slate-500 mt-2">Proiezione attuale reale</p>
+              </div>
+
+              <div className="bg-green-50 border border-green-100 rounded-xl p-5 shadow-sm border-l-4 border-l-green-600 transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-green-700">Saving Aziendale</h3>
+                  <div className="p-2 bg-green-100 rounded-md border border-green-200">
+                    <TrendingDown className="h-4 w-4 text-green-700" />
+                  </div>
                 </div>
+                <div className="text-3xl font-bold tracking-tight text-green-700">€{(financialData.savings || 0).toLocaleString()}</div>
+                <p className="text-xs font-medium text-green-600 mt-2">Risparmio vs Target ({financialData.savingsPercentage || 0}%)</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">MBO Medio</h3>
+                  <div className="p-2 bg-slate-50 rounded-md border border-slate-100">
+                    <Users className="h-4 w-4 text-slate-700" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold tracking-tight text-slate-900">€{(financialData.averageTheoreticalMBO || 0).toLocaleString()}</div>
+                <p className="text-xs font-medium text-slate-500 mt-2">Quota pro-capite teorica</p>
               </div>
             </div>
 
-            <div className="pt-4 border-t">
-              <p className="text-xs text-muted-foreground">
-                Dashboard di analytics con metriche di performance, distribuzione obiettivi per dipartimento e analisi finanziaria MBO.
-              </p>
+            {/* Financial Charts */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+              <div className="mb-8 border-b border-slate-50 pb-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Analisi Payout per Dipartimento</h3>
+                <p className="text-sm text-slate-500 mt-1">Confronto tra target massimo erogabile e payout reale basato sui risultati raggiunti</p>
+              </div>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={financialData.departmentPayouts} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 11}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 11}} tickFormatter={(val) => `€${val/1000}k`} />
+                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#F1F5F9'}} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
+                    <Bar dataKey="theoretical" fill="#E2E8F0" name="Target Massimo €" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="actual" fill="#4F46E5" name="Erogato Effettivo €" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Individual Records (Rendicontazione Dettagliata) */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col transition-shadow hover:shadow-md">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-slate-500" />
+                  Registro Individuale di Rendicontazione
+                </h3>
+                <Button variant="outline" size="sm" className="h-8 text-xs font-semibold gap-1.5 border-slate-300">
+                  <TrendingDown className="w-3 h-3" /> Esporta CSV
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-white">
+                      <th className="text-left py-4 px-6 font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Dipendente</th>
+                      <th className="text-right py-4 px-6 font-semibold text-slate-500 uppercase tracking-wider text-[10px]">RAL</th>
+                      <th className="text-right py-4 px-6 font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Incentivo %</th>
+                      <th className="text-right py-4 px-6 font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Target €</th>
+                      <th className="text-center py-4 px-6 font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Raggiungimento</th>
+                      <th className="text-right py-4 px-6 font-semibold text-slate-900 uppercase tracking-wider text-[10px] bg-slate-50 font-bold border-l border-slate-100">Payout Maturato €</th>
+                      <th className="text-right py-4 px-6 font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Saving (Gap)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {financialData.employeePayouts.map((emp, index) => {
+                      const difference = emp.theoreticalMbo - emp.actualMbo;
+                      return (
+                        <tr key={index} className="hover:bg-slate-50 transition-colors group">
+                          <td className="py-3.5 px-6 font-medium text-slate-900">{emp.name}</td>
+                          <td className="text-right py-3.5 px-6 text-slate-600 font-mono text-xs">€{emp.ral.toLocaleString()}</td>
+                          <td className="text-right py-3.5 px-6 font-semibold text-slate-700">{emp.mboPercentage}%</td>
+                          <td className="text-right py-3.5 px-6 text-slate-500">€{emp.theoreticalMbo.toLocaleString()}</td>
+                          <td className="text-center py-3.5 px-6">
+                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              emp.completion >= 80 ? 'bg-green-100 text-green-700' :
+                              emp.completion >= 50 ? 'bg-amber-100 text-amber-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {emp.completion}%
+                            </span>
+                          </td>
+                          <td className="text-right py-3.5 px-6 font-bold text-slate-900 bg-slate-50/50 group-hover:bg-slate-100/50 transition-colors border-l border-slate-100">
+                            €{emp.actualMbo.toLocaleString()}
+                          </td>
+                          <td className="text-right py-3.5 px-6 text-red-500 font-medium">
+                            -€{difference.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-100/50 border-t-2 border-slate-200">
+                    <tr className="font-bold text-slate-900">
+                      <td className="py-5 px-6 uppercase tracking-wider text-[11px]" colSpan={3}>Consuntivo Totale</td>
+                      <td className="text-right py-5 px-6 font-mono text-slate-500 text-xs">
+                        €{(financialData.theoreticalTargetPayout || 0).toLocaleString()}
+                      </td>
+                      <td className="text-center py-5 px-6 text-slate-400">-</td>
+                      <td className="text-right py-5 px-6 text-xl tracking-tight font-bold border-l border-slate-200 bg-slate-100">
+                        €{(financialData.actualProjectedPayout || 0).toLocaleString()}
+                      </td>
+                      <td className="text-right py-5 px-6 text-green-600 font-bold bg-green-50/30">
+                        Saving €{(financialData.savings || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Sidebar Actions Panel */}
+        {isActionsPanelOpen && (
+          <AppActionsPanel
+            isOpen={isActionsPanelOpen}
+            onClose={() => setIsActionsPanelOpen(false)}
+            title="Sintesi Performance"
+          >
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">Metodologia Analytics</p>
+                <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 p-1 bg-indigo-600 rounded">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">Dati Real-Time</p>
+                      <p className="text-[11px] text-indigo-700/80 mt-1 leading-relaxed">I grafici di raggiungimento sono basati sull'ultima valutazione salvata a sistema da manager e dipendenti.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 p-1 bg-indigo-600 rounded">
+                      <Euro className="w-3 h-3 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">Calcolo MBO</p>
+                      <p className="text-[11px] text-indigo-700/80 mt-1 leading-relaxed">Il payout maturato viene calcolato proporzionalmente alla RAL e alla percentuale di completamento degli obiettivi.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-200">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Statistiche Veloci</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-lg">
+                    <span className="text-[11px] font-medium text-slate-600">Avg. Achievement</span>
+                    <span className="text-sm font-bold text-slate-900">{overviewStats.averageCompletion}%</span>
+                  </div>
+                  <div className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-lg">
+                    <span className="text-[11px] font-medium text-slate-600">Saving Potenziale</span>
+                    <span className="text-sm font-bold text-green-600">€{(financialData.savings || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-200">
+                <Button className="w-full gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold">
+                  Genera Report PDF
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </AppActionsPanel>
-          )}
-      </div>
+        )}
+      </main>
     </div>
-    </>
   );
 }

@@ -1,44 +1,27 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ReactNode } from "react";
 
 interface AppActionsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  children: ReactNode;
+  children?: React.ReactNode;
 }
 
-export default function AppActionsPanel({
-  isOpen,
-  onClose,
-  title = "Azioni",
-  children
-}: AppActionsPanelProps) {
-  return (
-    <aside className="w-[240px] shrink-0 h-[calc(100vh-7rem)] sticky top-6">
-      <div
-        className="bg-sidebar rounded-2xl p-4 h-full overflow-y-auto"
-        style={{ boxShadow: 'var(--shadow-2)' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-sm">{title}</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8 rounded-full"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+export default function AppActionsPanel({ isOpen, onClose, title, children }: AppActionsPanelProps) {
+  if (!isOpen) return null;
 
-        {/* Content */}
-        <div className="space-y-4">
-          {children}
-        </div>
+  return (
+    <div className="w-72 shrink-0 border-l bg-background flex flex-col h-full overflow-y-auto">
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        {title && <span className="text-sm font-semibold">{title}</span>}
+        <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
       </div>
-    </aside>
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {children}
+      </div>
+    </div>
   );
 }

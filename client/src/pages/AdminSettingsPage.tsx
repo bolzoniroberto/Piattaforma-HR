@@ -42,43 +42,414 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2, MapPin, FileText, ShieldCheck, Clock, Briefcase, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Edit, Trash2, Settings, Database, Grid3x3, Calculator, Building2, MapPin, FileText, ShieldCheck, Clock, Briefcase, ToggleLeft, ToggleRight, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlags, type FeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 
+// ─── Entry Gate Tab ───────────────────────────────────────────────────────────
+
+interface EntryGateItem {
+  id: string;
+  year: number;
+  indicatorName: string;
+  targetValue: number;
+  actualValue: number | null;
+  thresholdPct: number;
+  isActive: boolean;
+}
+
+function EntryGateTab() {
+  const { toast } = useToast();
+  const currentYear = new Date().getFullYear();
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editing, setEditing] = useState<EntryGateItem | null>(null);
+  const [form, setForm] = useState({
+    year: currentYear,
+    indicatorName: "",
+    targetValue: "",
+    actualValue: "",
+    thresholdPct: 95,
+    isActive: true,
+  });
+
+  const { data: gates = [], refetch } = useQuery<EntryGateItem[]>({
+    queryKey: ["/api/entry-gates"],
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = editing
+        ? await apiRequest("PUT", `/api/entry-gates/${editing.id}`, data)
+        : await apiRequest("POST", "/api/entry-gates", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/entry-gates"] });
+      toast({ title: editing ? "Entry Gate aggiornato" : "Entry Gate creato" });
+      setOpenDialog(false);
+      setEditing(null);
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Operazione non riuscita.", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/entry-gates/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/entry-gates"] });
+      toast({ title: "Entry Gate eliminato" });
+    },
+  });
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ year: currentYear, indicatorName: "", targetValue: "", actualValue: "", thresholdPct: 95, isActive: true });
+    setOpenDialog(true);
+  };
+
+  const openEdit = (g: EntryGateItem) => {
+    setEditing(g);
+    setForm({
+      year: g.year,
+      indicatorName: g.indicatorName,
+      targetValue: String(g.targetValue),
+      actualValue: g.actualValue !== null ? String(g.actualValue) : "",
+      thresholdPct: g.thresholdPct,
+      isActive: g.isActive,
+    });
+    setOpenDialog(true);
+  };
+
+  const handleSubmit = () => {
+    saveMutation.mutate({
+      year: form.year,
+      indicatorName: form.indicatorName,
+      targetValue: parseFloat(form.targetValue),
+      actualValue: form.actualValue !== "" ? parseFloat(form.actualValue) : null,
+      thresholdPct: form.thresholdPct,
+      isActive: form.isActive,
+    });
+  };
+
+  const getGateStatus = (g: EntryGateItem) => {
+    if (g.actualValue === null) return null;
+    return (g.actualValue / g.targetValue) >= (g.thresholdPct / 100);
+  };
+
+  return (
+    <TabsContent value="entry-gate" className="mt-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Entry Gate MBO</CardTitle>
+              <CardDescription>
+                Configura l'indicatore aziendale che condiziona l'erogazione del bonus MBO.
+                Se l'Entry Gate è attivo e non superato, il bonus non viene erogato.
+              </CardDescription>
+            </div>
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nuovo Entry Gate
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {gates.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <ShieldAlert className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p>Nessun Entry Gate configurato.</p>
+              <p className="text-sm mt-1">Aggiungi un indicatore per condizionare l'erogazione del bonus MBO.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Anno</TableHead>
+                  <TableHead>Indicatore</TableHead>
+                  <TableHead className="text-right">Target</TableHead>
+                  <TableHead className="text-right">Consuntivo</TableHead>
+                  <TableHead className="text-right">Soglia %</TableHead>
+                  <TableHead>Stato</TableHead>
+                  <TableHead>Attivo</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {gates.map(g => {
+                  const passed = getGateStatus(g);
+                  return (
+                    <TableRow key={g.id}>
+                      <TableCell className="font-medium">{g.year}</TableCell>
+                      <TableCell>{g.indicatorName}</TableCell>
+                      <TableCell className="text-right">{g.targetValue.toLocaleString("it-IT")}</TableCell>
+                      <TableCell className="text-right">
+                        {g.actualValue !== null ? g.actualValue.toLocaleString("it-IT") : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right">{g.thresholdPct}%</TableCell>
+                      <TableCell>
+                        {passed === null ? (
+                          <span className="text-muted-foreground text-xs">In attesa</span>
+                        ) : passed ? (
+                          <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-medium">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Superato
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-red-700 text-xs font-medium">
+                            <XCircle className="h-4 w-4" />
+                            Non superato
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={g.isActive}
+                          onCheckedChange={(v) => {
+                            apiRequest("PUT", `/api/entry-gates/${g.id}`, { isActive: v }).then(() => {
+                              queryClient.invalidateQueries({ queryKey: ["/api/entry-gates"] });
+                            });
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(g)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(g.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Modifica Entry Gate" : "Nuovo Entry Gate"}</DialogTitle>
+            <DialogDescription>
+              Definisci l'indicatore aziendale e la soglia di accesso al bonus MBO.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Anno</Label>
+                <Input
+                  type="number"
+                  value={form.year}
+                  onChange={e => setForm(p => ({ ...p, year: parseInt(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Soglia %</Label>
+                <Input
+                  type="number"
+                  min={1} max={100}
+                  value={form.thresholdPct}
+                  onChange={e => setForm(p => ({ ...p, thresholdPct: parseInt(e.target.value) }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Nome Indicatore</Label>
+              <Input
+                placeholder="es. EBITDA, Fatturato, Margine Operativo"
+                value={form.indicatorName}
+                onChange={e => setForm(p => ({ ...p, indicatorName: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Valore Target</Label>
+                <Input
+                  type="number"
+                  placeholder="es. 10000000"
+                  value={form.targetValue}
+                  onChange={e => setForm(p => ({ ...p, targetValue: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Consuntivo (opzionale)</Label>
+                <Input
+                  type="number"
+                  placeholder="Da aggiornare a consuntivo"
+                  value={form.actualValue}
+                  onChange={e => setForm(p => ({ ...p, actualValue: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={form.isActive}
+                onCheckedChange={v => setForm(p => ({ ...p, isActive: v }))}
+              />
+              <Label>Attivo (blocca il bonus se non superato)</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(false)}>Annulla</Button>
+            <Button onClick={handleSubmit} disabled={saveMutation.isPending || !form.indicatorName || !form.targetValue}>
+              {saveMutation.isPending ? "Salvataggio..." : "Salva"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </TabsContent>
+  );
+}
+
+// ─── Manager Assignment Tab ───────────────────────────────────────────────────
+
+function ManagerAssignmentTab() {
+  const { toast } = useToast();
+
+  const { data, isLoading } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/settings/manager-assignment"],
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await apiRequest("PUT", "/api/settings/manager-assignment", { enabled });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/settings/manager-assignment"], data);
+      toast({ title: data.enabled ? "Assegnazione autonoma abilitata" : "Assegnazione autonoma disabilitata" });
+    },
+    onError: () => {
+      toast({ title: "Errore nel salvataggio", variant: "destructive" });
+    },
+  });
+
+  const enabled = data?.enabled ?? true;
+
+  return (
+    <TabsContent value="manager-mbo" className="mt-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Assegnazione Obiettivi MBO da parte dei Manager</CardTitle>
+          <CardDescription>
+            Abilita o disabilita la possibilità per i manager di assegnare obiettivi MBO ai propri collaboratori.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Caricamento...</p>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <p className="font-medium">Assegnazione autonoma obiettivi</p>
+                <p className="text-sm text-muted-foreground">
+                  Se attivo, i manager possono assegnare e creare obiettivi MBO per i propri collaboratori diretti
+                </p>
+              </div>
+              <Switch
+                checked={enabled}
+                onCheckedChange={(v) => mutation.mutate(v)}
+                disabled={mutation.isPending}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+// ─── Company Tab ──────────────────────────────────────────────────────────────
+
+function CompanyTab() {
+  const { toast } = useToast();
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  const { data: companyData } = useQuery<{ companyName: string }>({
+    queryKey: ["/api/settings/company"],
+  });
+
+  const displayName = companyName ?? companyData?.companyName ?? "";
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PUT", "/api/settings/company", { companyName: displayName });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/company"] });
+      toast({ title: "Nome società salvato" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile salvare.", variant: "destructive" });
+    },
+  });
+
+  return (
+    <TabsContent value="azienda" className="mt-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Dati Azienda</CardTitle>
+          <CardDescription>
+            Il nome della società viene visualizzato nel regolamento MBO e in altri documenti della piattaforma.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 max-w-md">
+          <div className="space-y-2">
+            <Label htmlFor="company-name">Nome Società</Label>
+            <Input
+              id="company-name"
+              value={displayName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="es. Acme S.p.A."
+            />
+            <p className="text-xs text-muted-foreground">
+              Sostituisce il nome predefinito nel regolamento MBO e nelle pagine della piattaforma.
+            </p>
+          </div>
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? "Salvataggio..." : "Salva"}
+          </Button>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
 // ─── Moduli Tab ───────────────────────────────────────────────────────────────
 
 const MODULE_DEFS = [
   {
-    key: "gestione_anagrafiche" as keyof FeatureFlags,
+    id: "gestione_anagrafiche",
     label: "Gestione Anagrafiche",
     description: "Gestione utenti, strutture aziendali, campi personalizzati e lookup tabelle.",
-    affectsAdmin: true,
-    affectsEmployee: false,
   },
   {
-    key: "gestione_mbo" as keyof FeatureFlags,
+    id: "gestione_mbo",
     label: "Gestione MBO",
     description: "Database obiettivi, assegnazione, disassociazione e rendicontazione MBO.",
-    affectsAdmin: true,
-    affectsEmployee: true,
   },
   {
-    key: "performance_management" as keyof FeatureFlags,
+    id: "performance_management",
     label: "Performance Management",
     description: "Autovalutazione, feedback 360°, piani di sviluppo, valutazioni team e competenze.",
-    affectsAdmin: true,
-    affectsEmployee: true,
   },
   {
-    key: "gestione_organizzazione" as keyof FeatureFlags,
+    id: "gestione_organizzazione",
     label: "Gestione Organizzazione",
     description: "Organigramma aziendale e vista team.",
-    affectsAdmin: false,
-    affectsEmployee: true,
   },
 ];
 
@@ -111,30 +482,42 @@ function ModuliTab() {
         <CardHeader>
           <CardTitle>Macro Processi — Attivazione Moduli</CardTitle>
           <CardDescription>
-            Attiva o disattiva i macro processi della piattaforma. Le sezioni disattivate vengono nascoste dalla navigazione per tutti gli utenti, incluso l'amministratore.
+            Controlla la visibilità di ogni modulo separatamente per gli amministratori e per i dipendenti. I moduli disattivati vengono nascosti dalla navigazione del ruolo corrispondente.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {MODULE_DEFS.map((mod) => (
-            <div key={mod.key} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="space-y-1">
-                <p className="font-semibold text-slate-900">{mod.label}</p>
-                <p className="text-sm text-slate-500">{mod.description}</p>
-                <div className="flex gap-2 mt-1">
-                  {mod.affectsAdmin && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Admin</span>
-                  )}
-                  {mod.affectsEmployee && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Dipendente</span>
-                  )}
+        <CardContent>
+          {/* Header row */}
+          <div className="grid grid-cols-[1fr_100px_100px] gap-4 px-4 pb-2 border-b">
+            <div />
+            <div className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Admin</div>
+            <div className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Utente</div>
+          </div>
+          <div className="space-y-2 mt-2">
+            {MODULE_DEFS.map((mod) => {
+              const adminKey = `${mod.id}_admin` as keyof FeatureFlags;
+              const userKey = `${mod.id}_user` as keyof FeatureFlags;
+              return (
+                <div key={mod.id} className="grid grid-cols-[1fr_100px_100px] gap-4 items-center p-4 border rounded-lg">
+                  <div>
+                    <p className="font-semibold text-slate-900">{mod.label}</p>
+                    <p className="text-sm text-slate-500">{mod.description}</p>
+                  </div>
+                  <div className="flex justify-center">
+                    <Switch
+                      checked={localFlags[adminKey]}
+                      onCheckedChange={() => toggle(adminKey)}
+                    />
+                  </div>
+                  <div className="flex justify-center">
+                    <Switch
+                      checked={localFlags[userKey]}
+                      onCheckedChange={() => toggle(userKey)}
+                    />
+                  </div>
                 </div>
-              </div>
-              <Switch
-                checked={localFlags[mod.key]}
-                onCheckedChange={() => toggle(mod.key)}
-              />
-            </div>
-          ))}
+              );
+            })}
+          </div>
           <div className="flex justify-end pt-4">
             <Button
               onClick={() => saveMutation.mutate(localFlags)}
@@ -874,6 +1257,9 @@ export default function AdminSettingsPage() {
                   )}
                   <TabsTrigger value="configurazioni-orario" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Configurazioni Orario</TabsTrigger>
                   <TabsTrigger value="causali-assunzione" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Causali Assunzione</TabsTrigger>
+                  <TabsTrigger value="entry-gate" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Entry Gate MBO</TabsTrigger>
+                  <TabsTrigger value="azienda" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Azienda</TabsTrigger>
+                  <TabsTrigger value="manager-mbo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Manager MBO</TabsTrigger>
                 </TabsList>
 
                 {/* Moduli Tab */}
@@ -1944,6 +2330,9 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+                <EntryGateTab />
+                <CompanyTab />
+                <ManagerAssignmentTab />
               </Tabs>
 
               {/* Delete Confirmation Dialog */}

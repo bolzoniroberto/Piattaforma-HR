@@ -7,17 +7,26 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
+import { useQuery } from "@tanstack/react-query";
 import { railNavigation } from "@/lib/navigationConfig";
 
 const bottomItems = [
   { id: "settings", label: "Impostazioni Account", icon: Settings, href: "/profile" },
-  { id: "support", label: "Supporto", icon: HelpCircle, href: "/support" },
+  { id: "support", label: "Supporto & FAQ", icon: HelpCircle, href: "/regulation/faq" },
 ];
 
 export default function EnterpriseSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const flags = useFeatureFlags();
+
+  const { data: managerSettingData } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/settings/manager-assignment"],
+    enabled: user?.role === "manager",
+    retry: false,
+  });
+  const managerAssignmentEnabled =
+    user?.role === "admin" || (user?.role === "manager" && (managerSettingData?.enabled ?? true));
 
   return (
     <aside className="w-[260px] h-screen shrink-0 bg-slate-50 border-r border-sidebar-border flex flex-col sticky top-0">
@@ -36,7 +45,17 @@ export default function EnterpriseSidebar() {
       <div className="flex-1 py-6 px-3 space-y-6 overflow-y-auto">
         {railNavigation.map((section) => {
           if (section.adminOnly && user?.role !== "admin") return null;
-          if (section.moduleId && user?.role !== "admin" && !flags[section.moduleId as keyof typeof flags]) return null;
+          if (section.moduleId) {
+            const roleKey = user?.role === "admin"
+              ? `${section.moduleId}_admin`
+              : `${section.moduleId}_user`;
+            if (!flags[roleKey as keyof typeof flags]) return null;
+          }
+
+          // Hide rendicontatoreOnly sections from non-admin, non-rendicontatore users
+          if (section.rendicontatoreOnly && user?.role !== "admin" && !(user as any)?.isRendicontatore) return null;
+          // Hide managerOnly sections based on role and feature flag
+          if (section.managerOnly && !managerAssignmentEnabled) return null;
 
           return (
             <div key={section.id} className="space-y-1">
@@ -45,6 +64,8 @@ export default function EnterpriseSidebar() {
               </h4>
               {section.children?.map((child) => {
                 if (child.adminOnly && user?.role !== "admin") return null;
+                if (child.rendicontatoreOnly && user?.role !== "admin" && !(user as any)?.isRendicontatore) return null;
+                if (child.managerOnly && !managerAssignmentEnabled) return null;
                 const isActive = location === child.url;
                 
                 return (
