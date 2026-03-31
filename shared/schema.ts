@@ -60,6 +60,8 @@ const baseUpsertUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   codiceFiscale: true,
+  matricola: true,
+  role: true,
   profileImageUrl: true,
   department: true,
   cdc: true,

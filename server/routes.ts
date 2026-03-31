@@ -100,20 +100,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Accept MBO regulation
-  app.post("/api/accept-mbo-regulation", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const now = Math.floor(Date.now() / 1000);
-    await storage.updateUser((req.user as any).id, { mboRegulationAcceptedAt: now });
-    res.sendStatus(200);
-  });
-
   // Mark FAQs as read
-  app.post("/api/read-faq", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const now = Math.floor(Date.now() / 1000);
-    await storage.updateUser((req.user as any).id, { faqReadAt: now });
-    res.sendStatus(200);
+  app.post("/api/read-faq", isAuthenticated, async (req, res) => {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      await storage.updateUser((req.user as any).id, { faqReadAt: now });
+      res.json({ ok: true });
+    } catch (error) {
+      handleError(res, error);
+    }
   });
 
   // Admin endpoint to manually seed database if needed
@@ -338,24 +333,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update user (admin only - for org chart editing)
+  // Update user (admin only)
   app.patch("/api/users/:userId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { userId } = req.params;
-      const { department, managerId } = req.body;
+      const data = upsertUserSchema.partial().parse(req.body);
 
-      // Validate that user exists
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       // Prevent circular manager relationships
-      if (managerId && managerId !== null) {
-        // Check if the new manager would create a cycle
-        let currentManagerId = managerId;
+      if (data.managerId && data.managerId !== null) {
+        let currentManagerId = data.managerId;
         const visited = new Set<string>([userId]);
-
         while (currentManagerId) {
           if (visited.has(currentManagerId)) {
             return res.status(400).json({
@@ -363,21 +355,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           visited.add(currentManagerId);
-
           const manager = await storage.getUser(currentManagerId);
           if (!manager) break;
           currentManagerId = manager.managerId || null;
         }
       }
 
-      // Update user with new department and/or manager
-      await storage.updateUser(userId, {
-        department: department !== undefined ? department : user.department,
-        managerId: managerId !== undefined ? managerId : user.managerId,
-      });
-
-      // Fetch updated user
-      const updatedUser = await storage.getUser(userId);
+      const updatedUser = await storage.updateUser(userId, data);
       res.json(updatedUser);
     } catch (error) {
       console.error("User update error:", error);
@@ -449,16 +433,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = upsertUserSchema.parse(req.body);
       const user = await storage.upsertUser(data);
       res.status(201).json(user);
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
-  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const data = upsertUserSchema.partial().parse(req.body);
-      const user = await storage.updateUser(req.params.id, data);
-      res.json(user);
     } catch (error) {
       handleError(res, error);
     }
@@ -1337,6 +1311,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { enabled } = req.body as { enabled: boolean };
       await storage.setAppSetting("manager_autonomous_assignment", String(!!enabled));
       res.json({ enabled: !!enabled });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // MBO Cycle settings
+  app.get("/api/settings/cycle", isAuthenticated, async (req, res) => {
+    try {
+      const raw = await storage.getAppSetting("mbo_cycle");
+      const cycle = raw ? JSON.parse(raw) : { name: "", startDate: "", endDate: "" };
+      res.json(cycle);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/settings/cycle", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { name, startDate, endDate } = req.body as { name: string; startDate: string; endDate: string };
+      const cycle = { name: name ?? "", startDate: startDate ?? "", endDate: endDate ?? "" };
+      await storage.setAppSetting("mbo_cycle", JSON.stringify(cycle));
+      res.json(cycle);
     } catch (error) {
       handleError(res, error);
     }
