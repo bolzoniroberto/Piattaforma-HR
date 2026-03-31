@@ -95,6 +95,17 @@ export default function EmployeeDashboard() {
     enabled: !!user,
   });
 
+  // Fetch MBO cycle
+  const { data: cycleData } = useQuery<{ name: string; startDate: string; endDate: string }>({
+    queryKey: ["/api/settings/cycle"],
+    enabled: !!user,
+  });
+
+  const cycleLabel = cycleData?.name || String(new Date().getFullYear());
+  const cyclePeriod = cycleData?.startDate && cycleData?.endDate
+    ? `${new Date(cycleData.startDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })} – ${new Date(cycleData.endDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}`
+    : null;
+
 
   // Mutation for updating objective status
   const updateObjectiveMutation = useMutation({
@@ -181,28 +192,26 @@ export default function EmployeeDashboard() {
   }, [employee]);
 
   // Overall progress (weighted by objective weight, based on reported status)
+  const hasRendicontazione = useMemo(() => {
+    return objectiveAssignments.some(a => (a.objective as any)?.reportedAt);
+  }, [objectiveAssignments]);
+
   const overallProgress = useMemo(() => {
     if (objectiveAssignments.length === 0) return 0;
+    if (!hasRendicontazione) return 0;
     let totalWeight = 0;
     let weightedProgress = 0;
     objectiveAssignments.forEach(a => {
       const weight = a.weight || 0;
       totalWeight += weight;
-      
+
       const obj = a.objective as any;
-      // If reported, use 100% if reached, 50% if partial, 0% if not reached
-      // If not reported, use current progress
-      let progressValue = a.progress || 0;
+      let progressValue = 0;
       if (obj?.reportedAt) {
-        if (obj.qualitativeResult === "reached") {
-          progressValue = 100;
-        } else if (obj.qualitativeResult === "partial") {
-          progressValue = 50;
-        } else {
-          progressValue = 0;
-        }
+        if (obj.qualitativeResult === "reached") progressValue = 100;
+        else if (obj.qualitativeResult === "partial") progressValue = 50;
+        else progressValue = 0;
       }
-      
       weightedProgress += progressValue * weight;
     });
     if (totalWeight === 0) return 0;
@@ -516,54 +525,62 @@ export default function EmployeeDashboard() {
 
           {/* Top Section: Overall Achievement + Dark Summary Card */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[320px]">
-            {/* Main Achievement Card (White) */}
+            {/* Main Rendicontazione Card (White) */}
             <Card className="lg:col-span-2 bg-white border-slate-200 shadow-none flex flex-col justify-between p-8">
               <div>
                 <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mb-2">
-                  CYCLE STATUS: Q3 {new Date().getFullYear()}
+                  {cyclePeriod ?? cycleLabel}
                 </div>
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                  Overall MBO Achievement
+                  {cycleLabel}
                 </h2>
               </div>
-              
-              <div className="flex justify-between items-end mt-8 relative">
-                <div className="text-slate-900">
-                  <span className="text-[5rem] font-bold leading-none tracking-tighter" style={{ fontSize: '100px' }}>
-                    {overallProgress}
-                  </span>
-                  <span className="text-3xl font-bold ml-2">%</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">PROJECTION</div>
-                  <div className="text-xl font-bold text-slate-900">On Track</div>
-                </div>
 
-                {/* Decorative Chart placeholder */}
-                <div className="absolute top-0 right-10 bottom-0 w-32 opacity-10 flex gap-2 items-end">
-                  <div className="w-4 bg-slate-900 h-1/4"></div>
-                  <div className="w-4 bg-slate-900 h-2/4"></div>
-                  <div className="w-4 bg-slate-900 h-3/4"></div>
-                  <div className="w-4 bg-slate-900 h-full"></div>
+              {!hasRendicontazione ? (
+                <div className="flex flex-col justify-center flex-1 mt-8">
+                  <div className="text-2xl font-bold text-slate-400 tracking-tight">Non ancora rendicontata</div>
+                  <p className="text-sm text-slate-400 mt-2">Il payout sarà calcolato al completamento della rendicontazione.</p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-end mt-8 relative">
+                    <div className="text-slate-900">
+                      <span className="text-[5rem] font-bold leading-none tracking-tighter" style={{ fontSize: '100px' }}>
+                        {overallProgress}
+                      </span>
+                      <span className="text-3xl font-bold ml-2">%</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">PAYOUT STIMATO</div>
+                      <div className="text-xl font-bold text-slate-900">
+                        €{Math.round(mboTarget * overallProgress / 100).toLocaleString("it-IT")}
+                      </div>
+                    </div>
+                    {/* Decorative Chart placeholder */}
+                    <div className="absolute top-0 right-10 bottom-0 w-32 opacity-10 flex gap-2 items-end">
+                      <div className="w-4 bg-slate-900 h-1/4"></div>
+                      <div className="w-4 bg-slate-900 h-2/4"></div>
+                      <div className="w-4 bg-slate-900 h-3/4"></div>
+                      <div className="w-4 bg-slate-900 h-full"></div>
+                    </div>
+                  </div>
 
-              <div className="mt-8">
-                {/* Horizontal Bar */}
-                <div className="w-full flex h-3 bg-slate-100 mb-2 relative">
-                  <div className="bg-slate-700 h-full" style={{ width: `${Math.min(overallProgress, 100)}%` }}></div>
-                  {overallProgress > 100 && (
-                    <div className="absolute right-0 top-0 h-full bg-emerald-500" style={{ width: `${Math.min(overallProgress - 100, 20)}%` }}></div>
-                  )}
-                </div>
-                {/* Legend */}
-                <div className="flex justify-between text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-                  <span>BASE: 0%</span>
-                  <span>THRESHOLD: 70%</span>
-                  <span>TARGET: 100%</span>
-                  <span>STRETCH: 120%</span>
-                </div>
-              </div>
+                  <div className="mt-8">
+                    <div className="w-full flex h-3 bg-slate-100 mb-2 relative">
+                      <div className="bg-slate-700 h-full" style={{ width: `${Math.min(overallProgress, 100)}%` }}></div>
+                      {overallProgress > 100 && (
+                        <div className="absolute right-0 top-0 h-full bg-emerald-500" style={{ width: `${Math.min(overallProgress - 100, 20)}%` }}></div>
+                      )}
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+                      <span>BASE: 0%</span>
+                      <span>THRESHOLD: 70%</span>
+                      <span>TARGET: 100%</span>
+                      <span>STRETCH: 120%</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </Card>
 
             {/* Dark Target Card */}
