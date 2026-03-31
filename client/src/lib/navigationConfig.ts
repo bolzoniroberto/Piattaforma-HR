@@ -45,7 +45,7 @@ export const railNavigation: NavItem[] = [
     children: [
       {
         id: "dashboard-mbo",
-        title: "Dashboard MBO",
+        title: "Dashboard",
         url: "/",
         icon: LayoutDashboard,
         adminOnly: false,
@@ -224,7 +224,15 @@ export const railNavigation: NavItem[] = [
     adminOnly: false,
     managerOnly: true,
     moduleId: "gestione_mbo",
-    children: [],
+    children: [
+      {
+        id: "manager-mbo-assign",
+        title: "Assegna Obiettivi",
+        url: "/manager/mbo-assign",
+        icon: ClipboardList,
+        adminOnly: false,
+      },
+    ],
   },
   {
     id: "competenze",
