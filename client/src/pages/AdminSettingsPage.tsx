@@ -428,6 +428,83 @@ function CompanyTab() {
   );
 }
 
+// ─── Cycle Tab ────────────────────────────────────────────────────────────────
+
+function CycleTab() {
+  const { toast } = useToast();
+  const [form, setForm] = useState<{ name: string; startDate: string; endDate: string } | null>(null);
+
+  const { data: cycleData } = useQuery<{ name: string; startDate: string; endDate: string }>({
+    queryKey: ["/api/settings/cycle"],
+  });
+
+  const current = form ?? cycleData ?? { name: "", startDate: "", endDate: "" };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PUT", "/api/settings/cycle", current);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/cycle"] });
+      toast({ title: "Ciclo MBO salvato" });
+      setForm(null);
+    },
+    onError: () => toast({ title: "Errore nel salvataggio", variant: "destructive" }),
+  });
+
+  const set = (key: keyof typeof current, val: string) =>
+    setForm(prev => ({ ...(prev ?? current), [key]: val }));
+
+  return (
+    <TabsContent value="ciclo" className="mt-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Ciclo MBO</CardTitle>
+          <CardDescription>
+            Definisci il periodo di riferimento della campagna MBO. Puoi impostare un ciclo annuale o una campagna più corta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 max-w-md">
+          <div className="space-y-2">
+            <Label htmlFor="cycle-name">Nome ciclo</Label>
+            <Input
+              id="cycle-name"
+              value={current.name}
+              onChange={e => set("name", e.target.value)}
+              placeholder="es. MBO 2026 oppure H1 2026"
+            />
+            <p className="text-xs text-muted-foreground">Viene mostrato nella dashboard dei dipendenti.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cycle-start">Data inizio</Label>
+              <Input
+                id="cycle-start"
+                type="date"
+                value={current.startDate}
+                onChange={e => set("startDate", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cycle-end">Data fine</Label>
+              <Input
+                id="cycle-end"
+                type="date"
+                value={current.endDate}
+                onChange={e => set("endDate", e.target.value)}
+              />
+            </div>
+          </div>
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? "Salvataggio..." : "Salva"}
+          </Button>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
 // ─── Moduli Tab ───────────────────────────────────────────────────────────────
 
 const MODULE_DEFS = [
@@ -1259,6 +1336,7 @@ export default function AdminSettingsPage() {
                   <TabsTrigger value="causali-assunzione" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Causali Assunzione</TabsTrigger>
                   <TabsTrigger value="entry-gate" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Entry Gate MBO</TabsTrigger>
                   <TabsTrigger value="azienda" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Azienda</TabsTrigger>
+                  <TabsTrigger value="ciclo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Ciclo MBO</TabsTrigger>
                   <TabsTrigger value="manager-mbo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Manager MBO</TabsTrigger>
                 </TabsList>
 
@@ -2332,6 +2410,7 @@ export default function AdminSettingsPage() {
                 </TabsContent>
                 <EntryGateTab />
                 <CompanyTab />
+                <CycleTab />
                 <ManagerAssignmentTab />
               </Tabs>
 
