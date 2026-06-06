@@ -49,6 +49,21 @@ export function initializeDatabase() {
     } else {
       console.log(`Database found with ${tableCount.cnt} tables`);
     }
+
+    // Incremental migrations: apply new tables if missing
+    const incrementalMigrations = [
+      path.join(process.cwd(), 'db', 'migrations', '0003_doc_generation.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0004_doc_signers.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0005_doc_template_font.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0006_doc_template_category.sql'),
+    ];
+    for (const migPath of incrementalMigrations) {
+      if (fs.existsSync(migPath)) {
+        try {
+          sqlite.exec(fs.readFileSync(migPath, 'utf-8'));
+        } catch {}
+      }
+    }
   } catch (error) {
     console.error('Database initialization failed:', error);
     throw error;

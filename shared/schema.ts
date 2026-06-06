@@ -737,7 +737,7 @@ export const reportingLog = sqliteTable("reporting_log", {
   id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   dictionaryId: text("dictionary_id").notNull().references(() => objectivesDictionary.id, { onDelete: "cascade" }),
   reportedByUserId: text("reported_by_user_id").references(() => users.id, { onDelete: "set null" }),
-  reportingChannel: text("reporting_channel").notNull(), // "email_link" | "admin_manual" | "rendicontatore"
+  reportingChannel: text("reporting_channel").notNull(), // "email_link" | "admin_manual" | "rendicontatore" | "datasource_email"
   actualValue: real("actual_value"),
   qualitativeResult: text("qualitative_result"),
   notes: text("notes"),
@@ -1056,7 +1056,7 @@ export const competencyModels = sqliteTable("competency_models", {
   id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   name: text("name").notNull(), // "Executive Competencies", "Manager Competencies"
   description: text("description"),
-  personaType: text("persona_type").notNull(), // "executive", "manager", "professional", "individual_contributor"
+  personaType: text("persona_type").notNull(), // "executive", "manager", "professional", "expert"
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: integer("created_at").default(sql`(unixepoch())`),
@@ -1068,7 +1068,7 @@ export const insertCompetencyModelSchema = createInsertSchema(competencyModels).
   createdAt: true,
   updatedAt: true,
 }).extend({
-  personaType: z.enum(["executive", "manager", "professional", "individual_contributor"]),
+  personaType: z.enum(["executive", "manager", "professional", "expert"]),
 });
 
 export type InsertCompetencyModel = z.infer<typeof insertCompetencyModelSchema>;
@@ -1146,6 +1146,10 @@ export const evaluationCycles = sqliteTable("evaluation_cycles", {
   peerFeedbackEnd: integer("peer_feedback_end"),
   managerEvaluationStart: integer("manager_evaluation_start"),
   managerEvaluationEnd: integer("manager_evaluation_end"),
+  calibrationStart: integer("calibration_start"),
+  calibrationEnd: integer("calibration_end"),
+  interviewStart: integer("interview_start"),
+  interviewEnd: integer("interview_end"),
   feedbackDeliveryStart: integer("feedback_delivery_start"),
   feedbackDeliveryEnd: integer("feedback_delivery_end"),
 
@@ -1172,6 +1176,10 @@ export const insertEvaluationCycleSchema = createInsertSchema(evaluationCycles).
   peerFeedbackEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
   managerEvaluationStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
   managerEvaluationEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  calibrationStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  calibrationEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  interviewStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  interviewEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
   feedbackDeliveryStart: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
   feedbackDeliveryEnd: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
 });
@@ -1185,6 +1193,7 @@ export const selfAssessments = sqliteTable("self_assessments", {
   cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  year: integer("year").notNull().default(0),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
   submittedAt: integer("submitted_at"),
@@ -1272,6 +1281,7 @@ export const peerFeedbacks = sqliteTable("peer_feedbacks", {
   requestorUserId: text("requestor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   peerUserId: text("peer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  year: integer("year").notNull().default(0),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
   isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(true),
@@ -1301,6 +1311,7 @@ export const managerEvaluations = sqliteTable("manager_evaluations", {
   employeeUserId: text("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   managerUserId: text("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  year: integer("year").notNull().default(0),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment").notNull(),
   submittedAt: integer("submitted_at"),
@@ -1391,6 +1402,101 @@ export const insertEvaluationNotificationSchema = createInsertSchema(evaluationN
 export type InsertEvaluationNotification = z.infer<typeof insertEvaluationNotificationSchema>;
 export type EvaluationNotification = typeof evaluationNotifications.$inferSelect;
 
+// Evaluation Calibrations - HR adjusts manager ratings
+export const evaluationCalibrations = sqliteTable("evaluation_calibrations", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  employeeUserId: text("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  competencyId: text("competency_id").notNull().references(() => competencies.id, { onDelete: "cascade" }),
+  originalRating: integer("original_rating").notNull(), // manager's original rating
+  calibratedRating: integer("calibrated_rating").notNull(), // HR's adjusted rating 1-5
+  calibratedBy: text("calibrated_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason"),
+  year: integer("year").notNull().default(0),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+}, (table) => ({
+  uniqueCycleEmployeeCompetency: uniqueIndex("unique_calibration").on(table.cycleId, table.employeeUserId, table.competencyId),
+}));
+
+export const insertEvaluationCalibrationSchema = createInsertSchema(evaluationCalibrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  originalRating: z.number().int().min(1).max(5),
+  calibratedRating: z.number().int().min(1).max(5),
+});
+
+export type InsertEvaluationCalibration = z.infer<typeof insertEvaluationCalibrationSchema>;
+export type EvaluationCalibration = typeof evaluationCalibrations.$inferSelect;
+
+// Evaluation Interviews - Feedback session scheduling and sign-off
+export const evaluationInterviews = sqliteTable("evaluation_interviews", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  employeeUserId: text("employee_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managerUserId: text("manager_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  year: integer("year").notNull().default(0),
+  scheduledAt: integer("scheduled_at"),
+  completedAt: integer("completed_at"),
+  outcome: text("outcome"), // free-text notes
+  managerSignedAt: integer("manager_signed_at"),
+  employeeSignedAt: integer("employee_signed_at"),
+  notes: text("notes"),
+  status: text("status").notNull().default("pending"), // "pending", "scheduled", "completed"
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+}, (table) => ({
+  uniqueCycleEmployee: uniqueIndex("unique_interview").on(table.cycleId, table.employeeUserId),
+}));
+
+export const insertEvaluationInterviewSchema = createInsertSchema(evaluationInterviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.enum(["pending", "scheduled", "completed"]).default("pending"),
+  scheduledAt: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+  completedAt: z.union([z.string(), z.number(), z.date(), z.null()]).transform(val => !val || val === '' ? null : (typeof val === 'number' ? val : Math.floor(new Date(val).getTime() / 1000))).nullable().optional(),
+});
+
+export type InsertEvaluationInterview = z.infer<typeof insertEvaluationInterviewSchema>;
+export type EvaluationInterview = typeof evaluationInterviews.$inferSelect;
+
+// Evaluation Sheets - Per-user summary of a cycle (currentPhase, composite score, closed status)
+export const evaluationSheets = sqliteTable("evaluation_sheets", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  cycleId: text("cycle_id").notNull().references(() => evaluationCycles.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(),
+  currentPhase: integer("current_phase").notNull().default(1), // 1=self-assessment, 2=manager-eval, 3=calibration, 4=interview
+  status: text("status").notNull().default("open"), // "open", "closed"
+  mboScore: real("mbo_score"), // 0-100 from MBO system
+  performanceScore: real("performance_score"), // 0-5 avg from competency ratings
+  compositeScore: real("composite_score"), // weighted final
+  openedAt: integer("opened_at").default(sql`(unixepoch())`),
+  closedAt: integer("closed_at"),
+  closedBy: text("closed_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+}, (table) => ({
+  uniqueCycleUser: uniqueIndex("unique_eval_sheet").on(table.cycleId, table.userId),
+}));
+
+export const insertEvaluationSheetSchema = createInsertSchema(evaluationSheets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  openedAt: true,
+}).extend({
+  status: z.enum(["open", "closed"]).default("open"),
+  currentPhase: z.number().int().min(1).max(4).default(1),
+});
+
+export type InsertEvaluationSheet = z.infer<typeof insertEvaluationSheetSchema>;
+export type EvaluationSheet = typeof evaluationSheets.$inferSelect;
+
 // Relations for competency system
 export const competencyModelsRelations = relations(competencyModels, ({ one, many }) => ({
   createdByUser: one(users, {
@@ -1424,6 +1530,7 @@ export const competenciesRelations = relations(competencies, ({ one, many }) => 
   selfAssessments: many(selfAssessments),
   peerFeedbacks: many(peerFeedbacks),
   managerEvaluations: many(managerEvaluations),
+  calibrations: many(evaluationCalibrations),
 }));
 
 export const evaluationCyclesRelations = relations(evaluationCycles, ({ one, many }) => ({
@@ -1437,6 +1544,9 @@ export const evaluationCyclesRelations = relations(evaluationCycles, ({ one, man
   managerEvaluations: many(managerEvaluations),
   developmentPlans: many(developmentPlans),
   notifications: many(evaluationNotifications),
+  calibrations: many(evaluationCalibrations),
+  interviews: many(evaluationInterviews),
+  sheets: many(evaluationSheets),
 }));
 
 export const selfAssessmentsRelations = relations(selfAssessments, ({ one }) => ({
@@ -1548,3 +1658,159 @@ export const evaluationNotificationsRelations = relations(evaluationNotification
     references: [users.id],
   }),
 }));
+
+export const evaluationCalibrationsRelations = relations(evaluationCalibrations, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [evaluationCalibrations.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  employee: one(users, {
+    fields: [evaluationCalibrations.employeeUserId],
+    references: [users.id],
+  }),
+  competency: one(competencies, {
+    fields: [evaluationCalibrations.competencyId],
+    references: [competencies.id],
+  }),
+  calibratedByUser: one(users, {
+    fields: [evaluationCalibrations.calibratedBy],
+    references: [users.id],
+  }),
+}));
+
+export const evaluationInterviewsRelations = relations(evaluationInterviews, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [evaluationInterviews.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  employee: one(users, {
+    fields: [evaluationInterviews.employeeUserId],
+    references: [users.id],
+  }),
+  manager: one(users, {
+    fields: [evaluationInterviews.managerUserId],
+    references: [users.id],
+  }),
+}));
+
+export const evaluationSheetsRelations = relations(evaluationSheets, ({ one }) => ({
+  cycle: one(evaluationCycles, {
+    fields: [evaluationSheets.cycleId],
+    references: [evaluationCycles.id],
+  }),
+  user: one(users, {
+    fields: [evaluationSheets.userId],
+    references: [users.id],
+  }),
+  closedByUser: one(users, {
+    fields: [evaluationSheets.closedBy],
+    references: [users.id],
+  }),
+}));
+
+// ─── AI Tables ───────────────────────────────────────────────────────────────
+
+export const aiSessions = sqliteTable("ai_sessions", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  scope: text("scope").notNull(), // 'assign' | 'eval' | 'analytics'
+  targetUserId: text("target_user_id").references(() => users.id, { onDelete: "set null" }),
+  cycleId: text("cycle_id"),
+  state: text("state").notNull().default("questioning"), // 'questioning' | 'ready' | 'finalized'
+  turnCount: integer("turn_count").notNull().default(0),
+  collectedFacts: text("collected_facts").notNull().default("{}"), // JSON
+  proposal: text("proposal"), // JSON, set when state='ready'
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
+
+export const aiMessages = sqliteTable("ai_messages", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  sessionId: text("session_id").notNull().references(() => aiSessions.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'agent' | 'user'
+  content: text("content").notNull(),
+  questionKey: text("question_key"), // tag domanda, es. 'priority_area'
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+});
+
+export const aiInvocations = sqliteTable("ai_invocations", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull(),
+  scope: text("scope").notNull(),
+  model: text("model").notNull(),
+  tokensIn: integer("tokens_in").notNull().default(0),
+  tokensOut: integer("tokens_out").notNull().default(0),
+  estimatedCentesimi: integer("estimated_centesimi").notNull().default(0), // costo stimato in centesimi
+  latencyMs: integer("latency_ms").notNull().default(0),
+  ok: integer("ok", { mode: "boolean" }).notNull().default(true),
+  errorMsg: text("error_msg"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+});
+
+export const aiBudget = sqliteTable("ai_budget", {
+  month: text("month").primaryKey(), // 'YYYY-MM'
+  spentCentesimi: integer("spent_centesimi").notNull().default(0),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
+
+export type AiSession = typeof aiSessions.$inferSelect;
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type AiInvocation = typeof aiInvocations.$inferSelect;
+export type AiBudget = typeof aiBudget.$inferSelect;
+
+// ─── Doc Generation ───────────────────────────────────────────────────────────
+
+export const docLetterheads = sqliteTable("doc_letterheads", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(),
+  description: text("description"),
+  filePath: text("file_path").notNull(),
+  uploadedAt: integer("uploaded_at").default(sql`(unixepoch())`),
+});
+
+export const docTemplates = sqliteTable("doc_templates", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(),
+  letterType: text("letter_type").notNull(),
+  category: text("category").notNull().default('mbo'),
+  bodyContent: text("body_content").notNull().default(''),
+  fieldMappings: text("field_mappings").notNull().default('{}'),
+  calculatedFields: text("calculated_fields").notNull().default('{}'),
+  parameters: text("parameters").notNull().default('[]'),
+  fontFamily: text("font_family").notNull().default('Calibri'),
+  version: integer("version").notNull().default(1),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
+
+export const docGenerationJobs = sqliteTable("doc_generation_jobs", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  templateId: text("template_id").notNull().references(() => docTemplates.id, { onDelete: "cascade" }),
+  letterheadId: text("letterhead_id").references(() => docLetterheads.id, { onDelete: "set null" }),
+  excelPath: text("excel_path").notNull(),
+  paramsSnapshot: text("params_snapshot").notNull().default('{}'),
+  status: text("status").notNull().default('pending'),
+  beneficiaryCount: integer("beneficiary_count").notNull().default(0),
+  outputZipPath: text("output_zip_path"),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+});
+
+export type DocLetterhead = typeof docLetterheads.$inferSelect;
+export type InsertDocLetterhead = typeof docLetterheads.$inferInsert;
+export type DocTemplate = typeof docTemplates.$inferSelect;
+export type InsertDocTemplate = typeof docTemplates.$inferInsert;
+export type DocGenerationJob = typeof docGenerationJobs.$inferSelect;
+export type InsertDocGenerationJob = typeof docGenerationJobs.$inferInsert;
+
+export const docSigners = sqliteTable("doc_signers", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(),
+  role: text("role").notNull(),
+  signatureImagePath: text("signature_image_path").notNull(),
+  isDefault: integer("is_default").notNull().default(0),
+  uploadedAt: integer("uploaded_at").default(sql`(unixepoch())`),
+});
+
+export type DocSigner = typeof docSigners.$inferSelect;
+export type InsertDocSigner = typeof docSigners.$inferInsert;
