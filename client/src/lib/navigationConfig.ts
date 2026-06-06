@@ -8,108 +8,83 @@ import {
   Trash2,
   CheckCircle,
   Network,
-  UserCircle,
   Award,
   Calendar,
   BarChart3,
   ClipboardCheck,
   TrendingUp,
-  UserCheck,
   Table2,
-  HelpCircle,
   ClipboardList,
+  SlidersHorizontal,
+  MessageSquare,
+  Sparkles,
+  FilePlus2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
   id: string;
   title: string;
-  url?: string;
+  url: string;
   icon: LucideIcon;
-  adminOnly: boolean;
-  /** If true, visible only to admin OR users with isRendicontatore = true */
+  adminOnly?: boolean;
+  /** Visible only to admin OR users with isRendicontatore = true */
   rendicontatoreOnly?: boolean;
-  /** If true, visible only to admin OR users with role = "manager" */
+  /** Visible only to admin OR users with role = "manager" */
   managerOnly?: boolean;
-  /** Matches a key in FeatureFlags — if the flag is false, the whole section is hidden */
-  moduleId?: string;
-  children?: NavItem[];
 }
 
-export const railNavigation: NavItem[] = [
-  {
-    id: "dashboard",
-    title: "Dashboard",
-    icon: LayoutDashboard,
-    adminOnly: false,
-    children: [
-      {
-        id: "dashboard-mbo",
-        title: "Dashboard",
-        url: "/",
-        icon: LayoutDashboard,
-        adminOnly: false,
-      },
-      {
-        id: "profilo",
-        title: "Profilo",
-        url: "/profilo",
-        icon: UserCircle,
-        adminOnly: false,
-      },
-      {
-        id: "regulation",
-        title: "Regolamento MBO",
-        url: "/regulation",
-        icon: FileText,
-        adminOnly: false,
-      },
-      {
-        id: "regulation-faq",
-        title: "FAQ Regolamento",
-        url: "/regulation/faq",
-        icon: HelpCircle,
-        adminOnly: false,
-      },
-    ],
-  },
-  {
-    id: "anagrafica",
-    title: "Gestione Anagrafiche",
-    icon: Users,
-    adminOnly: true,
-    moduleId: "gestione_anagrafiche",
-    children: [
-      {
-        id: "users",
-        title: "Gestione Utenti",
-        url: "/admin/users",
-        icon: Users,
-        adminOnly: true,
-      },
-      {
-        id: "settings",
-        title: "Impostazioni Strutture",
-        url: "/admin/settings",
-        icon: Settings,
-        adminOnly: true,
-      },
-      {
-        id: "custom-fields",
-        title: "Campi Personalizzati",
-        url: "/admin/custom-fields",
-        icon: Settings,
-        adminOnly: true,
-      },
-    ],
-  },
+export interface NavSection {
+  id: string;
+  title: string;
+  icon: LucideIcon;
+  /** Matches a key in FeatureFlags — if false, whole section hidden */
+  moduleId?: string;
+  children: NavItem[];
+}
+
+export const dashboardItem: NavItem = {
+  id: "dashboard",
+  title: "Dashboard",
+  url: "/",
+  icon: LayoutDashboard,
+};
+
+export const navSections: NavSection[] = [
   {
     id: "mbo",
-    title: "Gestione MBO",
+    title: "MBO",
     icon: Target,
-    adminOnly: true,
     moduleId: "gestione_mbo",
     children: [
+      {
+        id: "rendiconta",
+        title: "Rendiconta Obiettivi",
+        url: "/rendiconta",
+        icon: ClipboardList,
+        rendicontatoreOnly: true,
+      },
+      {
+        id: "manager-mbo-assign",
+        title: "Assegna Obiettivi",
+        url: "/manager/mbo-assign",
+        icon: ClipboardList,
+        managerOnly: true,
+      },
+      {
+        id: "ai-assign",
+        title: "Assegna con AI",
+        url: "/ai/assegna",
+        icon: Sparkles,
+        managerOnly: true,
+      },
+      {
+        id: "ai-eval",
+        title: "Valuta Dipendente",
+        url: "/ai/valuta",
+        icon: Sparkles,
+        managerOnly: true,
+      },
       {
         id: "objectives",
         title: "Database Obiettivi",
@@ -126,7 +101,7 @@ export const railNavigation: NavItem[] = [
       },
       {
         id: "clear-assignments",
-        title: "Disassociazione Obiettivi",
+        title: "Disassociazione",
         url: "/admin/clear-assignments",
         icon: Trash2,
         adminOnly: true,
@@ -147,28 +122,11 @@ export const railNavigation: NavItem[] = [
       },
     ],
   },
+
   {
-    id: "rendicontazione",
-    title: "Rendicontazione",
-    icon: ClipboardList,
-    adminOnly: false,
-    rendicontatoreOnly: true,
-    children: [
-      {
-        id: "rendiconta",
-        title: "Rendiconta Obiettivi",
-        url: "/rendiconta",
-        icon: ClipboardList,
-        adminOnly: false,
-        rendicontatoreOnly: true,
-      },
-    ],
-  },
-  {
-    id: "valutazione",
-    title: "Valutazione",
+    id: "performance",
+    title: "Performance",
     icon: ClipboardCheck,
-    adminOnly: false,
     moduleId: "performance_management",
     children: [
       {
@@ -176,71 +134,46 @@ export const railNavigation: NavItem[] = [
         title: "Autovalutazione",
         url: "/employee/self-assessment",
         icon: FileText,
-        adminOnly: false,
       },
       {
         id: "peer-feedback",
         title: "Feedback 360°",
         url: "/employee/peer-feedback",
         icon: Users,
-        adminOnly: false,
       },
       {
         id: "development-plan",
         title: "Piano di Sviluppo",
         url: "/employee/development-plan",
         icon: TrendingUp,
-        adminOnly: false,
       },
-    ],
-  },
-  {
-    id: "gestione-team",
-    title: "Valutazioni Performance",
-    icon: UserCheck,
-    adminOnly: false,
-    moduleId: "performance_management",
-    children: [
+      {
+        id: "interview",
+        title: "Colloquio di Feedback",
+        url: "/employee/interview",
+        icon: MessageSquare,
+      },
       {
         id: "team-evaluations",
         title: "Valutazioni Team",
         url: "/manager/team-evaluations",
         icon: Users,
-        adminOnly: false,
+        managerOnly: true,
       },
       {
         id: "team-development-plans",
-        title: "Piani di Sviluppo",
+        title: "Piani di Sviluppo Team",
         url: "/manager/development-plans",
         icon: TrendingUp,
-        adminOnly: false,
+        managerOnly: true,
       },
-    ],
-  },
-  {
-    id: "manager-mbo",
-    title: "MBO Team",
-    icon: Target,
-    adminOnly: false,
-    managerOnly: true,
-    moduleId: "gestione_mbo",
-    children: [
       {
-        id: "manager-mbo-assign",
-        title: "Assegna Obiettivi",
-        url: "/manager/mbo-assign",
-        icon: ClipboardList,
-        adminOnly: false,
+        id: "manager-interviews",
+        title: "Colloqui di Feedback",
+        url: "/manager/interviews",
+        icon: MessageSquare,
+        managerOnly: true,
       },
-    ],
-  },
-  {
-    id: "competenze",
-    title: "Competenze",
-    icon: Award,
-    adminOnly: true,
-    moduleId: "performance_management",
-    children: [
       {
         id: "competencies-config",
         title: "Gestione Competenze",
@@ -256,6 +189,20 @@ export const railNavigation: NavItem[] = [
         adminOnly: true,
       },
       {
+        id: "activities",
+        title: "Attività Persone",
+        url: "/admin/activities",
+        icon: Table2,
+        adminOnly: true,
+      },
+      {
+        id: "calibration",
+        title: "Calibrazione",
+        url: "/admin/calibration",
+        icon: SlidersHorizontal,
+        adminOnly: true,
+      },
+      {
         id: "competencies-analytics",
         title: "Analytics Competenze",
         url: "/admin/competencies-analytics",
@@ -264,41 +211,68 @@ export const railNavigation: NavItem[] = [
       },
     ],
   },
+
   {
-    id: "analytics",
-    title: "Analytics",
-    icon: PieChart,
-    adminOnly: true,
+    id: "strumenti",
+    title: "Strumenti",
+    icon: FilePlus2,
     children: [
       {
-        id: "analytics-reports",
-        title: "Analytics & Reports",
-        url: "/admin/analytics",
-        icon: PieChart,
+        id: "doc-gen",
+        title: "Documenti",
+        url: "/admin/doc-gen",
+        icon: FileText,
         adminOnly: true,
       },
     ],
   },
+
   {
-    id: "organigramma",
-    title: "Gestione Organizzazione",
-    icon: Network,
-    adminOnly: false,
-    moduleId: "gestione_organizzazione",
+    id: "impostazioni",
+    title: "Impostazioni",
+    icon: Settings,
     children: [
+      {
+        id: "users",
+        title: "Gestione Utenti",
+        url: "/admin/users",
+        icon: Users,
+        adminOnly: true,
+      },
       {
         id: "organigramma-view",
         title: "Organigramma",
         url: "/organigramma",
         icon: Network,
-        adminOnly: false,
+        adminOnly: true,
       },
       {
         id: "team",
         title: "Team",
         url: "/team",
         icon: Users,
-        adminOnly: false,
+        adminOnly: true,
+      },
+      {
+        id: "settings",
+        title: "Impostazioni",
+        url: "/admin/settings",
+        icon: Settings,
+        adminOnly: true,
+      },
+      {
+        id: "custom-fields",
+        title: "Campi Personalizzati",
+        url: "/admin/custom-fields",
+        icon: Settings,
+        adminOnly: true,
+      },
+      {
+        id: "analytics-reports",
+        title: "Analytics & Reports",
+        url: "/admin/analytics",
+        icon: PieChart,
+        adminOnly: true,
       },
     ],
   },
