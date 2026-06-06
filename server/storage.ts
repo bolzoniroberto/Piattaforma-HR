@@ -37,6 +37,18 @@ import {
   type InsertEntryGate,
   reportingLog,
   type ReportingLog,
+  docLetterheads,
+  docTemplates,
+  docGenerationJobs,
+  docSigners,
+  type DocLetterhead,
+  type InsertDocLetterhead,
+  type DocTemplate,
+  type InsertDocTemplate,
+  type DocGenerationJob,
+  type InsertDocGenerationJob,
+  type DocSigner,
+  type InsertDocSigner,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -551,9 +563,12 @@ export class DatabaseStorage implements IStorage {
         thresholdPayout: row.dictionary?.thresholdPayout ?? 50,
         allowOverperformance: row.dictionary?.allowOverperformance ?? 0,
         maxPayout: row.dictionary?.maxPayout ?? null,
-        actualValue: row.objective?.actualValue ? parseFloat(String(row.objective.actualValue)) : null,
+        actualValue: row.dictionary?.actualValue != null
+          ? parseFloat(String(row.dictionary.actualValue))
+          : (row.objective?.actualValue != null ? parseFloat(String(row.objective.actualValue)) : null),
         qualitativeResult: row.dictionary?.qualitativeResult || null,
         reportedAt: row.dictionary?.reportedAt || null,
+        dataSourceEmail: row.dictionary?.dataSourceEmail || null,
         indicatorCluster: row.indicatorCluster || undefined,
         calculationType: row.calculationType || undefined,
       },
@@ -646,7 +661,7 @@ export class DatabaseStorage implements IStorage {
     actualValue?: number;
     qualitativeResult?: string;
     progress: number;
-    channel?: "email_link" | "admin_manual" | "rendicontatore";
+    channel?: "email_link" | "admin_manual" | "rendicontatore" | "datasource_email";
     reportedByUserId?: string;
     notes?: string;
   }): Promise<void> {
@@ -660,24 +675,23 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(objectivesDictionary.id, dictionaryId));
 
-    // Get all objectives for this dictionary
+    // Update ALL objectives for this dictionary in one query
+    await db
+      .update(objectives)
+      .set({
+        actualValue: reportData.actualValue,
+        qualitativeResult: reportData.qualitativeResult,
+        reportedAt: nowUnix(),
+      })
+      .where(eq(objectives.dictionaryId, dictionaryId));
+
+    // Update progress on ALL assignments for objectives of this dictionary
     const relatedObjectives = await db
-      .select()
+      .select({ id: objectives.id })
       .from(objectives)
       .where(eq(objectives.dictionaryId, dictionaryId));
 
-    // Update all objectives
     for (const objective of relatedObjectives) {
-      await db
-        .update(objectives)
-        .set({
-          actualValue: reportData.actualValue,
-          qualitativeResult: reportData.qualitativeResult,
-          reportedAt: nowUnix(),
-        })
-        .where(eq(objectives.id, objective.id));
-
-      // Update all assignments for this objective
       await this.updateAssignmentProgressByObjective(objective.id, reportData.progress);
     }
 
@@ -690,6 +704,30 @@ export class DatabaseStorage implements IStorage {
       qualitativeResult: reportData.qualitativeResult ?? null,
       notes: reportData.notes ?? null,
     });
+  }
+
+  async clearReportOnDictionary(dictionaryId: string): Promise<void> {
+    await db
+      .update(objectivesDictionary)
+      .set({ actualValue: null, qualitativeResult: null, reportedAt: null })
+      .where(eq(objectivesDictionary.id, dictionaryId));
+
+    const relatedObjectives = await db
+      .select()
+      .from(objectives)
+      .where(eq(objectives.dictionaryId, dictionaryId));
+
+    for (const objective of relatedObjectives) {
+      await db
+        .update(objectives)
+        .set({ actualValue: null, qualitativeResult: null, reportedAt: null })
+        .where(eq(objectives.id, objective.id));
+
+      await db
+        .update(objectiveAssignments)
+        .set({ progress: 0, status: "assegnato" })
+        .where(eq(objectiveAssignments.objectiveId, objective.id));
+    }
   }
 
   async createReportingLogEntry(entry: {
@@ -936,6 +974,113 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEntryGate(id: string): Promise<void> {
     await db.delete(entryGate).where(eq(entryGate.id, id));
+  }
+
+  // ─── Doc Generation ────────────────────────────────────────────────────────
+
+  async getDocLetterheads(): Promise<DocLetterhead[]> {
+    return db.select().from(docLetterheads).orderBy(desc(docLetterheads.uploadedAt));
+  }
+
+  async getDocLetterhead(id: string): Promise<DocLetterhead | undefined> {
+    const [row] = await db.select().from(docLetterheads).where(eq(docLetterheads.id, id));
+    return row;
+  }
+
+  async createDocLetterhead(data: InsertDocLetterhead): Promise<DocLetterhead> {
+    const [row] = await db.insert(docLetterheads).values(data).returning();
+    return row;
+  }
+
+  async deleteDocLetterhead(id: string): Promise<void> {
+    await db.delete(docLetterheads).where(eq(docLetterheads.id, id));
+  }
+
+  async getDocTemplates(): Promise<DocTemplate[]> {
+    return db.select().from(docTemplates).orderBy(desc(docTemplates.updatedAt));
+  }
+
+  async getDocTemplate(id: string): Promise<DocTemplate | undefined> {
+    const [row] = await db.select().from(docTemplates).where(eq(docTemplates.id, id));
+    return row;
+  }
+
+  async createDocTemplate(data: InsertDocTemplate): Promise<DocTemplate> {
+    const [row] = await db.insert(docTemplates).values({ category: 'mbo', ...data }).returning();
+    return row;
+  }
+
+  async updateDocTemplate(id: string, data: Partial<InsertDocTemplate>): Promise<DocTemplate> {
+    const [row] = await db.update(docTemplates)
+      .set({ ...data, updatedAt: nowUnix() })
+      .where(eq(docTemplates.id, id))
+      .returning();
+    return row;
+  }
+
+  async deleteDocTemplate(id: string): Promise<void> {
+    await db.delete(docTemplates).where(eq(docTemplates.id, id));
+  }
+
+  async duplicateDocTemplate(id: string): Promise<DocTemplate> {
+    const src = await this.getDocTemplate(id);
+    if (!src) throw new Error('Template non trovato');
+    const [row] = await db.insert(docTemplates).values({
+      name: src.name + ' (copia)',
+      letterType: src.letterType,
+      category: src.category ?? 'mbo',
+      bodyContent: src.bodyContent,
+      fieldMappings: src.fieldMappings,
+      calculatedFields: src.calculatedFields,
+      parameters: src.parameters,
+      version: src.version + 1,
+    }).returning();
+    return row;
+  }
+
+  async getDocJobs(): Promise<DocGenerationJob[]> {
+    return db.select().from(docGenerationJobs).orderBy(desc(docGenerationJobs.createdAt));
+  }
+
+  async createDocJob(data: InsertDocGenerationJob): Promise<DocGenerationJob> {
+    const [row] = await db.insert(docGenerationJobs).values(data).returning();
+    return row;
+  }
+
+  async updateDocJob(id: string, data: Partial<InsertDocGenerationJob>): Promise<DocGenerationJob> {
+    const [row] = await db.update(docGenerationJobs)
+      .set(data)
+      .where(eq(docGenerationJobs.id, id))
+      .returning();
+    return row;
+  }
+
+  async getDocSigners(): Promise<DocSigner[]> {
+    return db.select().from(docSigners).orderBy(desc(docSigners.uploadedAt));
+  }
+
+  async getDocSigner(id: string): Promise<DocSigner | undefined> {
+    const [row] = await db.select().from(docSigners).where(eq(docSigners.id, id));
+    return row;
+  }
+
+  async createDocSigner(data: InsertDocSigner): Promise<DocSigner> {
+    const [row] = await db.insert(docSigners).values(data).returning();
+    return row;
+  }
+
+  async updateDocSigner(id: string, data: Partial<InsertDocSigner>): Promise<DocSigner> {
+    const [row] = await db.update(docSigners).set(data).where(eq(docSigners.id, id)).returning();
+    return row;
+  }
+
+  async deleteDocSigner(id: string): Promise<void> {
+    await db.delete(docSigners).where(eq(docSigners.id, id));
+  }
+
+  async setDefaultDocSigner(id: string): Promise<void> {
+    await db.update(docSigners).set({ isDefault: 0 });
+    await db.update(docSigners).set({ isDefault: 1 }).where(eq(docSigners.id, id));
   }
 }
 
