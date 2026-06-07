@@ -9,3 +9,12 @@ data/
 shared/schema.ts.backup
 Esempi/
 client/Esempi/
+attached_assets/
+uploads/
+.claude/settings.local.json
+Masterdata/
+Masterdata obiettivi e assegnazioni/
+menu_analysis_proposal.md
+piano_generazione_lettere.md
+*.sqlite-shm
+*.sqlite-wal
