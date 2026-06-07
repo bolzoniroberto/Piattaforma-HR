@@ -108,3 +108,96 @@ export async function sendReportingRequestEmail(to: string, data: ReportingEmail
     html,
   });
 }
+
+// ─── Group email to data source ───────────────────────────────────────────────
+
+export interface DataSourceGroupEmailData {
+  contactName: string;
+  objectives: Array<{
+    title: string;
+    objectiveType: string;
+    targetValue?: number | null;
+    targetDescription?: string | null;
+    thresholdValue?: number | null;
+    dataSource?: string | null;
+  }>;
+  adminContact?: string;
+  year?: string;
+}
+
+export async function sendDataSourceGroupEmail(to: string, data: DataSourceGroupEmailData): Promise<void> {
+  const transporter = createTransporter();
+  const year = data.year || new Date().getFullYear().toString();
+
+  const objectiveRows = data.objectives.map((obj) => {
+    const tipo = obj.objectiveType === "numeric" ? "Quantitativo" : "Qualitativo";
+    const target = obj.objectiveType === "numeric" && obj.targetValue != null
+      ? obj.targetValue.toLocaleString("it-IT")
+      : "—";
+    return `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:500;">${obj.title}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#64748b;">${tipo}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;">${target}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#64748b;">${obj.targetDescription || "—"}</td>
+      </tr>`;
+  }).join("");
+
+  const adminReplyLine = data.adminContact
+    ? `<p style="color:#64748b;font-size:14px;">Per comunicarci i dati, rispondi direttamente a questa email o scrivi a <strong>${data.adminContact}</strong>.</p>`
+    : `<p style="color:#64748b;font-size:14px;">Per comunicarci i dati, rispondi direttamente a questa email.</p>`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="UTF-8"><style>
+  body { font-family: -apple-system, Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+  .card { background: white; border-radius: 12px; padding: 32px; max-width: 640px; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .logo { font-weight: 800; font-size: 18px; color: #1e293b; margin-bottom: 24px; }
+  .logo span { color: #4f46e5; }
+  h1 { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+  .badge { display: inline-block; background: #ede9fe; color: #4f46e5; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+  th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .note { font-size: 12px; color: #94a3b8; line-height: 1.6; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+</style></head>
+<body>
+  <div class="card">
+    <div class="logo">Talent<span>Hub</span></div>
+    <div class="badge">Richiesta Rendicontazione MBO ${year}</div>
+    <h1>Comunicazione dati consuntivi</h1>
+    <p style="color:#64748b;font-size:14px;margin:0 0 20px">Gentile ${data.contactName || "collega"},<br><br>
+    sei indicata/o come fonte dati per i seguenti obiettivi MBO ${year}. Ti chiediamo di comunicarci i valori consuntivi a tua disposizione rispondendo a questa email o contattando il referente amministrativo.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Obiettivo</th>
+          <th>Tipo</th>
+          <th style="text-align:right;">Target</th>
+          <th>Descrizione target</th>
+        </tr>
+      </thead>
+      <tbody>${objectiveRows}</tbody>
+    </table>
+
+    ${adminReplyLine}
+
+    <p class="note">Questa è una comunicazione automatica della piattaforma MBO. Se non sei il destinatario corretto o ritieni di aver ricevuto questa email per errore, contatta l'amministratore.</p>
+  </div>
+</body>
+</html>`;
+
+  if (!transporter) {
+    console.log(`[emailService] SMTP not configured. Would send datasource group email to: ${to}`);
+    console.log(`[emailService] Objectives: ${data.objectives.map(o => o.title).join(", ")}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || "MBO Platform <noreply@azienda.it>",
+    to,
+    subject: `Richiesta dati consuntivi MBO ${year} — ${data.objectives.length} obiettiv${data.objectives.length === 1 ? "o" : "i"}`,
+    html,
+  });
+}

@@ -88,7 +88,7 @@ export default function RendicontatorePage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tabellone"] });
+      queryClient.refetchQueries({ queryKey: ["/api/tabellone"] });
       toast({ title: "Rendicontazione salvata" });
       setSelectedObj(null);
       setActualValue(""); setQualitativeResult(""); setNotes("");

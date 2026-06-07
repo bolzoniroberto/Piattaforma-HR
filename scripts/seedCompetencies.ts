@@ -36,9 +36,9 @@ async function main() {
     console.log(`  ✓ Created: ${professionalModel.name}`);
 
     const individualModel = await competenciesStorage.createCompetencyModel({
-      name: "Individual Contributor Competencies",
-      description: "Competenze per contributor individuali",
-      personaType: "individual_contributor",
+      name: "Expert Competencies",
+      description: "Competenze per esperti e specialisti",
+      personaType: "expert",
       isActive: true,
       createdBy: "admin-001",
     });
@@ -171,27 +171,20 @@ async function main() {
     const now = new Date();
     const cycleYear = now.getFullYear();
 
+    const ts = (y: number, m: number, d: number) => Math.floor(new Date(y, m, d).getTime() / 1000);
+
     const cycle = await competenciesStorage.createEvaluationCycle({
       name: `Performance Review ${cycleYear}`,
       year: cycleYear,
       status: "active",
-
-      // Self-assessment phase: current month
-      selfAssessmentStart: new Date(cycleYear, now.getMonth(), 1),
-      selfAssessmentEnd: new Date(cycleYear, now.getMonth(), 15),
-
-      // Peer feedback phase: mid-month to end of month
-      peerFeedbackStart: new Date(cycleYear, now.getMonth(), 16),
-      peerFeedbackEnd: new Date(cycleYear, now.getMonth() + 1, 0),
-
-      // Manager evaluation: next month
-      managerEvaluationStart: new Date(cycleYear, now.getMonth() + 1, 1),
-      managerEvaluationEnd: new Date(cycleYear, now.getMonth() + 1, 15),
-
-      // Feedback delivery: mid next month
-      feedbackDeliveryStart: new Date(cycleYear, now.getMonth() + 1, 16),
-      feedbackDeliveryEnd: new Date(cycleYear, now.getMonth() + 1, 30),
-
+      selfAssessmentStart: ts(cycleYear, now.getMonth(), 1),
+      selfAssessmentEnd: ts(cycleYear, now.getMonth(), 15),
+      peerFeedbackStart: ts(cycleYear, now.getMonth(), 16),
+      peerFeedbackEnd: ts(cycleYear, now.getMonth() + 1, 0),
+      managerEvaluationStart: ts(cycleYear, now.getMonth() + 1, 1),
+      managerEvaluationEnd: ts(cycleYear, now.getMonth() + 1, 15),
+      feedbackDeliveryStart: ts(cycleYear, now.getMonth() + 1, 16),
+      feedbackDeliveryEnd: ts(cycleYear, now.getMonth() + 1, 30),
       enable360Feedback: true,
       createdBy: "admin-001",
     });
@@ -220,7 +213,7 @@ async function main() {
     // Set remaining employees as professionals or individual contributors
     const employees = users.filter(u => u.role === "employee");
     for (let i = 0; i < employees.length; i++) {
-      const personaType = i % 2 === 0 ? "professional" : "individual_contributor";
+      const personaType = i % 2 === 0 ? "professional" : "expert";
       await storage.updateUser(employees[i].id, { personaType });
       console.log(`  ✓ ${employees[i].name}: ${personaType}`);
     }

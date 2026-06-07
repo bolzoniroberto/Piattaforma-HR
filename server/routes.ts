@@ -1,6 +1,7 @@
 // Integration: javascript_log_in_with_replit
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
+import docGenRouter from "./docGenRoutes";
 import { storage } from "./storage";
 import { competenciesStorage } from "./competenciesStorage";
 import { seed } from "./seed";
@@ -18,7 +19,8 @@ import {
   contratti,
   compensation,
   ruoli,
-  smartWorkingStorico
+  smartWorkingStorico,
+  appSettings,
 } from "@shared/schema";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
 
@@ -88,12 +90,28 @@ function handleError(res: any, error: unknown) {
   if (error instanceof ZodError) {
     return res.status(400).json({ message: "Validation error", errors: error.errors });
   }
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.startsWith("budget_exceeded")) {
+    return res.status(402).json({ message: "Budget AI mensile esaurito. Contatta l'amministratore." });
+  }
+  if (msg.startsWith("ai_unavailable:")) {
+    return res.status(503).json({ message: msg.slice("ai_unavailable:".length) });
+  }
+  if (msg.startsWith("ai_rate_limit:")) {
+    return res.status(429).json({ message: msg.slice("ai_rate_limit:".length) });
+  }
+  if (msg.startsWith("ai_invalid:")) {
+    return res.status(400).json({ message: msg.slice("ai_invalid:".length) });
+  }
   res.status(500).json({ message: "Internal server error" });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Doc generation routes (admin only)
+  app.use('/api/doc', isAuthenticated, isAdmin, docGenRouter);
 
   // Health check - no auth required (used for deployment health checks)
   app.get("/api/health", async (req, res) => {
@@ -868,12 +886,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel (clear) a rendicontazione
+  app.delete("/api/dictionary/:id/report", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const dictionary = await storage.getObjectivesDictionaryItem(req.params.id);
+      if (!dictionary) return res.status(404).json({ message: "Dictionary item not found" });
+      await storage.clearReportOnDictionary(req.params.id);
+      res.json({ ok: true });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // Objective Assignment routes
   app.get("/api/my-objectives", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
       const assignments = await storage.getObjectiveAssignments(userId);
       res.json(assignments);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Preview bulk assignment — returns which users would be skipped due to weight overflow
+  // IMPORTANT: must be registered before /api/assignments/:userId to avoid Express matching "bulk-preview" as a userId
+  app.get("/api/assignments/bulk-preview", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { objectiveId, department, weight } = req.query as Record<string, string>;
+      if (!objectiveId || !department || !weight) {
+        return res.status(400).json({ message: "objectiveId, department, weight are required" });
+      }
+      const assignmentWeight = parseInt(weight, 10);
+      const allUsers = await storage.getAllUsers();
+      const isMboUser = (u: any) => u.mboPercentage != null && u.mboPercentage > 0;
+      const departmentUsers = department === "all"
+        ? allUsers.filter(isMboUser)
+        : allUsers.filter((u: any) => u.department === department && isMboUser(u));
+
+      const eligible: { id: string; name: string; currentWeight: number }[] = [];
+      const skipped: { id: string; name: string; currentWeight: number }[] = [];
+
+      for (const u of departmentUsers) {
+        const assignments = await storage.getObjectiveAssignments(u.id);
+        const currentWeight = assignments.reduce((s, a) => s + (a.weight || 0), 0);
+        const entry = { id: u.id, name: `${u.firstName || ""} ${u.lastName || ""}`.trim(), currentWeight };
+        if (currentWeight + assignmentWeight > 100) skipped.push(entry);
+        else eligible.push(entry);
+      }
+
+      res.json({ eligible, skipped, totalUsers: departmentUsers.length });
     } catch (error) {
       handleError(res, error);
     }
@@ -914,53 +976,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Objective dictionary item not found" });
       }
 
-      // Create an objective instance from dictionary — inherit deadline from dictionary
+      // Create an objective instance from dictionary — inherit deadline and reporting data if already reported
+      const alreadyReported = !!(dictionaryItem as any).reportedAt;
       const objective = await storage.createObjective({
         dictionaryId: objectiveId,
         clusterId: dictionaryItem.indicatorClusterId,
         deadline: (dictionaryItem as any).deadline ?? null,
+        ...(alreadyReported ? {
+          actualValue: (dictionaryItem as any).actualValue ?? undefined,
+          qualitativeResult: (dictionaryItem as any).qualitativeResult ?? undefined,
+        } : {}),
       });
+
+      // Derive progress from dictionary if already reported
+      let derivedProgress = progress || 0;
+      if (alreadyReported && (dictionaryItem as any).qualitativeResult) {
+        const qr = (dictionaryItem as any).qualitativeResult;
+        derivedProgress = qr === "reached" ? 100 : qr === "partial" ? 50 : 0;
+      }
 
       // Create the assignment with the new objective
       const assignment = await storage.createObjectiveAssignment({
         userId,
         objectiveId: objective.id,
         status: status || "assegnato",
-        progress: progress || 0,
+        progress: derivedProgress,
         weight: assignmentWeight,
       });
       
       res.status(201).json(assignment);
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
-  // Preview bulk assignment — returns which users would be skipped due to weight overflow
-  app.get("/api/assignments/bulk-preview", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const { objectiveId, department, weight } = req.query as Record<string, string>;
-      if (!objectiveId || !department || !weight) {
-        return res.status(400).json({ message: "objectiveId, department, weight are required" });
-      }
-      const assignmentWeight = parseInt(weight, 10);
-      const allUsers = await storage.getAllUsers();
-      const departmentUsers = department === "all"
-        ? allUsers.filter((u: any) => u.role === "employee")
-        : allUsers.filter((u: any) => u.department === department && u.role === "employee");
-
-      const eligible: { id: string; name: string; currentWeight: number }[] = [];
-      const skipped: { id: string; name: string; currentWeight: number }[] = [];
-
-      for (const u of departmentUsers) {
-        const assignments = await storage.getObjectiveAssignments(u.id);
-        const currentWeight = assignments.reduce((s, a) => s + (a.weight || 0), 0);
-        const entry = { id: u.id, name: `${u.firstName || ""} ${u.lastName || ""}`.trim(), currentWeight };
-        if (currentWeight + assignmentWeight > 100) skipped.push(entry);
-        else eligible.push(entry);
-      }
-
-      res.json({ eligible, skipped, totalUsers: departmentUsers.length });
     } catch (error) {
       handleError(res, error);
     }
@@ -985,11 +1029,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all users in the department (or all users if department === "all")
       const allUsers = await storage.getAllUsers();
+      const isMboUser = (u: any) => u.mboPercentage != null && u.mboPercentage > 0;
       const departmentUsers = department === "all"
-        ? allUsers.filter((u: any) => u.role === "employee")
-        : allUsers.filter(
-            (u: any) => u.department === department && u.role === "employee"
-          );
+        ? allUsers.filter(isMboUser)
+        : allUsers.filter((u: any) => u.department === department && isMboUser(u));
 
       if (departmentUsers.length === 0) {
         return res.status(400).json({ message: "No employees found" });
@@ -3160,6 +3203,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!cycleId || !peerUserIds || !Array.isArray(peerUserIds)) {
         return res.status(400).json({ message: "cycleId and peerUserIds array are required" });
       }
+      if (peerUserIds.length < 3) {
+        return res.status(400).json({ message: "Minimum 3 peers required for 360° feedback" });
+      }
       const requests = await competenciesStorage.createPeerFeedbackRequest(cycleId, userId, peerUserIds);
       res.status(201).json(requests);
     } catch (error) {
@@ -3595,6 +3641,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin alias for user profile
+  app.get("/api/admin/users/:userId", isAdmin, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(user);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Admin: self-assessments for a specific user/cycle
+  app.get("/api/admin/self-assessments/:cycleId/:userId", isAdmin, async (req, res) => {
+    try {
+      const { cycleId, userId } = req.params;
+      const data = await competenciesStorage.getSelfAssessments(cycleId, userId);
+      res.json(data);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Admin: competencies for a user (via their assigned model)
+  app.get("/api/admin/user-competencies/:userId", isAdmin, async (req, res) => {
+    try {
+      const assignment = await competenciesStorage.getCurrentUserCompetencyModelAssignment(req.params.userId);
+      if (!assignment) return res.json([]);
+      const comps = await competenciesStorage.getCompetencies({ modelId: assignment.competencyModelId });
+      res.json(comps);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Calibrations ─────────────────────────────────────────────────────────
+
+  app.get("/api/admin/calibrations/:cycleId", isAdmin, async (req, res) => {
+    try {
+      const { cycleId } = req.params;
+      const { employeeUserId } = req.query as { employeeUserId?: string };
+      const data = await competenciesStorage.getCalibrations(cycleId, employeeUserId);
+      res.json(data);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/calibrations", isAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const data = { ...req.body, calibratedBy: userId };
+      const result = await competenciesStorage.upsertCalibration(data);
+      res.status(201).json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/admin/calibrations/:id", isAdmin, async (req, res) => {
+    try {
+      await competenciesStorage.deleteCalibration(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Interviews ───────────────────────────────────────────────────────────
+
+  app.get("/api/admin/interviews/:cycleId", isAdmin, async (req, res) => {
+    try {
+      const data = await competenciesStorage.getInterviews(req.params.cycleId);
+      res.json(data);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/interviews", isAuthenticated, async (req, res) => {
+    try {
+      const result = await competenciesStorage.upsertInterview(req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/interviews/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const interview = await competenciesStorage.getInterview(req.params.cycleId, userId);
+      if (!interview) return res.status(404).json({ message: "Interview not found" });
+      res.json(interview);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/interviews/:cycleId/sign", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const user = req.user as any;
+      const { employeeUserId } = req.body;
+      const role: "manager" | "employee" = user.role === "admin" || (employeeUserId && employeeUserId !== userId) ? "manager" : "employee";
+      const targetEmployee = role === "employee" ? userId : (employeeUserId ?? userId);
+      const result = await competenciesStorage.signInterview(req.params.cycleId, targetEmployee, role);
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Evaluation Sheets ────────────────────────────────────────────────────
+
+  app.get("/api/admin/sheets/:cycleId", isAdmin, async (req, res) => {
+    try {
+      const sheets = await competenciesStorage.getSheets(req.params.cycleId);
+      res.json(sheets);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/sheets/:cycleId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const sheet = await competenciesStorage.getSheet(req.params.cycleId, userId);
+      if (!sheet) return res.status(404).json({ message: "Sheet not found" });
+      res.json(sheet);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/sheets/:sheetId/close", isAdmin, async (req, res) => {
+    try {
+      const adminId = (req.user as any)?.id;
+      const sheet = await competenciesStorage.closeSheet(req.params.sheetId, adminId);
+      res.json(sheet);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/admin/sheets/:cycleId/:userId/compute-score", isAdmin, async (req, res) => {
+    try {
+      const { cycleId, userId } = req.params;
+      const sheet = await competenciesStorage.computeAndSaveCompositeScore(cycleId, userId);
+      res.json(sheet);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Activities Table ─────────────────────────────────────────────────────
+
+  app.get("/api/admin/activities/:cycleId", isAdmin, async (req, res) => {
+    try {
+      const activities = await competenciesStorage.getActivitiesTable(req.params.cycleId);
+      res.json(activities);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Composite Score Settings ─────────────────────────────────────────────
+
+  app.get("/api/admin/composite-score-settings", isAdmin, async (req, res) => {
+    try {
+      const [mboW, perfW] = await Promise.all([
+        db.select().from(appSettings).where(eq(appSettings.key, "mbo_weight")).limit(1),
+        db.select().from(appSettings).where(eq(appSettings.key, "performance_weight")).limit(1),
+      ]);
+      res.json({ mboWeight: mboW[0]?.value ?? "60", performanceWeight: perfW[0]?.value ?? "40" });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/admin/composite-score-settings", isAdmin, async (req, res) => {
+    try {
+      const { mboWeight, performanceWeight } = req.body as { mboWeight: number; performanceWeight: number };
+      if (mboWeight + performanceWeight !== 100) {
+        return res.status(400).json({ message: "Weights must sum to 100" });
+      }
+      await Promise.all([
+        db.update(appSettings).set({ value: String(mboWeight), updatedAt: Math.floor(Date.now() / 1000) }).where(eq(appSettings.key, "mbo_weight")),
+        db.update(appSettings).set({ value: String(performanceWeight), updatedAt: Math.floor(Date.now() / 1000) }).where(eq(appSettings.key, "performance_weight")),
+      ]);
+      res.json({ mboWeight, performanceWeight });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // ── Entry Gate ────────────────────────────────────────────────────────────
 
   app.get("/api/entry-gates", isAuthenticated, isAdmin, async (req, res) => {
@@ -3639,7 +3880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Rendicontazione multi-canale ────────────────────────────────────────────
 
   // Import email service lazily to avoid crashing on missing SMTP config
-  const { generateReportingToken, verifyReportingToken, sendReportingRequestEmail } = await import("./emailService");
+  const { generateReportingToken, verifyReportingToken, sendReportingRequestEmail, sendDataSourceGroupEmail } = await import("./emailService");
   const { calculateProgress } = await import("./reportingUtils");
 
   // POST /api/dictionary/:id/request-reporting — invia email con link token
@@ -3730,6 +3971,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/reporting/send-datasource-email — invia email riepilogativa a una specifica fonte dati
+  app.post("/api/reporting/send-datasource-email", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email obbligatoria" });
+
+      const allDictionary = await storage.getObjectivesDictionary();
+      const objectives = allDictionary.filter((d) => d.dataSourceEmail === email);
+      if (objectives.length === 0) return res.status(404).json({ message: "Nessun obiettivo per questa fonte dati" });
+
+      const contactName = objectives[0].dataSource || email;
+      const adminContact = process.env.SMTP_FROM?.replace(/.*<(.+)>/, "$1") || process.env.SMTP_USER || undefined;
+      const year = new Date().getFullYear().toString();
+
+      await sendDataSourceGroupEmail(email, {
+        contactName,
+        objectives: objectives.map((d) => ({
+          title: d.title,
+          objectiveType: d.objectiveType,
+          targetValue: d.targetValue,
+          targetDescription: d.targetDescription,
+          thresholdValue: d.thresholdValue,
+          dataSource: d.dataSource,
+        })),
+        adminContact,
+        year,
+      });
+
+      // Log audit per ogni obiettivo coinvolto
+      const reportedByUserId = getUserId(req);
+      await Promise.all(objectives.map((d) =>
+        storage.createReportingLogEntry({
+          dictionaryId: d.id,
+          reportedByUserId,
+          reportingChannel: "datasource_email",
+          notes: `Richiesta gruppo inviata a ${email} (${objectives.length} obiettivi)`,
+        })
+      ));
+
+      res.json({ success: true, sentTo: email, objectiveCount: objectives.length });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // POST /api/reporting/send-all-datasource-emails — invia email riepilogativa a tutte le fonti dati con obiettivi non rendicontati
+  app.post("/api/reporting/send-all-datasource-emails", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allDictionary = await storage.getObjectivesDictionary();
+      const reportedByUserId = getUserId(req);
+      const adminContact = process.env.SMTP_FROM?.replace(/.*<(.+)>/, "$1") || process.env.SMTP_USER || undefined;
+      const year = new Date().getFullYear().toString();
+
+      // Raggruppa per dataSourceEmail (solo quelli con email e non ancora rendicontati)
+      const groupMap = new Map<string, typeof allDictionary>();
+      for (const d of allDictionary) {
+        if (!d.dataSourceEmail) continue;
+        if (d.reportedAt) continue; // già rendicontato, non inviare
+        if (!groupMap.has(d.dataSourceEmail)) groupMap.set(d.dataSourceEmail, []);
+        groupMap.get(d.dataSourceEmail)!.push(d);
+      }
+
+      if (groupMap.size === 0) {
+        return res.json({ sent: 0, details: [], message: "Nessuna fonte dati da contattare" });
+      }
+
+      const details: { email: string; objectiveCount: number }[] = [];
+
+      for (const [groupEmail, objectives] of Array.from(groupMap.entries())) {
+        const contactName = objectives[0].dataSource || groupEmail;
+        await sendDataSourceGroupEmail(groupEmail, {
+          contactName,
+          objectives: objectives.map((obj) => ({
+            title: obj.title,
+            objectiveType: obj.objectiveType,
+            targetValue: obj.targetValue,
+            targetDescription: obj.targetDescription,
+            thresholdValue: obj.thresholdValue,
+            dataSource: obj.dataSource,
+          })),
+          adminContact,
+          year,
+        });
+
+        await Promise.all(objectives.map((obj) =>
+          storage.createReportingLogEntry({
+            dictionaryId: obj.id,
+            reportedByUserId,
+            reportingChannel: "datasource_email",
+            notes: `Richiesta gruppo inviata a ${groupEmail} (${objectives.length} obiettivi)`,
+          })
+        ));
+
+        details.push({ email: groupEmail, objectiveCount: objectives.length });
+      }
+
+      res.json({ sent: groupMap.size, details });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // GET /api/dictionary/:id/reporting-log — storico per obiettivo
   app.get("/api/dictionary/:id/reporting-log", isAuthenticated, canRendiconta, async (req, res) => {
     try {
@@ -3745,6 +4088,359 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const log = await storage.getAllReportingLog();
       res.json(log);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ─── AI Endpoints ──────────────────────────────────────────────────────────
+
+  app.get("/api/ai/health", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { pingAI } = await import("./aiService");
+      const { getBudgetStatus } = await import("./aiBudget");
+      const [ping, budget] = await Promise.all([pingAI(), getBudgetStatus()]);
+      res.json({ ping, budget });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/ai/budget", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { getBudgetStatus } = await import("./aiBudget");
+      res.json(await getBudgetStatus());
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Avvia sessione conversazionale guidata
+  app.post("/api/ai/session/start", isAuthenticated, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      if (!flags["aiEnabled"]) return res.status(503).json({ message: "Funzionalità AI non attiva" });
+
+      const { scope, targetUserId, cycleId } = req.body as {
+        scope: "assign" | "eval";
+        targetUserId: string;
+        cycleId?: string;
+      };
+      if (!scope || !targetUserId) return res.status(400).json({ message: "scope e targetUserId richiesti" });
+
+      const userId = getUserId(req);
+      const { startSession } = await import("./aiSession");
+      const result = await startSession({ userId, scope, targetUserId, cycleId });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("budget_exceeded")) {
+        return res.status(503).json({ message: "Budget AI mensile esaurito" });
+      }
+      handleError(res, error);
+    }
+  });
+
+  // Rispondi a domanda nella sessione
+  app.post("/api/ai/session/:id/answer", isAuthenticated, async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      if (!flags["aiEnabled"]) return res.status(503).json({ message: "Funzionalità AI non attiva" });
+
+      const { answer, questionKey } = req.body as { answer: string; questionKey: string };
+      if (!answer) return res.status(400).json({ message: "answer richiesto" });
+
+      const userId = getUserId(req);
+      const { answerTurn } = await import("./aiSession");
+      const result = await answerTurn({
+        sessionId: req.params.id,
+        userId,
+        answer,
+        questionKey: questionKey ?? "generic",
+      });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("budget_exceeded")) {
+        return res.status(503).json({ message: "Budget AI mensile esaurito" });
+      }
+      handleError(res, error);
+    }
+  });
+
+  // Recupera stato sessione
+  app.get("/api/ai/session/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { getSession } = await import("./aiSession");
+      const result = await getSession(req.params.id);
+      if (!result) return res.status(404).json({ message: "Sessione non trovata" });
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Finalizza sessione (mark as used)
+  app.post("/api/ai/session/:id/finalize", isAuthenticated, async (req, res) => {
+    try {
+      const { finalizeSession } = await import("./aiSession");
+      await finalizeSession(req.params.id);
+      res.json({ ok: true });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ─── AI Employee Insight (single-shot, no session) ───────────────────────────
+  app.post("/api/ai/employee-insight", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const { targetUserId, cycleId } = req.body;
+      if (!targetUserId) return res.status(400).json({ message: "targetUserId obbligatorio" });
+
+      const userId = getUserId(req);
+      const { checkBudget } = await import("./aiBudget");
+      await checkBudget();
+
+      const { storage } = await import("./storage");
+      const { competenciesStorage } = await import("./competenciesStorage");
+      const { callAI } = await import("./aiService");
+
+      const user = await storage.getUser(targetUserId);
+      const assignments = await storage.getObjectiveAssignments(targetUserId);
+
+      const assignContext = assignments.length
+        ? assignments.map((a) => `- peso ${a.weight}%, progress ${a.progress}%, stato: ${a.status}`).join("\n")
+        : "Nessun obiettivo assegnato";
+
+      let selfCtx = "";
+      let peerCtx = "";
+      if (cycleId) {
+        try {
+          const selfList = await competenciesStorage.getSelfAssessments(cycleId, targetUserId);
+          if (selfList.length) {
+            selfCtx = selfList
+              .map((s) => `- ${s.competency.name}: ${s.rating}/5${s.comment ? ` — "${s.comment}"` : ""}`)
+              .join("\n");
+          }
+          const peerReqs = await competenciesStorage.getPeerFeedbackRequests(cycleId, targetUserId, "received");
+          for (const pr of peerReqs.slice(0, 5)) {
+            const feedbacks = await competenciesStorage.getPeerFeedbacksByRequest(pr.id);
+            feedbacks.forEach((f) => { peerCtx += `- ${(f as any).competency?.name ?? "?"}: ${(f as any).rating}/5\n`; });
+          }
+        } catch (_) { /* non-critical */ }
+      }
+
+      const prompt = [
+        `Dipendente: ${user?.firstName} ${user?.lastName}`,
+        `Ruolo: ${user?.role}, Dipartimento: ${user?.department || "N/D"}, MBO%: ${user?.mboPercentage ?? "N/D"}%`,
+        `\nOBIETTIVI MBO:\n${assignContext}`,
+        selfCtx ? `\nAUTOVALUTAZIONE:\n${selfCtx}` : "",
+        peerCtx ? `\nFEEDBACK 360°:\n${peerCtx}` : "",
+      ].filter(Boolean).join("\n");
+
+      const schema = {
+        type: "object",
+        properties: {
+          summary: { type: "string" },
+          strengths: { type: "array", items: { type: "string" } },
+          developmentAreas: { type: "array", items: { type: "string" } },
+          mboFocus: { type: "string" },
+          riskFlags: { type: "array", items: { type: "string" } },
+        },
+        required: ["summary", "strengths", "developmentAreas", "mboFocus", "riskFlags"],
+      };
+
+      const result = await callAI({
+        userId: userId!,
+        scope: "employee_insight",
+        prompt,
+        systemInstruction:
+          "Sei un analista HR esperto. Analizza i dati del dipendente e produci insight strutturati concisi in italiano. " +
+          "strengths e developmentAreas: frasi brevi max 8 parole. mboFocus: 1-2 frasi su priorità obiettivi. " +
+          "riskFlags: segnala solo problemi reali, array vuoto se tutto ok.",
+        model: "fast",
+        responseSchema: schema,
+      });
+
+      res.json({ ...(result.parsed as object), generatedAt: Date.now() });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/ai/chat", isAuthenticated, isManager, async (req, res) => {
+    try {
+      const { message, pageContext } = req.body as {
+        message: string;
+        pageContext?: { type: string; userId?: string; cycleId?: string };
+      };
+      if (!message?.trim()) return res.status(400).json({ message: "message obbligatorio" });
+
+      const userId = getUserId(req);
+      const { callAI } = await import("./aiService");
+      const { storage } = await import("./storage");
+
+      let contextBlock = "";
+      if (pageContext?.userId) {
+        try {
+          const user = await storage.getUser(pageContext.userId);
+          const assignments = await storage.getObjectiveAssignments(pageContext.userId);
+          contextBlock = [
+            `Contesto pagina: dipendente ${user?.firstName} ${user?.lastName}`,
+            `Ruolo: ${user?.role}, Dipartimento: ${user?.department ?? "N/D"}, MBO%: ${user?.mboPercentage ?? "N/D"}%`,
+            assignments.length
+              ? `Obiettivi: ${assignments.map((a) => `peso ${a.weight}% stato ${a.status}`).join(", ")}`
+              : "Nessun obiettivo assegnato",
+          ].join("\n");
+        } catch (_) {}
+      }
+
+      const systemInstruction = `Sei un assistente HR integrato nella piattaforma MBO Enterprise.
+REGOLE FONDAMENTALI:
+- Risposte SEMPRE entro 8-10 righe. Mai superare 12 righe in nessun caso.
+- Vai dritto al punto. Niente introduzioni, niente conclusioni, niente "in sintesi".
+- Se l'argomento è complesso, dai l'essenziale e invita a fare domande specifiche.
+- Usa bullet points solo se strettamente necessario (max 4-5 voci).
+- Output in italiano.
+Specializzazione: obiettivi MBO, valutazioni performance, piani di sviluppo, feedback 360°.`;
+
+      const prompt = contextBlock
+        ? `${contextBlock}\n\nDomanda del manager: ${message}`
+        : message;
+
+      const result = await callAI({
+        userId,
+        scope: "ai_chat",
+        prompt,
+        systemInstruction,
+        model: "fast",
+      });
+
+      res.json({ reply: result.text });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── AI: Self-assessment chat (employee-facing) ──────────────────────────────
+  app.post("/api/ai/self-assessment-chat", isAuthenticated, async (req, res) => {
+    try {
+      const { message, cycleId, competencyContext } = req.body as {
+        message: string;
+        cycleId?: string;
+        competencyContext?: { name: string; description: string; category: string; currentRating?: number };
+      };
+      if (!message?.trim()) return res.status(400).json({ message: "message obbligatorio" });
+
+      const userId = getUserId(req);
+      const { callAI } = await import("./aiService");
+
+      let contextBlock = "";
+      if (competencyContext) {
+        contextBlock = [
+          `Competenza in valutazione: "${competencyContext.name}"`,
+          `Descrizione: ${competencyContext.description}`,
+          `Categoria: ${competencyContext.category}`,
+          competencyContext.currentRating ? `Rating attuale selezionato: ${competencyContext.currentRating}/5` : "",
+        ].filter(Boolean).join("\n");
+      }
+
+      if (cycleId) {
+        try {
+          const myComps = await competenciesStorage.getCompetenciesByUserId(userId);
+          const savedAssessments = await competenciesStorage.getSelfAssessments(cycleId, userId);
+          const assessedIds = savedAssessments.map((s: any) => s.competencyId);
+          const remaining = myComps.filter((c) => !assessedIds.includes(c.id)).length;
+          if (remaining > 0) {
+            contextBlock += `\nCompetenze ancora da valutare: ${remaining}/${myComps.length}`;
+          }
+        } catch (_) {}
+      }
+
+      const systemInstruction = `Sei un assistente AI integrato nella piattaforma MBO Enterprise, dedicato ad aiutare i dipendenti nella loro autovalutazione delle competenze.
+REGOLE:
+- Risposte entro 8-10 righe. Mai superare 12 righe.
+- Vai dritto al punto. Niente introduzioni o conclusioni ridondanti.
+- Usa bullet points solo se strettamente necessario (max 4-5 voci).
+- Output in italiano.
+- Tono empatico, costruttivo, professionale.
+- Aiuta il dipendente a:
+  * Scegliere il rating appropriato (1=Insufficiente, 2=Base, 3=Intermedio, 4=Avanzato, 5=Esperto)
+  * Scrivere commenti concreti con esempi specifici
+  * Identificare punti di forza e aree di miglioramento
+  * Formulare obiettivi professionali chiari
+- Non suggerire rating gonfiati: incoraggia onestà e accuratezza.`;
+
+      const prompt = contextBlock
+        ? `${contextBlock}\n\nDomanda del dipendente: ${message}`
+        : message;
+
+      const result = await callAI({
+        userId,
+        scope: "ai_chat",
+        prompt,
+        systemInstruction,
+        model: "fast",
+      });
+
+      res.json({ reply: result.text });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── AI: Interview summary (employee-facing) ──────────────────────────────────
+  app.post("/api/ai/interview-summary", isAuthenticated, async (req, res) => {
+    try {
+      const { cycleId } = req.body as { cycleId: string };
+      if (!cycleId) return res.status(400).json({ message: "cycleId obbligatorio" });
+
+      const userId = getUserId(req);
+      const { callAI } = await import("./aiService");
+
+      // Carica le 3 sorgenti dati
+      const [selfRaw, managerRaw, peerRaw, myComps] = await Promise.all([
+        competenciesStorage.getSelfAssessments(cycleId, userId),
+        competenciesStorage.getManagerEvaluations(cycleId, userId).catch(() => []),
+        competenciesStorage.getAggregatedPeerFeedback(cycleId, userId).catch(() => []),
+        competenciesStorage.getCompetenciesByUserId(userId),
+      ]);
+
+      const compMap = Object.fromEntries(myComps.map((c) => [c.id, c.name]));
+
+      const selfLines = selfRaw
+        .map((s: any) => `- ${s.competency?.name ?? compMap[s.competencyId] ?? s.competencyId}: ${s.rating}/5${s.comment ? ` ("${s.comment}")` : ""}`)
+        .join("\n");
+
+      const managerLines = (managerRaw as any[])
+        .map((m: any) => `- ${m.competency?.name ?? compMap[m.competencyId] ?? m.competencyId}: ${m.rating}/5${m.comment ? ` ("${m.comment}")` : ""}`)
+        .join("\n");
+
+      const peerLines = (peerRaw as any[])
+        .map((p: any) => `- ${p.competencyName}: media ${p.avgRating.toFixed(1)}/5${p.comments?.length ? ` (es. "${p.comments[0]}")` : ""}`)
+        .join("\n");
+
+      const prompt = `Sei un assistente HR che prepara il dipendente al colloquio di feedback.
+
+AUTOVALUTAZIONE:
+${selfLines || "Nessuna autovalutazione disponibile"}
+
+VALUTAZIONE MANAGER:
+${managerLines || "Nessuna valutazione manager disponibile"}
+
+FEEDBACK COLLEGHI (aggregato anonimo):
+${peerLines || "Nessun peer feedback disponibile"}
+
+Scrivi un riepilogo personalizzato per il dipendente in 8-10 righe (italiano).
+Evidenzia: punti di forza confermati da più fonti, aree di scarto significativo tra autovalutazione e manager, temi ricorrenti nel peer feedback.
+Tono diretto, costruttivo, non burocratico. Niente introduzioni o conclusioni formali.`;
+
+      const result = await callAI({
+        userId,
+        scope: "interview_summary",
+        prompt,
+        model: "fast",
+      });
+
+      res.json({ summary: result.text });
     } catch (error) {
       handleError(res, error);
     }

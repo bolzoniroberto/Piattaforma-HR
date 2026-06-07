@@ -339,7 +339,7 @@ export default function ManagerMboAssignPage() {
                         {userAssignments.map((a) => (
                           <div key={a.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg bg-slate-50 border border-slate-100">
                             <span className="text-slate-700 truncate max-w-[280px]">
-                              {(a as any).dictionary?.title || a.objective?.id}
+                              {(a as any).objective?.title || a.objective?.dictionaryId || a.id}
                             </span>
                             <Badge variant="outline" className="text-[10px] shrink-0 ml-2">{a.weight}%</Badge>
                           </div>

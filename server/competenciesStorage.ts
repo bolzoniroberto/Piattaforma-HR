@@ -10,6 +10,10 @@ import {
   evaluationNotifications,
   userCompetencyModelAssignments,
   overallSelfAssessments,
+  evaluationCalibrations,
+  evaluationInterviews,
+  evaluationSheets,
+  appSettings,
   users,
   type CompetencyModel,
   type InsertCompetencyModel,
@@ -33,10 +37,16 @@ import {
   type InsertUserCompetencyModelAssignment,
   type OverallSelfAssessment,
   type InsertOverallSelfAssessment,
+  type EvaluationCalibration,
+  type InsertEvaluationCalibration,
+  type EvaluationInterview,
+  type InsertEvaluationInterview,
+  type EvaluationSheet,
+  type InsertEvaluationSheet,
   type User,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, avg, count, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, avg, count, inArray, ne } from "drizzle-orm";
 
 export class CompetenciesStorage {
   // ==============================================
@@ -1239,6 +1249,221 @@ export class CompetenciesStorage {
       approved: plans.filter(p => p.status === 'approved').length,
       pending: plans.filter(p => p.status === 'pending').length,
     };
+  }
+
+  // ==============================================
+  // CALIBRATIONS
+  // ==============================================
+
+  async getCalibrations(cycleId: string, employeeUserId?: string): Promise<EvaluationCalibration[]> {
+    const conditions = [eq(evaluationCalibrations.cycleId, cycleId)];
+    if (employeeUserId) conditions.push(eq(evaluationCalibrations.employeeUserId, employeeUserId));
+    return db.select().from(evaluationCalibrations).where(and(...conditions));
+  }
+
+  async upsertCalibration(data: InsertEvaluationCalibration): Promise<EvaluationCalibration> {
+    const existing = await db
+      .select()
+      .from(evaluationCalibrations)
+      .where(and(
+        eq(evaluationCalibrations.cycleId, data.cycleId),
+        eq(evaluationCalibrations.employeeUserId, data.employeeUserId),
+        eq(evaluationCalibrations.competencyId, data.competencyId),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const result = await db
+        .update(evaluationCalibrations)
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
+        .where(eq(evaluationCalibrations.id, existing[0].id))
+        .returning();
+      return result[0];
+    }
+
+    const id = `calib_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const result = await db.insert(evaluationCalibrations).values({ ...data, id }).returning();
+    return result[0];
+  }
+
+  async deleteCalibration(id: string): Promise<void> {
+    await db.delete(evaluationCalibrations).where(eq(evaluationCalibrations.id, id));
+  }
+
+  // ==============================================
+  // INTERVIEWS
+  // ==============================================
+
+  async getInterviews(cycleId: string, userId?: string): Promise<EvaluationInterview[]> {
+    const conditions = [eq(evaluationInterviews.cycleId, cycleId)];
+    if (userId) conditions.push(eq(evaluationInterviews.employeeUserId, userId));
+    return db.select().from(evaluationInterviews).where(and(...conditions));
+  }
+
+  async getInterview(cycleId: string, employeeUserId: string): Promise<EvaluationInterview | undefined> {
+    const result = await db
+      .select()
+      .from(evaluationInterviews)
+      .where(and(eq(evaluationInterviews.cycleId, cycleId), eq(evaluationInterviews.employeeUserId, employeeUserId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async upsertInterview(data: InsertEvaluationInterview): Promise<EvaluationInterview> {
+    const existing = await this.getInterview(data.cycleId, data.employeeUserId);
+    if (existing) {
+      const result = await db
+        .update(evaluationInterviews)
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
+        .where(eq(evaluationInterviews.id, existing.id))
+        .returning();
+      return result[0];
+    }
+    const id = `interview_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const result = await db.insert(evaluationInterviews).values({ ...data, id }).returning();
+    return result[0];
+  }
+
+  async signInterview(cycleId: string, employeeUserId: string, role: "manager" | "employee"): Promise<EvaluationInterview> {
+    const existing = await this.getInterview(cycleId, employeeUserId);
+    if (!existing) throw new Error("Interview not found");
+    const now = Math.floor(Date.now() / 1000);
+    const update = role === "manager"
+      ? { managerSignedAt: now }
+      : { employeeSignedAt: now };
+    const isCompleted = role === "manager"
+      ? existing.employeeSignedAt !== null
+      : existing.managerSignedAt !== null;
+    const result = await db
+      .update(evaluationInterviews)
+      .set({ ...update, status: isCompleted ? "completed" : existing.status, completedAt: isCompleted ? now : existing.completedAt, updatedAt: now })
+      .where(eq(evaluationInterviews.id, existing.id))
+      .returning();
+    return result[0];
+  }
+
+  // ==============================================
+  // EVALUATION SHEETS
+  // ==============================================
+
+  async getSheets(cycleId: string): Promise<EvaluationSheet[]> {
+    return db.select().from(evaluationSheets).where(eq(evaluationSheets.cycleId, cycleId));
+  }
+
+  async getSheet(cycleId: string, userId: string): Promise<EvaluationSheet | undefined> {
+    const result = await db
+      .select()
+      .from(evaluationSheets)
+      .where(and(eq(evaluationSheets.cycleId, cycleId), eq(evaluationSheets.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async upsertSheet(data: InsertEvaluationSheet): Promise<EvaluationSheet> {
+    const existing = await this.getSheet(data.cycleId, data.userId);
+    if (existing) {
+      const result = await db
+        .update(evaluationSheets)
+        .set({ ...data, updatedAt: Math.floor(Date.now() / 1000) })
+        .where(eq(evaluationSheets.id, existing.id))
+        .returning();
+      return result[0];
+    }
+    const id = `sheet_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const result = await db.insert(evaluationSheets).values({ ...data, id }).returning();
+    return result[0];
+  }
+
+  async closeSheet(sheetId: string, closedBy: string): Promise<EvaluationSheet> {
+    const now = Math.floor(Date.now() / 1000);
+    const result = await db
+      .update(evaluationSheets)
+      .set({ status: "closed", closedAt: now, closedBy, updatedAt: now })
+      .where(eq(evaluationSheets.id, sheetId))
+      .returning();
+    if (!result[0]) throw new Error("Sheet not found");
+    return result[0];
+  }
+
+  async computeAndSaveCompositeScore(cycleId: string, userId: string): Promise<EvaluationSheet> {
+    const [mboWeightSetting, perfWeightSetting] = await Promise.all([
+      db.select().from(appSettings).where(eq(appSettings.key, "mbo_weight")).limit(1),
+      db.select().from(appSettings).where(eq(appSettings.key, "performance_weight")).limit(1),
+    ]);
+    const mboWeight = parseFloat(mboWeightSetting[0]?.value ?? "60") / 100;
+    const perfWeight = parseFloat(perfWeightSetting[0]?.value ?? "40") / 100;
+
+    const sheet = await this.getSheet(cycleId, userId);
+
+    const mboScore = sheet?.mboScore ?? null;
+    const performanceScore = sheet?.performanceScore ?? null;
+
+    let compositeScore: number | null = null;
+    if (mboScore !== null && performanceScore !== null) {
+      const perfNormalized = (performanceScore / 5) * 100;
+      compositeScore = mboScore * mboWeight + perfNormalized * perfWeight;
+    }
+
+    return this.upsertSheet({
+      cycleId,
+      userId,
+      year: sheet?.year ?? new Date().getFullYear(),
+      currentPhase: sheet?.currentPhase ?? 1,
+      status: (sheet?.status ?? "open") as "open" | "closed",
+      mboScore,
+      performanceScore,
+      compositeScore,
+    });
+  }
+
+  // ==============================================
+  // ACTIVITIES TABLE (admin view per-employee status)
+  // ==============================================
+
+  async getActivitiesTable(cycleId: string): Promise<any[]> {
+    const [allUsers, selfList, managerList, peerReqList, calibList, interviewList] = await Promise.all([
+      db.select().from(users).where(eq(users.isActive, true)),
+      db.select().from(selfAssessments).where(eq(selfAssessments.cycleId, cycleId)),
+      db.select().from(managerEvaluations).where(eq(managerEvaluations.cycleId, cycleId)),
+      db.select().from(peerFeedbackRequests).where(eq(peerFeedbackRequests.cycleId, cycleId)),
+      db.select().from(evaluationCalibrations).where(eq(evaluationCalibrations.cycleId, cycleId)),
+      db.select().from(evaluationInterviews).where(eq(evaluationInterviews.cycleId, cycleId)),
+    ]);
+
+    return allUsers.map(u => {
+      const userSelf = selfList.filter(s => s.userId === u.id);
+      const selfSubmitted = userSelf.some(s => s.submittedAt);
+      const selfStarted = userSelf.length > 0;
+
+      const userMgr = managerList.filter(m => m.employeeUserId === u.id);
+      const mgrSubmitted = userMgr.some(m => m.submittedAt);
+      const mgrStarted = userMgr.length > 0;
+      const managerIds = Array.from(new Set(userMgr.map(m => m.managerUserId)));
+
+      const userPeerReqs = peerReqList.filter(r => r.requestorUserId === u.id);
+      const peerCompleted = userPeerReqs.filter(r => r.status === "completed").length;
+      const peerTotal = userPeerReqs.length;
+
+      const calibrated = calibList.filter(c => c.employeeUserId === u.id);
+      const interview = interviewList.find(i => i.employeeUserId === u.id);
+
+      return {
+        userId: u.id,
+        fullName: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
+        email: u.email,
+        department: u.department,
+        selfAssessment: selfSubmitted ? "closed" : selfStarted ? "started" : "pending",
+        managerEvaluation: mgrSubmitted ? "closed" : mgrStarted ? "started" : "pending",
+        managerIds,
+        peerFeedback: { completed: peerCompleted, total: peerTotal },
+        calibration: calibrated.length > 0 ? "done" : "pending",
+        interview: interview?.status ?? "pending",
+        interviewSigns: {
+          manager: !!interview?.managerSignedAt,
+          employee: !!interview?.employeeSignedAt,
+        },
+      };
+    });
   }
 }
 

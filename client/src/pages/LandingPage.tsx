@@ -74,6 +74,7 @@ interface FeatureCard {
   color: "cyan" | "pink" | "green" | "violet";
   stats: { label: string; val: string }[];
   visual: React.ReactNode;
+  comingSoon?: boolean;
 }
 
 function Card3D({ card, active }: { card: FeatureCard; active: boolean }) {
@@ -88,7 +89,7 @@ function Card3D({ card, active }: { card: FeatureCard; active: boolean }) {
   }[card.color];
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return;
+    if (card.comingSoon || !ref.current) return;
     const rect = ref.current.getBoundingClientRect();
     const x = ((e.clientY - rect.top) / rect.height - 0.5) * 12;
     const y = -((e.clientX - rect.left) / rect.width - 0.5) * 12;
@@ -103,20 +104,37 @@ function Card3D({ card, active }: { card: FeatureCard; active: boolean }) {
       className="relative rounded-2xl p-6 transition-all duration-300 cursor-default flex-shrink-0 w-[320px] md:w-[380px]"
       style={{
         background: `linear-gradient(135deg, #0d1424 0%, #0a0f1e 100%)`,
-        border: `1px solid ${neon.border}`,
-        boxShadow: active
-          ? `0 0 0 1px ${neon.border}, 0 0 40px ${neon.glow}, inset 0 1px 0 rgba(255,255,255,0.05)`
-          : `0 0 20px ${neon.glow}`,
+        border: `1px solid ${card.comingSoon ? "rgba(255,255,255,0.08)" : neon.border}`,
+        boxShadow: card.comingSoon
+          ? "none"
+          : active
+            ? `0 0 0 1px ${neon.border}, 0 0 40px ${neon.glow}, inset 0 1px 0 rgba(255,255,255,0.05)`
+            : `0 0 20px ${neon.glow}`,
         transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${active ? "scale(1.02)" : "scale(0.97)"}`,
         transformStyle: "preserve-3d",
         transition: "transform 0.15s ease, box-shadow 0.3s ease",
+        opacity: card.comingSoon ? 0.55 : 1,
       }}
     >
+      {/* Coming Soon badge */}
+      {card.comingSoon && (
+        <div
+          className="absolute top-4 right-4 z-10 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-[0.15em] font-mono"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            color: "rgba(255,255,255,0.4)",
+          }}
+        >
+          Coming Soon
+        </div>
+      )}
+
       {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 rounded-tl-2xl" style={{ borderColor: neon.text }} />
-      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 rounded-tr-2xl" style={{ borderColor: neon.text }} />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 rounded-bl-2xl" style={{ borderColor: neon.text }} />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 rounded-br-2xl" style={{ borderColor: neon.text }} />
+      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 rounded-tl-2xl" style={{ borderColor: card.comingSoon ? "rgba(255,255,255,0.1)" : neon.text }} />
+      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 rounded-tr-2xl" style={{ borderColor: card.comingSoon ? "rgba(255,255,255,0.1)" : neon.text }} />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 rounded-bl-2xl" style={{ borderColor: card.comingSoon ? "rgba(255,255,255,0.1)" : neon.text }} />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 rounded-br-2xl" style={{ borderColor: card.comingSoon ? "rgba(255,255,255,0.1)" : neon.text }} />
 
       {/* Icon */}
       <div
@@ -274,6 +292,7 @@ const featureCards: FeatureCard[] = [
   },
   {
     id: "performance",
+    comingSoon: true,
     eyebrow: "Performance 360°",
     title: "Un ciclo completo di valutazione",
     description: "Autovalutazione, feedback multi-livello e valutazione manager in un unico flusso strutturato.",
@@ -284,6 +303,7 @@ const featureCards: FeatureCard[] = [
   },
   {
     id: "analytics",
+    comingSoon: true,
     eyebrow: "Analytics Hub",
     title: "Decisioni guidate dai dati",
     description: "Dashboard KPI, report di completamento, distribuzione competenze e export CSV per analisi esterne.",
@@ -294,6 +314,7 @@ const featureCards: FeatureCard[] = [
   },
   {
     id: "org",
+    comingSoon: true,
     eyebrow: "Org Navigator",
     title: "La struttura aziendale, chiara",
     description: "Visualizza la gerarchia, esplora i team e le relazioni di reporting con una vista interattiva.",
@@ -304,6 +325,7 @@ const featureCards: FeatureCard[] = [
   },
   {
     id: "competenze",
+    comingSoon: true,
     eyebrow: "Skills Matrix",
     title: "Modelli di competenza su misura",
     description: "Definisci modelli per ogni ruolo, assegna cicli e traccia l'evoluzione delle competenze nel tempo.",
@@ -328,6 +350,7 @@ const featureCards: FeatureCard[] = [
   },
   {
     id: "sviluppo",
+    comingSoon: true,
     eyebrow: "Growth Tracker",
     title: "Crescita professionale guidata",
     description: "Manager e dipendenti co-progettano piani di sviluppo concreti con obiettivi, azioni e scadenze.",

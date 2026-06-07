@@ -9,7 +9,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Search, Download, AlertTriangle,
+  Search, Download, AlertTriangle, BarChart3,
   ChevronDown, ChevronRight, Columns3, ShieldAlert, CalendarClock,
 } from "lucide-react";
 
@@ -211,6 +211,190 @@ export default function AdminTabellonePage() {
     );
   };
 
+  // ─── PPTX export ───────────────────────────────────────────────────────────
+
+  const [exportingPptx, setExportingPptx] = useState(false);
+
+  const handleExportPPTX = async () => {
+    setExportingPptx(true);
+    try {
+      const PptxGenJS = (await import("pptxgenjs")).default;
+      const pptx = new PptxGenJS();
+      pptx.layout = "LAYOUT_WIDE"; // 13.33" x 7.5"
+
+      const DARK_BG   = "0F172A";
+      const HEADER_BG = "1E293B";
+      const ZEBRA_ODD  = "FFFFFF";
+      const ZEBRA_EVEN = "F1F5F9";
+      const BORDER_CLR = "CBD5E1";
+      const brd = { type: "solid" as const, color: BORDER_CLR, pt: 0.3 };
+
+      const hCell = (text: string, align: "left" | "center" | "right" = "center") => ({
+        text,
+        options: {
+          bold: true, fontSize: 8, fontFace: "Calibri",
+          fill: { color: HEADER_BG }, color: "FFFFFF",
+          valign: "middle" as const, align, border: brd,
+        },
+      });
+
+      // Group by department (preserving order)
+      const byDept = new Map<string, TabelloneRow[]>();
+      for (const row of filtered) {
+        const d = row.user.department || "Senza Dipartimento";
+        if (!byDept.has(d)) byDept.set(d, []);
+        byDept.get(d)!.push(row);
+      }
+
+      const MAX_OBJ_ROWS = 16; // max objective rows per slide before pagination
+      // column widths (sum = 12.73" = 13.33 - 0.3 - 0.3)
+      const COL_W = [2.1, 1.3, 0.7, 0.65, 1.2, 3.0, 0.65, 1.0, 1.0, 1.13];
+
+      for (const [dept, deptRows] of Array.from(byDept.entries())) {
+        // Paginate: never split a user's rows across slides
+        const pages: TabelloneRow[][] = [];
+        let page: TabelloneRow[] = [];
+        let count = 0;
+        for (const row of deptRows) {
+          const n = Math.max(row.objectives.length, 1);
+          if (count + n > MAX_OBJ_ROWS && page.length > 0) {
+            pages.push(page); page = []; count = 0;
+          }
+          page.push(row); count += n;
+        }
+        if (page.length > 0) pages.push(page);
+
+        pages.forEach((pageRows, pi) => {
+          const slide = pptx.addSlide();
+          slide.background = { color: "F8FAFC" };
+
+          const pageLabel = pages.length > 1 ? `   ${pi + 1} / ${pages.length}` : "";
+          const nObjs = pageRows.reduce((s, r) => s + r.objectives.length, 0);
+
+          // Header bar (dark background text box)
+          slide.addText(dept + pageLabel, {
+            x: 0, y: 0, w: 13.33, h: 0.85,
+            fontSize: 20, bold: true, color: "FFFFFF",
+            valign: "middle", fontFace: "Calibri",
+            fill: { color: DARK_BG },
+            margin: [0, 0.3, 0, 0.3],
+          });
+
+          // Stats overlay (right-aligned, transparent bg)
+          slide.addText(`${pageRows.length} persone · ${nObjs} obiettivi`, {
+            x: 9.8, y: 0, w: 3.2, h: 0.85,
+            fontSize: 8, color: "94A3B8", align: "right",
+            valign: "middle", fontFace: "Calibri",
+          });
+
+          // Build table rows
+          const tableData: object[][] = [[
+            hCell("Nominativo", "left"),
+            hCell("Cod. Fiscale"),
+            hCell("Liv."),
+            hCell("MBO%"),
+            hCell("Premio Max €"),
+            hCell("Obiettivo", "left"),
+            hCell("Peso%"),
+            hCell("Target"),
+            hCell("Risultato"),
+            hCell("Esito"),
+          ]];
+
+          pageRows.forEach((row, ui) => {
+            const u = row.user;
+            const nObj = Math.max(row.objectives.length, 1);
+            const bg = ui % 2 === 0 ? ZEBRA_ODD : ZEBRA_EVEN;
+
+            const uCell = (text: string, extra: object = {}) => ({
+              text,
+              options: {
+                fontSize: 8, fontFace: "Calibri", valign: "middle" as const,
+                fill: { color: bg }, border: brd, align: "left" as const,
+                rowspan: nObj, ...extra,
+              },
+            });
+
+            const oCell = (text: string, extra: object = {}) => ({
+              text,
+              options: {
+                fontSize: 7.5, fontFace: "Calibri", valign: "middle" as const,
+                fill: { color: bg }, border: brd, align: "left" as const, ...extra,
+              },
+            });
+
+            const objs = row.objectives.length > 0 ? row.objectives : [null as unknown as TabelloneObjective];
+
+            objs.forEach((obj, oi) => {
+              const isFirst = oi === 0;
+              const esitoText = !obj?.qualitativeResult ? "—" :
+                obj.qualitativeResult === "reached"   ? "Raggiunto" :
+                obj.qualitativeResult === "partial"   ? "Parziale"  : "Non raggiunto";
+              const esitoBg = !obj?.qualitativeResult ? bg :
+                obj.qualitativeResult === "reached"   ? "D1FAE5" :
+                obj.qualitativeResult === "partial"   ? "FEF3C7" : "FEE2E2";
+              const esitoClr = !obj?.qualitativeResult ? "94A3B8" :
+                obj.qualitativeResult === "reached"   ? "065F46" :
+                obj.qualitativeResult === "partial"   ? "92400E" : "991B1B";
+
+              const dataRow: object[] = [];
+
+              if (isFirst) {
+                dataRow.push(uCell(`${u.firstName} ${u.lastName}`, { bold: true }));
+                dataRow.push(uCell(u.codiceFiscale || "—", { fontSize: 7, fontFace: "Courier New", align: "center" }));
+                dataRow.push(uCell(u.livello || "—", { align: "center" }));
+                dataRow.push(uCell(`${u.mboPercentage}%`, { align: "center" }));
+                dataRow.push(uCell(
+                  `€ ${u.mboTarget.toLocaleString("it-IT", { maximumFractionDigits: 0 })}`,
+                  { align: "right", bold: true }
+                ));
+              }
+
+              if (obj) {
+                dataRow.push(oCell(obj.title));
+                dataRow.push(oCell(`${obj.weight}%`, { align: "center" }));
+                dataRow.push(oCell(
+                  obj.targetValue !== null ? obj.targetValue.toLocaleString("it-IT") : "—",
+                  { align: "right" }
+                ));
+                dataRow.push(oCell(
+                  obj.actualValue !== null ? obj.actualValue.toLocaleString("it-IT") : "—",
+                  { align: "right" }
+                ));
+                dataRow.push(oCell(esitoText, {
+                  align: "center",
+                  fill: { color: esitoBg },
+                  color: esitoClr,
+                  bold: !!obj.qualitativeResult,
+                }));
+              } else {
+                ["left", "center", "right", "right", "center"].forEach((a) =>
+                  dataRow.push(oCell("—", { align: a }))
+                );
+              }
+
+              tableData.push(dataRow);
+            });
+          });
+
+          slide.addTable(tableData as any, {
+            x: 0.3, y: 0.95, w: 12.73,
+            colW: COL_W,
+            rowH: 0.28,
+            border: brd,
+            autoPage: false,
+          });
+        });
+      }
+
+      await pptx.writeFile({ fileName: `tabellone_mbo_${new Date().toISOString().slice(0, 10)}.pptx` });
+    } catch (e) {
+      console.error("PPTX export error:", e);
+    } finally {
+      setExportingPptx(false);
+    }
+  };
+
   // ─── CSV export ────────────────────────────────────────────────────────────
 
   const handleExportCSV = () => {
@@ -378,10 +562,16 @@ export default function AdminTabellonePage() {
                   title="Tabellone MBO"
                   description="Vista completa del piano MBO per tutti gli eligibili — obiettivi, pesi, premi, target e fonti dati."
                 />
-                <Button onClick={handleExportCSV} variant="outline" className="gap-2 shrink-0">
-                  <Download className="h-4 w-4" />
-                  Esporta CSV
-                </Button>
+                <div className="flex gap-2 shrink-0">
+                  <Button onClick={handleExportPPTX} variant="outline" className="gap-2" disabled={exportingPptx}>
+                    <BarChart3 className="h-4 w-4" />
+                    {exportingPptx ? "Generazione..." : "Esporta PPTX"}
+                  </Button>
+                  <Button onClick={handleExportCSV} variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Esporta CSV
+                  </Button>
+                </div>
               </div>
 
               {/* Toolbar */}
@@ -513,7 +703,7 @@ export default function AdminTabellonePage() {
                         {activeCols.map(col => (
                           <th
                             key={col.id}
-                            className={`px-3 py-2.5 whitespace-nowrap ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"}`}
+                            className={`px-3 py-2.5 whitespace-nowrap overflow-hidden ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"}`}
                           >
                             {col.label}
                           </th>
@@ -545,7 +735,7 @@ export default function AdminTabellonePage() {
                               {visibleUserCols.map(col => (
                                 <td
                                   key={col.id}
-                                  className={`px-3 py-2.5 ${col.align === "right" ? "text-right" : ""}`}
+                                  className={`px-3 py-2.5 overflow-hidden ${col.align === "right" ? "text-right" : ""}`}
                                 >
                                   {userCell(col, row)}
                                 </td>
@@ -601,7 +791,7 @@ export default function AdminTabellonePage() {
                                   {activeCols.map(col => (
                                     <td
                                       key={col.id}
-                                      className={`px-3 py-2 border-r border-slate-100 ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : ""} whitespace-nowrap`}
+                                      className={`px-3 py-2 border-r border-slate-100 overflow-hidden ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : ""} whitespace-nowrap`}
                                     >
                                       {detailCell(col, obj)}
                                     </td>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
@@ -78,13 +78,12 @@ export default function AdminCompetenciesAnalyticsPage() {
     enabled: !!user,
   });
 
-  // Auto-select first active cycle
-  useState(() => {
+  useEffect(() => {
     if (cycles.length > 0 && !selectedCycle) {
       const activeCycle = cycles.find(c => c.status === "active") || cycles[0];
       setSelectedCycle(activeCycle.id);
     }
-  });
+  }, [cycles, selectedCycle]);
 
   // Fetch overview
   const { data: overview } = useQuery<OverviewData>({

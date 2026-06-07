@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import AppActionsPanel from "@/components/AppActionsPanel";
@@ -57,7 +57,7 @@ const PERSONA_LABELS: Record<string, string> = {
   executive: "Executive",
   manager: "Manager",
   professional: "Professional",
-  individual_contributor: "Individual Contributor",
+  expert: "Expert",
 };
 
 export default function ManagerTeamEvaluationsPage() {
@@ -80,13 +80,12 @@ export default function ManagerTeamEvaluationsPage() {
     enabled: !!user,
   });
 
-  // Auto-select first active cycle
-  useState(() => {
+  useEffect(() => {
     if (cycles.length > 0 && !selectedCycle) {
       const activeCycle = cycles.find(c => c.status === "active") || cycles[0];
       setSelectedCycle(activeCycle.id);
     }
-  });
+  }, [cycles, selectedCycle]);
 
   // Fetch team members evaluations
   const { data: teamEvaluations = [] } = useQuery<TeamMemberEvaluation[]>({

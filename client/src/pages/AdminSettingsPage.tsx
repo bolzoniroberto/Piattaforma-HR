@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
@@ -364,6 +364,106 @@ function ManagerAssignmentTab() {
                 disabled={mutation.isPending}
               />
             </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+// ─── Composite Score Tab ──────────────────────────────────────────────────────
+
+function CompositeScoreTab() {
+  const { toast } = useToast();
+  const [mboWeight, setMboWeight] = useState(60);
+  const [perfWeight, setPerfWeight] = useState(40);
+
+  const { data: settings, isLoading } = useQuery<{ mboWeight: number; performanceWeight: number }>({
+    queryKey: ["/api/admin/composite-score-settings"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/composite-score-settings");
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setMboWeight(settings.mboWeight);
+      setPerfWeight(settings.performanceWeight);
+    }
+  }, [settings]);
+
+  const mutation = useMutation({
+    mutationFn: async (data: { mboWeight: number; performanceWeight: number }) => {
+      const res = await apiRequest("PUT", "/api/admin/composite-score-settings", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/composite-score-settings"] });
+      toast({ title: "Pesi salvati con successo" });
+    },
+    onError: () => toast({ title: "Errore nel salvataggio", variant: "destructive" }),
+  });
+
+  const handleMboChange = (val: number) => {
+    setMboWeight(val);
+    setPerfWeight(100 - val);
+  };
+
+  return (
+    <TabsContent value="punteggio-composito" className="mt-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Punteggio Composito</CardTitle>
+          <CardDescription>
+            Configura i pesi per il calcolo del punteggio finale. La somma deve essere 100%.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Caricamento...</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Peso MBO (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={mboWeight}
+                    onChange={e => handleMboChange(Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Contributo del raggiungimento obiettivi MBO</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Peso Performance (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={perfWeight}
+                    onChange={e => { setPerfWeight(Number(e.target.value)); setMboWeight(100 - Number(e.target.value)); }}
+                  />
+                  <p className="text-xs text-muted-foreground">Contributo della valutazione delle competenze</p>
+                </div>
+              </div>
+              <div className="rounded-lg border p-4 bg-muted/30 space-y-1">
+                <p className="text-sm font-medium">Formula:</p>
+                <p className="text-sm text-muted-foreground font-mono">
+                  Punteggio = MBO% × {mboWeight / 100} + (Valutazione/5 × 100) × {perfWeight / 100}
+                </p>
+                {mboWeight + perfWeight !== 100 && (
+                  <p className="text-sm text-destructive">⚠ La somma dei pesi deve essere 100%</p>
+                )}
+              </div>
+              <Button
+                onClick={() => mutation.mutate({ mboWeight, performanceWeight: perfWeight })}
+                disabled={mutation.isPending || mboWeight + perfWeight !== 100}
+              >
+                {mutation.isPending ? "Salvataggio..." : "Salva Configurazione"}
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>
@@ -1338,6 +1438,7 @@ export default function AdminSettingsPage() {
                   <TabsTrigger value="azienda" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Azienda</TabsTrigger>
                   <TabsTrigger value="ciclo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Ciclo MBO</TabsTrigger>
                   <TabsTrigger value="manager-mbo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Manager MBO</TabsTrigger>
+                  <TabsTrigger value="punteggio-composito" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none px-0 py-3 font-semibold text-slate-500 data-[state=active]:text-slate-900">Punteggio Composito</TabsTrigger>
                 </TabsList>
 
                 {/* Moduli Tab */}
@@ -2412,6 +2513,7 @@ export default function AdminSettingsPage() {
                 <CompanyTab />
                 <CycleTab />
                 <ManagerAssignmentTab />
+                <CompositeScoreTab />
               </Tabs>
 
               {/* Delete Confirmation Dialog */}

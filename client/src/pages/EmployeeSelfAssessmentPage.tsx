@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
@@ -12,7 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import PageHeader from "@/components/PageHeader";
-import { FileCheck, Star, CheckCircle, AlertCircle, Save } from "lucide-react";
+import { useAiPanel } from "@/contexts/AiPanelContext";
+import { FileCheck, Star, CheckCircle, AlertCircle, Save, Bot } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,6 +90,7 @@ export default function EmployeeSelfAssessmentPage() {
   const [selectedCycle, setSelectedCycle] = useState<string>("");
   const [assessments, setAssessments] = useState<Record<string, SelfAssessment>>({});
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const aiPanel = useAiPanel();
   const [overallAssessment, setOverallAssessment] = useState({
     overallRating: 0,
     overallComment: "",
@@ -111,13 +113,12 @@ export default function EmployeeSelfAssessmentPage() {
     enabled: !!user,
   });
 
-  // Auto-select first active cycle
-  useState(() => {
+  useEffect(() => {
     if (cycles.length > 0 && !selectedCycle) {
       const activeCycle = cycles.find(c => c.status === "active") || cycles[0];
       setSelectedCycle(activeCycle.id);
     }
-  });
+  }, [cycles, selectedCycle]);
 
   // Fetch competencies for my persona
   const { data: competencies = [] } = useQuery<Competency[]>({
@@ -152,8 +153,7 @@ export default function EmployeeSelfAssessmentPage() {
     enabled: !!selectedCycle,
   });
 
-  // Load saved assessments into state
-  useState(() => {
+  useEffect(() => {
     const loaded: Record<string, SelfAssessment> = {};
     savedAssessments.forEach(sa => {
       loaded[sa.competencyId] = {
@@ -163,10 +163,9 @@ export default function EmployeeSelfAssessmentPage() {
       };
     });
     setAssessments(loaded);
-  });
+  }, [savedAssessments]);
 
-  // Load saved overall assessment into state
-  useState(() => {
+  useEffect(() => {
     if (savedOverallAssessment) {
       setOverallAssessment({
         overallRating: savedOverallAssessment.overallRating,
@@ -176,7 +175,7 @@ export default function EmployeeSelfAssessmentPage() {
         goals: savedOverallAssessment.goals || "",
       });
     }
-  });
+  }, [savedOverallAssessment]);
 
   const isSubmitted = savedAssessments.some(sa => sa.submittedAt !== null);
 
@@ -344,7 +343,6 @@ export default function EmployeeSelfAssessmentPage() {
     <>
       <div className="w-full">
         <div className="w-full">
-          {/* SIDEBAR CONTAINER */}
           {/* MAIN CONTENT */}
           <main className="flex-1 w-full min-h-[calc(100vh-7rem)]">
             <div className="w-full space-y-6">
@@ -483,9 +481,38 @@ export default function EmployeeSelfAssessmentPage() {
 
                             {/* Comment */}
                             <div className="space-y-2">
-                              <Label htmlFor={`comment-${competency.id}`}>
-                                Commento <span className="text-destructive">*</span>
-                              </Label>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={`comment-${competency.id}`}>
+                                  Commento <span className="text-destructive">*</span>
+                                </Label>
+                                {!isSubmitted && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                                    onClick={() => aiPanel.open({
+                                      competencyContext: {
+                                        name: competency.name,
+                                        description: competency.description,
+                                        category: competency.category,
+                                        currentRating: assessments[competency.id]?.rating,
+                                      },
+                                      contextLabel: competency.name,
+                                      suggestedPrompts: [
+                                        `Come descrivo livello 4 per "${competency.name}"?`,
+                                        "Dammi esempi concreti da citare",
+                                        "Quale rating è più onesto per me?",
+                                        "Aiutami a scrivere il commento",
+                                      ],
+                                      endpoint: "/api/ai/self-assessment-chat",
+                                    })}
+                                  >
+                                    <Bot className="h-3.5 w-3.5" />
+                                    Chiedi all'AI
+                                  </Button>
+                                )}
+                              </div>
                               <Textarea
                                 id={`comment-${competency.id}`}
                                 placeholder="Descrivi la tua valutazione e fornisci esempi concreti..."
@@ -688,6 +715,7 @@ export default function EmployeeSelfAssessmentPage() {
             </AppActionsPanel>
           )}
         </div>
+
       </div>
 
       {/* Submit Confirmation Dialog */}

@@ -101,6 +101,25 @@ export default function EmployeeDashboard() {
     enabled: !!user,
   });
 
+  // Fetch active evaluation cycle for performance stepper
+  const { data: evalCycles = [] } = useQuery<Array<{ id: string; name: string; year: number; status: string; selfAssessmentEnd: number | null; managerEvaluationEnd: number | null; calibrationEnd: number | null; interviewEnd: number | null }>>({
+    queryKey: ["/api/evaluation-cycles/active"],
+    enabled: !!user,
+  });
+  const activeEvalCycle = evalCycles.find(c => c.status === "active") ?? evalCycles[0] ?? null;
+
+  const { data: mySelfAssessments = [] } = useQuery<Array<{ submittedAt: number | null }>>({
+    queryKey: ["/api/self-assessments", activeEvalCycle?.id],
+    queryFn: async () => {
+      if (!activeEvalCycle?.id) return [];
+      const res = await apiRequest("GET", `/api/self-assessments/${activeEvalCycle.id}`);
+      return res.json();
+    },
+    enabled: !!activeEvalCycle?.id,
+  });
+  const selfDone = mySelfAssessments.some(s => s.submittedAt);
+  const selfStarted = mySelfAssessments.length > 0;
+
   const cycleLabel = cycleData?.name || String(new Date().getFullYear());
   const cyclePeriod = cycleData?.startDate && cycleData?.endDate
     ? `${new Date(cycleData.startDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })} – ${new Date(cycleData.endDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}`
@@ -754,6 +773,44 @@ export default function EmployeeDashboard() {
                 )}
               </div>
             </div>
+
+            {/* Performance Process Stepper */}
+            {activeEvalCycle && (
+              <div className="bg-white rounded-2xl border border-slate-100 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-slate-900">Processo di Valutazione</h3>
+                  <Badge variant="secondary" className="text-xs">{activeEvalCycle.name}</Badge>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { phase: 1, label: "Autovalutazione", href: "/employee/self-assessment", done: selfDone, started: selfStarted && !selfDone },
+                    { phase: 2, label: "Feedback 360°", href: "/employee/peer-feedback", done: false, started: false },
+                    { phase: 3, label: "Calibrazione HR", href: undefined, done: false, started: false },
+                    { phase: 4, label: "Colloquio di Feedback", href: "/employee/interview", done: false, started: false },
+                  ].map(step => (
+                    <div key={step.phase} className="flex items-center gap-3">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        step.done ? "bg-green-500 text-white" : step.started ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-400"
+                      }`}>
+                        {step.done ? "✓" : step.phase}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-sm font-medium ${step.done ? "text-green-700" : step.started ? "text-blue-700" : "text-slate-500"}`}>
+                          {step.label}
+                        </span>
+                      </div>
+                      {step.href && (
+                        <Link href={step.href}>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 px-2">
+                            Apri →
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Recent Activity */}
             <div className="bg-white rounded-2xl border border-slate-100 p-6">

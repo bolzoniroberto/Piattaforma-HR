@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import AppActionsPanel from "@/components/AppActionsPanel";
@@ -145,8 +145,7 @@ export default function ManagerEmployeeEvaluationPage() {
     enabled: !!userId && !!cycleId,
   });
 
-  // Load saved evaluations into state
-  useState(() => {
+  useEffect(() => {
     const loaded: Record<string, ManagerEvaluation> = {};
     savedEvaluations.forEach(ev => {
       loaded[ev.competencyId] = {
@@ -156,7 +155,7 @@ export default function ManagerEmployeeEvaluationPage() {
       };
     });
     setEvaluations(loaded);
-  });
+  }, [savedEvaluations]);
 
   const isSubmitted = savedEvaluations.some(ev => ev.submittedAt !== null);
 

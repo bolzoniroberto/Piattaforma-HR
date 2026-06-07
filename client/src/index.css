@@ -508,4 +508,40 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* AI Assistant Specific Utilities (FLUO VERSION) */
+  .ai-gradient {
+    background: linear-gradient(135deg, #00f2ff 0%, #0060ff 100%);
+  }
+  .ai-gradient-subtle {
+    background: linear-gradient(135deg, rgba(0, 242, 255, 0.08) 0%, rgba(0, 96, 255, 0.08) 100%);
+  }
+  .ai-glow {
+    box-shadow: 0 0 25px rgba(0, 242, 255, 0.5);
+  }
+  .ai-glow-sm {
+    box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
+  }
+  .ai-text-gradient {
+    background: linear-gradient(135deg, #00f2ff 0%, #0060ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* docx-preview styles */
+.docx-preview-wrapper {
+  /* allow landscape pages to scroll horizontally */
+  overflow-x: auto;
+}
+.docx-preview-wrapper .docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+  min-width: min-content;
+}
+.docx-preview-wrapper .docx-wrapper > section.docx {
+  background: white;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  margin: 0 auto 24px;
+  border-radius: 2px;
 }

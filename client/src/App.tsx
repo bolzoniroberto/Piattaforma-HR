@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RailProvider } from "@/contexts/RailContext";
 import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
+import { AiPanelProvider } from "@/contexts/AiPanelContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
@@ -41,6 +42,14 @@ import OrgChartPage from "@/pages/OrgChartPage";
 import RendicontatorePage from "@/pages/RendicontatorePage";
 import RendicontaPublicPage from "@/pages/RendicontaPublicPage";
 import ManagerMboAssignPage from "@/pages/ManagerMboAssignPage";
+import AdminActivitiesPage from "@/pages/AdminActivitiesPage";
+import AdminCalibrationPage from "@/pages/AdminCalibrationPage";
+import AdminProfilePerformancePage from "@/pages/AdminProfilePerformancePage";
+import EmployeeInterviewPage from "@/pages/EmployeeInterviewPage";
+import ManagerInterviewsPage from "@/pages/ManagerInterviewsPage";
+import AiAssignWizardPage from "@/pages/AiAssignWizardPage";
+import AiEvalWizardPage from "@/pages/AiEvalWizardPage";
+import AdminDocGenPage from "@/pages/AdminDocGenPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -229,6 +238,46 @@ function Router() {
           <ManagerMboAssignPage />
         </ProtectedRoute>
       )} />
+      <Route path="/admin/activities" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminActivitiesPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/calibration" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminCalibrationPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/profile-performance/:userId" component={() => (
+        <ProtectedRoute requiredRole="admin">
+          <AdminProfilePerformancePage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/employee/interview" component={() => (
+        <ProtectedRoute>
+          <EmployeeInterviewPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/manager/interviews" component={() => (
+        <ProtectedRoute>
+          <ManagerInterviewsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/ai/assegna" component={() => (
+        <ProtectedRoute>
+          <AiAssignWizardPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/ai/valuta" component={() => (
+        <ProtectedRoute>
+          <AiEvalWizardPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/doc-gen" component={() => (
+        <ProtectedRoute>
+          <AdminDocGenPage />
+        </ProtectedRoute>
+      )} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -241,12 +290,14 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <RailProvider>
-            <FeatureFlagsProvider>
-              <Toaster />
-              <WouterRouter base={BASE_PATH}><Router /></WouterRouter>
-            </FeatureFlagsProvider>
-          </RailProvider>
+          <AiPanelProvider>
+            <RailProvider>
+              <FeatureFlagsProvider>
+                <Toaster />
+                <WouterRouter base={BASE_PATH}><Router /></WouterRouter>
+              </FeatureFlagsProvider>
+            </RailProvider>
+          </AiPanelProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

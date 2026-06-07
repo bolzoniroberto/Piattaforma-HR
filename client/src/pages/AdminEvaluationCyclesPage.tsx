@@ -44,6 +44,10 @@ interface EvaluationCycle {
   managerEvaluationEnd: string | null;
   feedbackDeliveryStart: string | null;
   feedbackDeliveryEnd: string | null;
+  calibrationStart: string | null;
+  calibrationEnd: string | null;
+  interviewStart: string | null;
+  interviewEnd: string | null;
   enable360Feedback: boolean;
   createdAt: string;
 }
@@ -77,6 +81,10 @@ export default function AdminEvaluationCyclesPage() {
     managerEvaluationEnd: "",
     feedbackDeliveryStart: "",
     feedbackDeliveryEnd: "",
+    calibrationStart: "",
+    calibrationEnd: "",
+    interviewStart: "",
+    interviewEnd: "",
   });
 
   const handleSectionClick = (sectionId: string) => {
@@ -171,8 +179,19 @@ export default function AdminEvaluationCyclesPage() {
       managerEvaluationEnd: "",
       feedbackDeliveryStart: "",
       feedbackDeliveryEnd: "",
+      calibrationStart: "",
+      calibrationEnd: "",
+      interviewStart: "",
+      interviewEnd: "",
     });
     setEditingCycle(null);
+  };
+
+  const toDateString = (val: string | Date | number | null | undefined): string => {
+    if (!val) return "";
+    if (typeof val === "number") return new Date(val * 1000).toISOString().split('T')[0];
+    const s = val instanceof Date ? val.toISOString() : String(val);
+    return s.split('T')[0];
   };
 
   const handleEdit = (cycle: EvaluationCycle) => {
@@ -181,14 +200,18 @@ export default function AdminEvaluationCyclesPage() {
       name: cycle.name,
       year: cycle.year,
       enable360Feedback: cycle.enable360Feedback,
-      selfAssessmentStart: cycle.selfAssessmentStart ? cycle.selfAssessmentStart.split('T')[0] : "",
-      selfAssessmentEnd: cycle.selfAssessmentEnd ? cycle.selfAssessmentEnd.split('T')[0] : "",
-      peerFeedbackStart: cycle.peerFeedbackStart ? cycle.peerFeedbackStart.split('T')[0] : "",
-      peerFeedbackEnd: cycle.peerFeedbackEnd ? cycle.peerFeedbackEnd.split('T')[0] : "",
-      managerEvaluationStart: cycle.managerEvaluationStart ? cycle.managerEvaluationStart.split('T')[0] : "",
-      managerEvaluationEnd: cycle.managerEvaluationEnd ? cycle.managerEvaluationEnd.split('T')[0] : "",
-      feedbackDeliveryStart: cycle.feedbackDeliveryStart ? cycle.feedbackDeliveryStart.split('T')[0] : "",
-      feedbackDeliveryEnd: cycle.feedbackDeliveryEnd ? cycle.feedbackDeliveryEnd.split('T')[0] : "",
+      selfAssessmentStart: toDateString(cycle.selfAssessmentStart),
+      selfAssessmentEnd: toDateString(cycle.selfAssessmentEnd),
+      peerFeedbackStart: toDateString(cycle.peerFeedbackStart),
+      peerFeedbackEnd: toDateString(cycle.peerFeedbackEnd),
+      managerEvaluationStart: toDateString(cycle.managerEvaluationStart),
+      managerEvaluationEnd: toDateString(cycle.managerEvaluationEnd),
+      feedbackDeliveryStart: toDateString(cycle.feedbackDeliveryStart),
+      feedbackDeliveryEnd: toDateString(cycle.feedbackDeliveryEnd),
+      calibrationStart: toDateString(cycle.calibrationStart),
+      calibrationEnd: toDateString(cycle.calibrationEnd),
+      interviewStart: toDateString(cycle.interviewStart),
+      interviewEnd: toDateString(cycle.interviewEnd),
     });
     setIsDialogOpen(true);
   };
@@ -209,6 +232,10 @@ export default function AdminEvaluationCyclesPage() {
       managerEvaluationEnd: formData.managerEvaluationEnd || null,
       feedbackDeliveryStart: formData.feedbackDeliveryStart || null,
       feedbackDeliveryEnd: formData.feedbackDeliveryEnd || null,
+      calibrationStart: formData.calibrationStart || null,
+      calibrationEnd: formData.calibrationEnd || null,
+      interviewStart: formData.interviewStart || null,
+      interviewEnd: formData.interviewEnd || null,
     };
 
     saveCycleMutation.mutate(payload);
@@ -218,10 +245,20 @@ export default function AdminEvaluationCyclesPage() {
     setStatusChangeCycle({ id: cycleId, newStatus });
   };
 
-  const formatDateRange = (start: string | null, end: string | null) => {
-    if (!start || !end) return "Non configurato";
+  const toDate = (val: string | number | null | undefined): Date | null => {
+    if (!val) return null;
+    if (typeof val === "number") return new Date(val * 1000);
+    const n = Number(val);
+    if (!isNaN(n) && String(val) === String(n)) return new Date(n * 1000);
+    return new Date(val);
+  };
+
+  const formatDateRange = (start: string | number | null, end: string | number | null) => {
+    const s = toDate(start);
+    const e = toDate(end);
+    if (!s || !e) return "Non configurato";
     try {
-      return `${format(new Date(start), "dd MMM", { locale: it })} - ${format(new Date(end), "dd MMM yyyy", { locale: it })}`;
+      return `${format(s, "dd MMM", { locale: it })} - ${format(e, "dd MMM yyyy", { locale: it })}`;
     } catch {
       return "Data non valida";
     }
@@ -303,6 +340,14 @@ export default function AdminEvaluationCyclesPage() {
                             <div className="space-y-1">
                               <p className="text-xs font-medium text-muted-foreground">Restituzione Feedback</p>
                               <p className="text-sm">{formatDateRange(cycle.feedbackDeliveryStart, cycle.feedbackDeliveryEnd)}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground">Calibrazione</p>
+                              <p className="text-sm">{formatDateRange(cycle.calibrationStart, cycle.calibrationEnd)}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground">Colloqui</p>
+                              <p className="text-sm">{formatDateRange(cycle.interviewStart, cycle.interviewEnd)}</p>
                             </div>
                           </div>
                         </div>
@@ -513,6 +558,50 @@ export default function AdminEvaluationCyclesPage() {
                     type="date"
                     value={formData.feedbackDeliveryEnd}
                     onChange={(e) => setFormData({ ...formData, feedbackDeliveryEnd: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Calibration */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <Label htmlFor="calibration-start" className="text-xs">Calibrazione - Inizio</Label>
+                  <Input
+                    id="calibration-start"
+                    type="date"
+                    value={formData.calibrationStart}
+                    onChange={(e) => setFormData({ ...formData, calibrationStart: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="calibration-end" className="text-xs">Calibrazione - Fine</Label>
+                  <Input
+                    id="calibration-end"
+                    type="date"
+                    value={formData.calibrationEnd}
+                    onChange={(e) => setFormData({ ...formData, calibrationEnd: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Interview */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <Label htmlFor="interview-start" className="text-xs">Colloqui di Feedback - Inizio</Label>
+                  <Input
+                    id="interview-start"
+                    type="date"
+                    value={formData.interviewStart}
+                    onChange={(e) => setFormData({ ...formData, interviewStart: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="interview-end" className="text-xs">Colloqui di Feedback - Fine</Label>
+                  <Input
+                    id="interview-end"
+                    type="date"
+                    value={formData.interviewEnd}
+                    onChange={(e) => setFormData({ ...formData, interviewEnd: e.target.value })}
                   />
                 </div>
               </div>

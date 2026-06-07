@@ -61,7 +61,7 @@ const personaTypeLabels = {
   executive: "Executive",
   manager: "Manager",
   professional: "Professional",
-  individual_contributor: "Individual Contributor",
+  expert: "Expert",
 };
 
 const categoryLabels = {
@@ -506,7 +506,7 @@ export default function AdminCompetenciesPage() {
                   <SelectItem value="executive">Executive</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="individual_contributor">Individual Contributor</SelectItem>
+                  <SelectItem value="expert">Expert</SelectItem>
                 </SelectContent>
               </Select>
             </div>

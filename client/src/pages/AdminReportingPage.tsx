@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/PageHeader";
-import { Search, Target, Users, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, BarChart3, Mail, History } from "lucide-react";
+import { Search, Target, CheckCircle2, XCircle, TrendingUp, Hash, ToggleLeft, Mail, History, Trash2, SendHorizonal, UserCheck, ChevronDown, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -58,6 +59,9 @@ export default function AdminReportingPage() {
   const [qualitativeResult, setQualitativeResult] = useState<string>("");
   const [emailConfirmId, setEmailConfirmId] = useState<string | null>(null);
   const [storicoId, setStoricoId] = useState<string | null>(null);
+  const [sendAllConfirmOpen, setSendAllConfirmOpen] = useState(false);
+  const [sendOneEmail, setSendOneEmail] = useState<string | null>(null);
+  const [expandedSource, setExpandedSource] = useState<string | null>(null);
 
   const handleSectionClick = (sectionId: string) => {
     if (activeSection === sectionId) {
@@ -86,7 +90,7 @@ export default function AdminReportingPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/objectives-with-assignments"] });
+      queryClient.refetchQueries({ queryKey: ["/api/objectives-with-assignments"] });
       toast({ title: "Rendicontazione salvata con successo" });
       setReportDialogOpen(false);
       setSelectedObjective(null);
@@ -102,6 +106,21 @@ export default function AdminReportingPage() {
     },
   });
 
+  const clearReportMutation = useMutation({
+    mutationFn: async (dictionaryId: string) => {
+      const res = await apiRequest("DELETE", `/api/dictionary/${dictionaryId}/report`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ["/api/objectives-with-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-objectives"] });
+      toast({ title: "Rendicontazione annullata" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile annullare la rendicontazione", variant: "destructive" });
+    },
+  });
+
   const sendEmailMutation = useMutation({
     mutationFn: async (dictionaryId: string) => {
       const res = await apiRequest("POST", `/api/dictionary/${dictionaryId}/request-reporting`, {});
@@ -114,6 +133,38 @@ export default function AdminReportingPage() {
     onError: () => {
       toast({ title: "Errore nell'invio email", variant: "destructive" });
       setEmailConfirmId(null);
+    },
+  });
+
+  const sendDatasourceEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiRequest("POST", `/api/reporting/send-datasource-email`, { email });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: `Email inviata a ${data.sentTo} (${data.objectiveCount} obiettivi)` });
+      setSendOneEmail(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-with-assignments"] });
+    },
+    onError: () => {
+      toast({ title: "Errore nell'invio email", variant: "destructive" });
+      setSendOneEmail(null);
+    },
+  });
+
+  const sendAllDatasourceEmailsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/reporting/send-all-datasource-emails`, {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: `Email inviate a ${data.sent} fonti dati` });
+      setSendAllConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/objectives-with-assignments"] });
+    },
+    onError: () => {
+      toast({ title: "Errore nell'invio email", variant: "destructive" });
+      setSendAllConfirmOpen(false);
     },
   });
 
@@ -144,6 +195,34 @@ export default function AdminReportingPage() {
 
     return filtered;
   }, [objectivesWithAssignments, searchQuery, typeFilter, clusterFilter]);
+
+  const byDataSource = useMemo(() => {
+    const map = new Map<string, { email: string; name: string; items: ObjectiveWithAssignments[] }>();
+    for (const item of objectivesWithAssignments) {
+      const email = (item.dictionary as any).dataSourceEmail as string | undefined;
+      if (!email) continue;
+      if (!map.has(email)) {
+        map.set(email, {
+          email,
+          name: (item.dictionary as any).dataSource || email,
+          items: [],
+        });
+      }
+      map.get(email)!.items.push(item);
+    }
+    return Array.from(map.values());
+  }, [objectivesWithAssignments]);
+
+  const processStats = useMemo(() => {
+    const totalSources = byDataSource.length;
+    const sourcesWithAllReported = byDataSource.filter((s) =>
+      s.items.every((i) => !!i.dictionary.reportedAt)
+    ).length;
+    const pendingSources = byDataSource.filter((s) =>
+      s.items.some((i) => !i.dictionary.reportedAt)
+    ).length;
+    return { totalSources, sourcesWithAllReported, pendingSources };
+  }, [byDataSource]);
 
   const stats = useMemo(() => {
     const total = objectivesWithAssignments.length;
@@ -219,11 +298,19 @@ export default function AdminReportingPage() {
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
           <main className="w-full space-y-6 flex flex-col pt-4" >
           <div className="w-full space-y-6">
-              <PageHeader 
-                context="RENDICONTAZIONI" 
-                title="Obiettivi e Rendicontazione" 
+              <PageHeader
+                context="RENDICONTAZIONI"
+                title="Obiettivi e Rendicontazione"
                 description="Visualizza lo stato degli obiettivi e inserisci i valori di rendicontazione."
               />
+
+              <Tabs defaultValue="obiettivi">
+                <TabsList>
+                  <TabsTrigger value="obiettivi">Obiettivi</TabsTrigger>
+                  <TabsTrigger value="processo">Processo Rendicontazione</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="obiettivi" className="space-y-6 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-3">
@@ -406,6 +493,18 @@ export default function AdminReportingPage() {
                                     >
                                       {isReported ? "Modifica" : "Rendiconta"}
                                     </Button>
+                                    {isReported && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => clearReportMutation.mutate(item.dictionary.id)}
+                                        disabled={clearReportMutation.isPending}
+                                        title="Annulla rendicontazione"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -417,6 +516,151 @@ export default function AdminReportingPage() {
                   )}
                 </CardContent>
             </Card>
+                </TabsContent>
+
+                <TabsContent value="processo" className="space-y-6 mt-4">
+                  {/* Stats processo */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <UserCheck className="h-4 w-4" />
+                          Fonti Dati
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-semibold">{processStats.totalSources}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <XCircle className="h-4 w-4" />
+                          In attesa di risposta
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-semibold">{processStats.pendingSources}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Completamente rendicontate
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-semibold">{processStats.sourcesWithAllReported}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <CardTitle>Fonti Dati MBO</CardTitle>
+                          <CardDescription>
+                            Invia richieste riepilogative ai responsabili delle fonti dati
+                          </CardDescription>
+                        </div>
+                        {byDataSource.length > 0 && (
+                          <Button onClick={() => setSendAllConfirmOpen(true)}>
+                            <SendHorizonal className="h-4 w-4 mr-2" />
+                            Invia a tutte le fonti
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {byDataSource.length === 0 ? (
+                        <p className="text-center py-8 text-muted-foreground text-sm">
+                          Nessun obiettivo con email fonte dati configurata. Aggiungi il campo "Email fonte dati" nel dizionario obiettivi.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {byDataSource.map((source) => {
+                            const reportedCount = source.items.filter((i) => !!i.dictionary.reportedAt).length;
+                            const isExpanded = expandedSource === source.email;
+                            return (
+                              <div key={source.email} className="border rounded-lg overflow-hidden">
+                                <div
+                                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/40"
+                                  onClick={() => setExpandedSource(isExpanded ? null : source.email)}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <button className="text-muted-foreground flex-shrink-0">
+                                      {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </button>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-sm truncate">{source.name}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{source.email}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3 flex-shrink-0">
+                                    <div className="text-right hidden sm:block">
+                                      <p className="text-sm font-medium">{reportedCount}/{source.items.length}</p>
+                                      <p className="text-xs text-muted-foreground">rendicontati</p>
+                                    </div>
+                                    <Badge variant={reportedCount === source.items.length ? "default" : reportedCount > 0 ? "secondary" : "outline"}>
+                                      {reportedCount === source.items.length ? "Completo" : reportedCount > 0 ? "Parziale" : "In attesa"}
+                                    </Badge>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => { e.stopPropagation(); setSendOneEmail(source.email); }}
+                                    >
+                                      <Mail className="h-3.5 w-3.5 mr-1" />
+                                      Invia Richiesta
+                                    </Button>
+                                  </div>
+                                </div>
+                                {isExpanded && (
+                                  <div className="border-t bg-muted/20 px-4 py-3">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead>Obiettivo</TableHead>
+                                          <TableHead>Tipo</TableHead>
+                                          <TableHead className="text-right">Target</TableHead>
+                                          <TableHead>Stato</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {source.items.map((item) => (
+                                          <TableRow key={item.dictionary.id}>
+                                            <TableCell className="text-sm font-medium">{item.dictionary.title}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                              {item.dictionary.objectiveType === "numeric" ? "Numerico" : "Qualitativo"}
+                                            </TableCell>
+                                            <TableCell className="text-right text-sm">
+                                              {item.dictionary.objectiveType === "numeric" && item.dictionary.targetValue != null
+                                                ? Number(item.dictionary.targetValue).toLocaleString()
+                                                : "—"}
+                                            </TableCell>
+                                            <TableCell>
+                                              {item.dictionary.reportedAt ? (
+                                                <Badge variant="default" className="text-xs">Rendicontato</Badge>
+                                              ) : (
+                                                <Badge variant="outline" className="text-xs">Da rendicontare</Badge>
+                                              )}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
           </div>
         </main>
 
@@ -555,7 +799,7 @@ export default function AdminReportingPage() {
                       <TableCell className="text-xs">{log.reportedAt ? new Date(log.reportedAt * 1000).toLocaleString("it-IT") : "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {log.reportingChannel === "email_link" ? "Email" : log.reportingChannel === "rendicontatore" ? "Rendicontatore" : "Admin"}
+                          {log.reportingChannel === "email_link" ? "Email link" : log.reportingChannel === "rendicontatore" ? "Rendicontatore" : log.reportingChannel === "datasource_email" ? "Richiesta fonte" : "Admin"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{log.actualValue != null ? log.actualValue : "—"}</TableCell>
@@ -569,6 +813,65 @@ export default function AdminReportingPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setStoricoId(null)}>Chiudi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog conferma invia a tutti */}
+      <Dialog open={sendAllConfirmOpen} onOpenChange={(open) => !open && setSendAllConfirmOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invia a tutte le fonti dati</DialogTitle>
+            <DialogDescription>
+              Verrà inviata un'email riepilogativa a ciascuna fonte dati con la lista degli obiettivi non ancora rendicontati.
+            </DialogDescription>
+          </DialogHeader>
+          {byDataSource.filter((s) => s.items.some((i) => !i.dictionary.reportedAt)).length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto py-2">
+              {byDataSource.filter((s) => s.items.some((i) => !i.dictionary.reportedAt)).map((s) => {
+                const pendingCount = s.items.filter((i) => !i.dictionary.reportedAt).length;
+                return (
+                  <div key={s.email} className="flex items-center justify-between text-sm px-1">
+                    <span className="text-muted-foreground truncate">{s.email}</span>
+                    <Badge variant="outline">{pendingCount} obiettivi</Badge>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-2">Tutti gli obiettivi sono già stati rendicontati.</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendAllConfirmOpen(false)}>Annulla</Button>
+            <Button
+              onClick={() => sendAllDatasourceEmailsMutation.mutate()}
+              disabled={sendAllDatasourceEmailsMutation.isPending}
+            >
+              <SendHorizonal className="h-4 w-4 mr-2" />
+              {sendAllDatasourceEmailsMutation.isPending ? "Invio..." : "Invia email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog conferma invia a singola fonte */}
+      <Dialog open={!!sendOneEmail} onOpenChange={(open) => !open && setSendOneEmail(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Invia richiesta dati</DialogTitle>
+            <DialogDescription>
+              Verrà inviata un'email riepilogativa a <strong>{sendOneEmail}</strong> con la lista degli obiettivi di cui è fonte dati.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendOneEmail(null)}>Annulla</Button>
+            <Button
+              onClick={() => sendOneEmail && sendDatasourceEmailMutation.mutate(sendOneEmail)}
+              disabled={sendDatasourceEmailMutation.isPending}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              {sendDatasourceEmailMutation.isPending ? "Invio..." : "Invia Email"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

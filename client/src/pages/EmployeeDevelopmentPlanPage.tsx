@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
@@ -91,13 +91,12 @@ export default function EmployeeDevelopmentPlanPage() {
     enabled: !!user,
   });
 
-  // Auto-select first cycle
-  useState(() => {
+  useEffect(() => {
     if (cycles.length > 0 && !selectedCycle) {
       const activeCycle = cycles.find(c => c.status === "active") || cycles[0];
       setSelectedCycle(activeCycle.id);
     }
-  });
+  }, [cycles, selectedCycle]);
 
   // Fetch my development plan
   const { data: plan } = useQuery<DevelopmentPlan>({
@@ -116,12 +115,11 @@ export default function EmployeeDevelopmentPlanPage() {
     enabled: !!user,
   });
 
-  // Load employee notes from plan
-  useState(() => {
+  useEffect(() => {
     if (plan?.employeeNotes) {
       setEmployeeNotes(plan.employeeNotes);
     }
-  });
+  }, [plan?.employeeNotes]);
 
   const competenciesToDevelop = allCompetencies.filter(c =>
     plan?.competenciesToDevelop?.includes(c.id)

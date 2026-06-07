@@ -119,12 +119,14 @@ export default function AdminAssignmentsBulkPage() {
     return groups;
   }, [filteredObjectives]);
 
+  const isMboUser = (u: User) => u.mboPercentage != null && u.mboPercentage > 0;
+
   const usersInDepartment = useMemo(() => {
     if (!selectedDepartment) return [];
     if (selectedDepartment === "all") {
-      return allUsers.filter((u) => u.role === "employee");
+      return allUsers.filter(isMboUser);
     }
-    return allUsers.filter((u) => u.department === selectedDepartment && u.role === "employee");
+    return allUsers.filter((u) => u.department === selectedDepartment && isMboUser(u));
   }, [allUsers, selectedDepartment]);
 
   const filteredUsers = useMemo(() => {
@@ -632,7 +634,7 @@ export default function AdminAssignmentsBulkPage() {
                           <p className="text-xs text-muted-foreground mb-1">Destinatari</p>
                           <p className="font-medium">{selectedDepartment === "all" ? "Tutti gli utenti" : selectedDepartment}</p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {preview ? `${preview.eligible.length} di ${preview.totalUsers} dipendenti` : `${usersInDepartment.length} dipendenti`}
+                            {preview?.eligible ? `${preview.eligible.length} di ${preview.totalUsers} dipendenti` : `${usersInDepartment.length} dipendenti`}
                           </p>
                         </div>
                       )}
@@ -739,7 +741,7 @@ export default function AdminAssignmentsBulkPage() {
                     )}
 
                     {/* ── Bulk mode: weight overflow warnings ── */}
-                    {mode === "bulk" && preview && preview.skipped.length > 0 && (
+                    {mode === "bulk" && preview?.skipped && preview.skipped.length > 0 && (
                       <div className="p-4 bg-amber-50 border border-amber-300 rounded-md space-y-3">
                         <div className="flex items-center gap-2 text-amber-800">
                           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -761,7 +763,7 @@ export default function AdminAssignmentsBulkPage() {
                       </div>
                     )}
 
-                    {mode === "bulk" && preview && preview.eligible.length === 0 && (
+                    {mode === "bulk" && preview?.eligible && preview.eligible.length === 0 && (
                       <div className="p-4 bg-red-50 border border-red-300 rounded-md">
                         <div className="flex items-center gap-2 text-red-800">
                           <AlertTriangle className="h-4 w-4" />
@@ -771,7 +773,7 @@ export default function AdminAssignmentsBulkPage() {
                       </div>
                     )}
 
-                    {mode === "bulk" && preview && preview.eligible.length > 0 && (
+                    {mode === "bulk" && preview?.eligible && preview.eligible.length > 0 && (
                       <div className="p-4 bg-muted rounded-md">
                         <p className="font-medium text-sm mb-3">Dipendenti che riceveranno l'obiettivo ({preview.eligible.length}):</p>
                         <div className="space-y-2 max-h-[200px] overflow-auto">
@@ -803,7 +805,7 @@ export default function AdminAssignmentsBulkPage() {
                         bulkAssignMutation.isPending ||
                         singleAssignMutation.isPending ||
                         (mode === "single" && weightOverflow) ||
-                        (mode === "bulk" && preview !== undefined && preview.eligible.length === 0)
+                        (mode === "bulk" && preview?.eligible !== undefined && preview.eligible.length === 0)
                       }
                       data-testid="button-confirm-bulk"
                     >

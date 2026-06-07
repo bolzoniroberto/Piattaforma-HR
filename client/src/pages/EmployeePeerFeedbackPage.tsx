@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
@@ -109,13 +109,12 @@ export default function EmployeePeerFeedbackPage() {
     enabled: !!user,
   });
 
-  // Auto-select first cycle with 360° enabled
-  useState(() => {
+  useEffect(() => {
     if (cycles.length > 0 && !selectedCycle) {
       const activeCycle = cycles.find(c => c.status === "active" && c.enable360Feedback) || cycles[0];
       if (activeCycle) setSelectedCycle(activeCycle.id);
     }
-  });
+  }, [cycles, selectedCycle]);
 
   // Fetch all users (potential peers)
   const { data: allUsers = [] } = useQuery<User[]>({
@@ -227,10 +226,10 @@ export default function EmployeePeerFeedbackPage() {
   });
 
   const handleRequestFeedback = () => {
-    if (selectedPeers.length === 0) {
+    if (selectedPeers.length < 3) {
       toast({
         title: "Attenzione",
-        description: "Seleziona almeno un collega",
+        description: "Devi selezionare almeno 3 colleghi per il feedback 360°",
         variant: "destructive",
       });
       return;
@@ -644,9 +643,9 @@ export default function EmployeePeerFeedbackPage() {
             </Button>
             <Button
               onClick={handleRequestFeedback}
-              disabled={selectedPeers.length === 0 || requestFeedbackMutation.isPending}
+              disabled={selectedPeers.length < 3 || requestFeedbackMutation.isPending}
             >
-              Invia Richieste ({selectedPeers.length})
+              Invia Richieste ({selectedPeers.length}/3 min)
             </Button>
           </DialogFooter>
         </DialogContent>
