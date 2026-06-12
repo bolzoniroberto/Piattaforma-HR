@@ -47,12 +47,35 @@ export const users = sqliteTable("users", {
   indirizzo: text("indirizzo"), // Address
   cap: text("cap", { length: 10 }), // Postal code
   citta: text("citta"), // City
+  premio: real("premio"), // Premio MBO assegnato in € — campo separato da RAL
+  // Campi anagrafici ricchi consolidati (ex schema normalizzato organizzazione/contratti)
+  area: text("area"), // Area organizzativa
+  sottoArea: text("sotto_area"), // Sotto-area
+  unitaOrganizzativa: text("unita_organizzativa"), // Unità organizzativa
+  strutturaL1: text("struttura_l1"), // Struttura livello 1 (descrizione)
+  strutturaL2: text("struttura_l2"), // Struttura livello 2 (descrizione)
+  strutturaL3: text("struttura_l3"), // Struttura livello 3 (descrizione)
+  sede: text("sede"), // Sede di lavoro (descrizione, flatten da sedi)
+  sedeComune: text("sede_comune"), // Comune sede
+  sedeProvincia: text("sede_provincia"), // Provincia sede
+  dataAssunzione: integer("data_assunzione"), // Data assunzione (unix)
+  qualifica: text("qualifica"), // Qualifica contrattuale
+  livello: text("livello"), // Livello contrattuale (descrizione, flatten)
+  jobTitle: text("job_title"), // Job title
+  ccnl: text("ccnl"), // CCNL (descrizione, flatten)
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 }, (table) => [
   index("idx_users_codice_fiscale").on(table.codiceFiscale),
   index("idx_users_matricola").on(table.matricola),
 ]);
+
+// Credenziali password, separate da `users` per non esporre l'hash nelle risposte API.
+export const userCredentials = sqliteTable("user_credentials", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  passwordHash: text("password_hash").notNull(),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
 
 const baseUpsertUserSchema = createInsertSchema(users).pick({
   id: true,
@@ -75,6 +98,21 @@ const baseUpsertUserSchema = createInsertSchema(users).pick({
   indirizzo: true,
   cap: true,
   citta: true,
+  premio: true,
+  area: true,
+  sottoArea: true,
+  unitaOrganizzativa: true,
+  strutturaL1: true,
+  strutturaL2: true,
+  strutturaL3: true,
+  sede: true,
+  sedeComune: true,
+  sedeProvincia: true,
+  dataAssunzione: true,
+  qualifica: true,
+  livello: true,
+  jobTitle: true,
+  ccnl: true,
 });
 
 export const upsertUserSchema = baseUpsertUserSchema.omit({
@@ -95,6 +133,21 @@ export const upsertUserSchema = baseUpsertUserSchema.omit({
   hireDate: z.string().nullable().optional(),
   isRendicontatore: z.boolean().optional(),
   faqReadAt: z.number().nullable().optional(),
+  premio: z.coerce.number().nullable().optional(),
+  area: z.string().nullable().optional(),
+  sottoArea: z.string().nullable().optional(),
+  unitaOrganizzativa: z.string().nullable().optional(),
+  strutturaL1: z.string().nullable().optional(),
+  strutturaL2: z.string().nullable().optional(),
+  strutturaL3: z.string().nullable().optional(),
+  sede: z.string().nullable().optional(),
+  sedeComune: z.string().nullable().optional(),
+  sedeProvincia: z.string().nullable().optional(),
+  dataAssunzione: z.number().nullable().optional(),
+  qualifica: z.string().nullable().optional(),
+  livello: z.string().nullable().optional(),
+  jobTitle: z.string().nullable().optional(),
+  ccnl: z.string().nullable().optional(),
 });
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
@@ -639,6 +692,39 @@ export const insertObjectiveAssignmentSchema = createInsertSchema(objectiveAssig
 
 export type InsertObjectiveAssignment = z.infer<typeof insertObjectiveAssignmentSchema>;
 export type ObjectiveAssignment = typeof objectiveAssignments.$inferSelect;
+
+// MBO History — track record storico dei beneficiari (rendicontazioni anni passati).
+// Immutabile: una riga per (utente, anno, obiettivo) consuntivato.
+export const mboHistory = sqliteTable("mbo_history", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(), // Anno MBO (es. 2025)
+  objectiveCode: text("objective_code"), // Codice obiettivo (A1, B1, C1...)
+  objectiveType: text("objective_type"), // Obiettivi di Gruppo / Individuali / ESG
+  area: text("area"), // Area/direzione al tempo
+  indicatore: text("indicatore"), // Titolo/indicatore obiettivo
+  weight: integer("weight"), // Peso % assegnato
+  target: text("target"), // Target (valore o descrizione)
+  consuntivo: text("consuntivo"), // Valore consuntivato
+  achievementPct: integer("achievement_pct"), // % raggiungimento
+  effectiveWeight: real("effective_weight"), // % peso effettivo (peso * raggiungimento)
+  dataSource: text("data_source"), // Rendicontatore (fonte)
+  referente: text("referente"), // Referente
+  note: text("note"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+}, (table) => [
+  index("idx_mbo_history_user").on(table.userId),
+  index("idx_mbo_history_user_year").on(table.userId, table.year),
+  uniqueIndex("unique_mbo_history_row").on(table.userId, table.year, table.objectiveCode, table.indicatore),
+]);
+
+export const insertMboHistorySchema = createInsertSchema(mboHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMboHistory = z.infer<typeof insertMboHistorySchema>;
+export type MboHistory = typeof mboHistory.$inferSelect;
 
 // Documents
 export const documents = sqliteTable("documents", {
@@ -1814,3 +1900,13 @@ export const docSigners = sqliteTable("doc_signers", {
 
 export type DocSigner = typeof docSigners.$inferSelect;
 export type InsertDocSigner = typeof docSigners.$inferInsert;
+
+export const docLogos = sqliteTable("doc_logos", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull(),
+  filePath: text("file_path").notNull(),
+  uploadedAt: integer("uploaded_at").default(sql`(unixepoch())`),
+});
+
+export type DocLogo = typeof docLogos.$inferSelect;
+export type InsertDocLogo = typeof docLogos.$inferInsert;

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -19,39 +20,42 @@ import RegulationFAQPage, { RegulationFAQPageActions } from "@/pages/RegulationF
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminObjectivesPage from "@/pages/AdminObjectivesPage";
 import AdminUsersPage from "@/pages/AdminUsersPage";
-import AdminUserProfilePage from "@/pages/AdminUserProfilePage";
 import AdminAssignmentsPage from "@/pages/AdminAssignmentsPage";
 import AdminAssignmentsBulkPage from "@/pages/AdminAssignmentsBulkPage";
 import AdminClearAllAssignmentsPage from "@/pages/AdminClearAllAssignmentsPage";
 import AdminReportingPage from "@/pages/AdminReportingPage";
-import AdminTabellonePage from "@/pages/AdminTabellonePage";
 import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
-import AdminAnalyticsPage from "@/pages/AdminAnalyticsPage";
 import AdminCustomFieldsPage from "@/pages/AdminCustomFieldsPage";
 import AdminCompetenciesPage from "@/pages/AdminCompetenciesPage";
 import AdminEvaluationCyclesPage from "@/pages/AdminEvaluationCyclesPage";
-import AdminCompetenciesAnalyticsPage from "@/pages/AdminCompetenciesAnalyticsPage";
 import EmployeeSelfAssessmentPage from "@/pages/EmployeeSelfAssessmentPage";
 import EmployeePeerFeedbackPage from "@/pages/EmployeePeerFeedbackPage";
 import EmployeeDevelopmentPlanPage from "@/pages/EmployeeDevelopmentPlanPage";
 import ManagerTeamEvaluationsPage from "@/pages/ManagerTeamEvaluationsPage";
 import ManagerEmployeeEvaluationPage from "@/pages/ManagerEmployeeEvaluationPage";
 import ManagerDevelopmentPlansPage from "@/pages/ManagerDevelopmentPlansPage";
-import OrgChartPage from "@/pages/OrgChartPage";
 import RendicontatorePage from "@/pages/RendicontatorePage";
 import RendicontaPublicPage from "@/pages/RendicontaPublicPage";
 import ManagerMboAssignPage from "@/pages/ManagerMboAssignPage";
 import AdminActivitiesPage from "@/pages/AdminActivitiesPage";
-import AdminCalibrationPage from "@/pages/AdminCalibrationPage";
 import AdminProfilePerformancePage from "@/pages/AdminProfilePerformancePage";
 import EmployeeInterviewPage from "@/pages/EmployeeInterviewPage";
 import ManagerInterviewsPage from "@/pages/ManagerInterviewsPage";
-import AiAssignWizardPage from "@/pages/AiAssignWizardPage";
-import AiEvalWizardPage from "@/pages/AiEvalWizardPage";
-import AdminDocGenPage from "@/pages/AdminDocGenPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
+
+// Pagine pesanti o poco frequenti: caricate on-demand (code-splitting)
+// per ridurre il bundle iniziale. Vedi <Suspense> attorno al Router.
+const AdminTabellonePage = lazy(() => import("@/pages/AdminTabellonePage"));
+const AdminAnalyticsPage = lazy(() => import("@/pages/AdminAnalyticsPage"));
+const AdminCompetenciesAnalyticsPage = lazy(() => import("@/pages/AdminCompetenciesAnalyticsPage"));
+const AdminCalibrationPage = lazy(() => import("@/pages/AdminCalibrationPage"));
+const AdminDocGenPage = lazy(() => import("@/pages/AdminDocGenPage"));
+const AdminDocSettingsPage = lazy(() => import("@/pages/AdminDocSettingsPage"));
+const OrgChartPage = lazy(() => import("@/pages/OrgChartPage"));
+const AiAssignWizardPage = lazy(() => import("@/pages/AiAssignWizardPage"));
+const AiEvalWizardPage = lazy(() => import("@/pages/AiEvalWizardPage"));
 
 // Initialize demo mode BEFORE React render (at module load time)
 // Only activate if ?demo=admin or ?demo=employee is explicitly passed
@@ -82,8 +86,17 @@ function RootPage() {
   );
 }
 
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <p className="text-muted-foreground">Caricamento...</p>
+    </div>
+  );
+}
+
 function Router() {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/" component={RootPage} />
@@ -115,11 +128,6 @@ function Router() {
       <Route path="/admin/users" component={() => (
         <ProtectedRoute requiredRole="admin">
           <AdminUsersPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/admin/users/:codiceFiscale" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminUserProfilePage />
         </ProtectedRoute>
       )} />
       <Route path="/admin/assignments/:userId" component={() => (
@@ -278,8 +286,14 @@ function Router() {
           <AdminDocGenPage />
         </ProtectedRoute>
       )} />
+      <Route path="/admin/doc-settings" component={() => (
+        <ProtectedRoute>
+          <AdminDocSettingsPage />
+        </ProtectedRoute>
+      )} />
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 

@@ -7,6 +7,7 @@ import { competenciesStorage } from "./competenciesStorage";
 import { seed } from "./seed";
 import { db } from "./db";
 import {
+  users,
   sedi,
   ccnl,
   livelliContrattuali,
@@ -23,6 +24,7 @@ import {
   appSettings,
 } from "@shared/schema";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 
 // Use local auth in development and Railway production (disable Replit auth)
 // Replit OAuth is not available in Railway deployment
@@ -68,16 +70,40 @@ import {
   insertEntryGateSchema,
 } from "@shared/schema";
 import { ZodError } from "zod";
+import bcrypt from "bcryptjs";
 
 // Helper to get user ID from request
 function getUserId(req: Request): string {
-  // Check for demo mode header first
-  if (req.headers["x-demo-user-id"]) {
+  // Header demo: accettato SOLO fuori produzione, altrimenti è un bypass auth.
+  if (process.env.NODE_ENV !== "production" && req.headers["x-demo-user-id"]) {
     return req.headers["x-demo-user-id"] as string;
   }
   // For local auth, user ID is directly in req.user.id
   // For Replit auth, it's in req.user.claims.sub
   return (req.user as any)?.id || (req.user as any)?.claims?.sub;
+}
+
+// Verifica che il chiamante sia manager/admin e che `targetUserId` sia un suo
+// riporto diretto (admin bypassa). In caso negativo risponde e ritorna false:
+// il chiamante deve fare `if (!(await assertDirectReport(req, res, userId))) return;`.
+async function assertDirectReport(req: Request, res: any, targetUserId: string): Promise<boolean> {
+  const managerId = getUserId(req);
+  const manager = await storage.getUser(managerId);
+  if (!manager || (manager.role !== "manager" && manager.role !== "admin")) {
+    res.status(403).json({ message: "Forbidden - manager access required" });
+    return false;
+  }
+  if (manager.role === "admin") return true;
+  if (!targetUserId) {
+    res.status(400).json({ message: "userId mancante" });
+    return false;
+  }
+  const target = await storage.getUser(targetUserId);
+  if (!target || target.managerId !== managerId) {
+    res.status(403).json({ message: "Accesso negato: l'utente non è un tuo riporto diretto" });
+    return false;
+  }
+  return true;
 }
 
 // Helper for error handling
@@ -91,6 +117,9 @@ function handleError(res: any, error: unknown) {
     return res.status(400).json({ message: "Validation error", errors: error.errors });
   }
   const msg = error instanceof Error ? error.message : String(error);
+  if (msg === "forbidden_session") {
+    return res.status(403).json({ message: "Accesso negato a questa sessione" });
+  }
   if (msg.startsWith("budget_exceeded")) {
     return res.status(402).json({ message: "Budget AI mensile esaurito. Contatta l'amministratore." });
   }
@@ -329,6 +358,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching team:", error);
       res.status(500).json({ message: "Failed to fetch team data" });
+    }
+  });
+
+  // Enriched users list: users table + org/contract/sede/ccnl/manager joins
+  app.get("/api/admin/users/enriched", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const mgr = alias(users, 'mgr');
+      const rows = await db
+        .select({
+          u: users,
+          mgr: mgr,
+        })
+        .from(users)
+        .leftJoin(mgr, eq(mgr.id, users.managerId))
+        .orderBy(users.lastName, users.firstName);
+
+      // Campi anagrafici ricchi ora nativi su users (camelCase via spread).
+      const result = rows.map((r) => ({
+        ...r.u,
+        nome_completo: [r.u.firstName, r.u.lastName].filter(Boolean).join(' '),
+        manager_nome: r.mgr?.firstName ?? '',
+        manager_cognome: r.mgr?.lastName ?? '',
+      }));
+      res.json(result);
+    } catch (error) {
+      handleError(res, error);
     }
   });
 
@@ -1283,17 +1338,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Current and new password are required" });
       }
       
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "La password deve avere almeno 8 caratteri" });
       }
-      
-      // In a real app, you would:
-      // 1. Verify the currentPassword against stored hash
-      // 2. Hash the newPassword
-      // 3. Update the database
-      
-      // For demo mode, just accept it
-      res.json({ message: "Password changed successfully" });
+
+      const userId = getUserId(req);
+      const existingHash = await storage.getPasswordHash(userId);
+      // Se esiste già una password, verifica quella attuale prima di sostituirla.
+      if (existingHash) {
+        const ok = await bcrypt.compare(currentPassword, existingHash);
+        if (!ok) {
+          return res.status(400).json({ message: "Password attuale errata" });
+        }
+      }
+
+      const newHash = await bcrypt.hash(newPassword, 10);
+      await storage.setPassword(userId, newHash);
+      res.json({ message: "Password aggiornata con successo" });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Admin: imposta/reimposta la password di un utente (onboarding, reset).
+  app.post("/api/admin/users/:id/set-password", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { password } = req.body;
+      if (!password || typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({ message: "La password deve avere almeno 8 caratteri" });
+      }
+      const target = await storage.getUser(req.params.id);
+      if (!target) {
+        return res.status(404).json({ message: "Utente non trovato" });
+      }
+      const hash = await bcrypt.hash(password, 10);
+      await storage.setPassword(req.params.id, hash);
+      res.json({ message: "Password impostata con successo" });
     } catch (error) {
       handleError(res, error);
     }
@@ -3318,14 +3398,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get employee's self assessment
   app.get("/api/manager/employee/:userId/self-assessment/:cycleId", isAuthenticated, async (req, res) => {
     try {
-      const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { userId, cycleId } = req.params;
+      if (!(await assertDirectReport(req, res, userId))) return;
+
       const assessments = await competenciesStorage.getSelfAssessments(cycleId, userId);
       res.json(assessments);
     } catch (error) {
@@ -3336,14 +3411,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get employee's aggregated peer feedback
   app.get("/api/manager/employee/:userId/peer-feedback/:cycleId", isAuthenticated, async (req, res) => {
     try {
-      const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { userId, cycleId } = req.params;
+      if (!(await assertDirectReport(req, res, userId))) return;
+
       const feedback = await competenciesStorage.getAggregatedPeerFeedback(cycleId, userId);
       res.json(feedback);
     } catch (error) {
@@ -3357,16 +3427,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get employee competencies (alias)
   app.get("/api/manager/employee-competencies/:userId", isAuthenticated, async (req, res) => {
     try {
-      const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { userId } = req.params;
-      const employee = await storage.getUser(userId);
+      if (!(await assertDirectReport(req, res, userId))) return;
 
+      const employee = await storage.getUser(userId);
       if (!employee) {
         return res.status(404).json({ message: "Employee not found" });
       }
@@ -3381,14 +3445,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get employee self-assessment (alias)
   app.get("/api/manager/employee-self-assessment/:userId/:cycleId", isAuthenticated, async (req, res) => {
     try {
-      const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { userId, cycleId } = req.params;
+      if (!(await assertDirectReport(req, res, userId))) return;
+
       const assessments = await competenciesStorage.getSelfAssessments(cycleId, userId);
       res.json(assessments);
     } catch (error) {
@@ -3399,14 +3458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get employee peer feedback (alias)
   app.get("/api/manager/employee-peer-feedback/:userId/:cycleId", isAuthenticated, async (req, res) => {
     try {
-      const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { userId, cycleId } = req.params;
+      if (!(await assertDirectReport(req, res, userId))) return;
+
       const feedback = await competenciesStorage.getAggregatedPeerFeedback(cycleId, userId);
       res.json(feedback);
     } catch (error) {
@@ -3417,14 +3471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get my evaluations for an employee (alias)
   app.get("/api/manager/my-evaluations/:userId/:cycleId", isAuthenticated, async (req, res) => {
     try {
-      const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { userId, cycleId } = req.params;
+      if (!(await assertDirectReport(req, res, userId))) return;
+
       const evaluations = await competenciesStorage.getManagerEvaluations(cycleId, userId);
 
       // Transform to match client expectations
@@ -3446,11 +3495,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/manager/evaluations", isAuthenticated, async (req, res) => {
     try {
       const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
+      const targetUserId = req.body.employeeUserId ?? req.body.userId;
+      if (!(await assertDirectReport(req, res, targetUserId))) return;
 
       const data = insertManagerEvaluationSchema.parse({ ...req.body, managerUserId: managerId });
       const evaluation = await competenciesStorage.createOrUpdateManagerEvaluation(data);
@@ -3464,16 +3510,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/manager/evaluations/:cycleId/submit", isAuthenticated, async (req, res) => {
     try {
       const managerId = getUserId(req);
-      const user = await storage.getUser(managerId);
-
-      if (user?.role !== "manager" && user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden - manager access required" });
-      }
-
       const { employeeUserId } = req.body;
       if (!employeeUserId) {
         return res.status(400).json({ message: "employeeUserId is required" });
       }
+      if (!(await assertDirectReport(req, res, employeeUserId))) return;
 
       await competenciesStorage.submitManagerEvaluations(req.params.cycleId, employeeUserId, managerId);
       res.status(204).send();
@@ -4170,7 +4211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ai/session/:id", isAuthenticated, async (req, res) => {
     try {
       const { getSession } = await import("./aiSession");
-      const result = await getSession(req.params.id);
+      const result = await getSession(req.params.id, getUserId(req));
       if (!result) return res.status(404).json({ message: "Sessione non trovata" });
       res.json(result);
     } catch (error) {
@@ -4182,7 +4223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ai/session/:id/finalize", isAuthenticated, async (req, res) => {
     try {
       const { finalizeSession } = await import("./aiSession");
-      await finalizeSession(req.params.id);
+      await finalizeSession(req.params.id, getUserId(req));
       res.json({ ok: true });
     } catch (error) {
       handleError(res, error);

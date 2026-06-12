@@ -26,26 +26,38 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
-  ExternalLink,
+  SlidersHorizontal,
   Trash2,
   Search,
   Columns3,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Link } from "wouter";
+import UserCustomFieldsDialog from "@/components/UserCustomFieldsDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
+// ─── Enriched user type (User + joined fields for letter templates) ──────────
+
+// I campi anagrafici ricchi sono ora colonne native su `User` (camelCase):
+// area, sottoArea, unitaOrganizzativa, strutturaL1/2/3, sede, sedeComune,
+// sedeProvincia, dataAssunzione, qualifica, livello, jobTitle, ccnl.
+// Qui si aggiungono solo i campi derivati/join non persistiti.
+interface EnrichedUser extends User {
+  nome_completo: string;
+  manager_nome: string;
+  manager_cognome: string;
+}
+
 // ─── Column config ────────────────────────────────────────────────────────────
 
 type ColType = "text" | "number" | "currency" | "select" | "boolean" | "timestamp";
 
 interface ColDef {
-  key: keyof User;
+  key: keyof EnrichedUser;
   label: string;
   type: ColType;
   width: number;
@@ -86,7 +98,7 @@ const COLUMNS: ColDef[] = [
     ],
   },
   { key: "isRendicontatore", label: "Rendicontatore", type: "boolean", width: 110, editable: true, defaultVisible: true },
-  { key: "hireDate",      label: "Data Assunzione", type: "text",      width: 120, editable: true,  defaultVisible: false },
+  { key: "hireDate",      label: "Data Assunzione (users)", type: "text", width: 120, editable: true,  defaultVisible: false },
   // ── hidden by default ───────────────────────────────────────────────────────
   { key: "indirizzo",              label: "Indirizzo",           type: "text",      width: 180, editable: true,  defaultVisible: false },
   { key: "cap",                    label: "CAP",                 type: "text",      width: 80,  editable: true,  defaultVisible: false },
@@ -96,15 +108,34 @@ const COLUMNS: ColDef[] = [
   { key: "createdAt",              label: "Creato il",           type: "timestamp", width: 130, editable: false, defaultVisible: false },
   { key: "updatedAt",              label: "Aggiornato il",       type: "timestamp", width: 130, editable: false, defaultVisible: false },
   { key: "id",                     label: "ID",                  type: "text",      width: 200, editable: false, defaultVisible: false },
+  // ── Campi anagrafici ricchi: colonne native su users, ora EDITABILI ──────────
+  { key: "area",                label: "Area",                 type: "text", width: 150, editable: true,  defaultVisible: false },
+  { key: "sottoArea",           label: "Sotto area",           type: "text", width: 150, editable: true,  defaultVisible: false },
+  { key: "unitaOrganizzativa",  label: "Unità organizzativa",  type: "text", width: 180, editable: true,  defaultVisible: false },
+  { key: "strutturaL1",         label: "Struttura L1",         type: "text", width: 180, editable: true,  defaultVisible: false },
+  { key: "strutturaL2",         label: "Struttura L2",         type: "text", width: 180, editable: true,  defaultVisible: false },
+  { key: "strutturaL3",         label: "Struttura L3",         type: "text", width: 180, editable: true,  defaultVisible: false },
+  { key: "sede",                label: "Sede",                 type: "text", width: 180, editable: true,  defaultVisible: false },
+  { key: "sedeComune",          label: "Comune sede",          type: "text", width: 130, editable: true,  defaultVisible: false },
+  { key: "sedeProvincia",       label: "Provincia sede",       type: "text", width: 110, editable: true,  defaultVisible: false },
+  { key: "qualifica",           label: "Qualifica",            type: "text", width: 160, editable: true,  defaultVisible: false },
+  { key: "jobTitle",            label: "Job title",            type: "text", width: 160, editable: true,  defaultVisible: false },
+  { key: "livello",             label: "Livello contrattuale", type: "text", width: 180, editable: true,  defaultVisible: false },
+  { key: "ccnl",                label: "CCNL",                 type: "text", width: 200, editable: true,  defaultVisible: false },
+  { key: "dataAssunzione",      label: "Data assunzione",      type: "timestamp", width: 150, editable: false, defaultVisible: false },
+  // ── Derivati/join (sola lettura) ─────────────────────────────────────────────
+  { key: "nome_completo",       label: "Nome completo",        type: "text", width: 180, editable: false, defaultVisible: false },
+  { key: "manager_nome",        label: "Nome responsabile",    type: "text", width: 140, editable: false, defaultVisible: false },
+  { key: "manager_cognome",     label: "Cognome responsabile", type: "text", width: 150, editable: false, defaultVisible: false },
 ];
 
 const STORAGE_KEY = "adminUsersVisibleCols";
 const DEFAULT_VISIBLE = new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
 
-function loadVisibleCols(): Set<keyof User> {
+function loadVisibleCols(): Set<keyof EnrichedUser> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return new Set(JSON.parse(raw) as (keyof User)[]);
+    if (raw) return new Set(JSON.parse(raw) as (keyof EnrichedUser)[]);
   } catch {}
   return new Set(DEFAULT_VISIBLE);
 }
@@ -132,18 +163,21 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
 
   // Edit state
-  const [editingCell, setEditingCell] = useState<{ userId: string; field: keyof User } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ userId: string; field: keyof EnrichedUser } | null>(null);
   const [editValue, setEditValue] = useState("");
 
+  // Dialog campi personalizzati per-utente
+  const [cfUser, setCfUser] = useState<{ id: string; label: string } | null>(null);
+
   // Grid state
-  const [sortField, setSortField] = useState<keyof User | null>("lastName");
+  const [sortField, setSortField] = useState<keyof EnrichedUser | null>("lastName");
   const [sortDir, setSortDir]     = useState<"asc" | "desc">("asc");
   const [globalFilter, setGlobalFilter] = useState("");
-  const [visibleCols, setVisibleCols]   = useState<Set<keyof User>>(loadVisibleCols);
+  const [visibleCols, setVisibleCols]   = useState<Set<keyof EnrichedUser>>(loadVisibleCols);
 
   const activeColumns = COLUMNS.filter(c => visibleCols.has(c.key));
 
-  function toggleCol(key: keyof User) {
+  function toggleCol(key: keyof EnrichedUser) {
     setVisibleCols(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
@@ -159,10 +193,10 @@ export default function AdminUsersPage() {
 
   // ─── Data ──────────────────────────────────────────────────────────────────
 
-  const { data: rows = [], isLoading } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+  const { data: rows = [], isLoading } = useQuery<EnrichedUser[]>({
+    queryKey: ["/api/admin/users/enriched"],
     queryFn: async () => {
-      const res  = await fetch("/api/users", { credentials: "include" });
+      const res  = await fetch("/api/admin/users/enriched", { credentials: "include" });
       const data = await res.json();
       return Array.isArray(data) ? data : (data.data ?? []);
     },
@@ -201,14 +235,14 @@ export default function AdminUsersPage() {
 
   // ─── Sorting ───────────────────────────────────────────────────────────────
 
-  function toggleSort(field: keyof User) {
+  function toggleSort(field: keyof EnrichedUser) {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortField(field); setSortDir("asc"); }
   }
 
   // ─── Inline edit ───────────────────────────────────────────────────────────
 
-  function startEdit(userId: string, field: keyof User, currentValue: any) {
+  function startEdit(userId: string, field: keyof EnrichedUser, currentValue: any) {
     setEditingCell({ userId, field });
     setEditValue(currentValue === null || currentValue === undefined ? "" : String(currentValue));
   }
@@ -224,18 +258,18 @@ export default function AdminUsersPage() {
       return res.json();
     },
     onMutate: async ({ userId, data }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/users"] });
-      const prev = queryClient.getQueryData<User[]>(["/api/users"]);
-      queryClient.setQueryData<User[]>(["/api/users"], old =>
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/users/enriched"] });
+      const prev = queryClient.getQueryData<EnrichedUser[]>(["/api/admin/users/enriched"]);
+      queryClient.setQueryData<EnrichedUser[]>(["/api/admin/users/enriched"], old =>
         old?.map(u => u.id === userId ? { ...u, ...data } : u) ?? []
       );
       return { prev };
     },
     onError: (_err: any, _vars: any, ctx: any) => {
-      if (ctx?.prev) queryClient.setQueryData(["/api/users"], ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(["/api/admin/users/enriched"], ctx.prev);
       toast({ title: "Errore nel salvataggio", variant: "destructive" });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/users"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/users/enriched"] }),
   });
 
   function saveEdit() {
@@ -244,11 +278,11 @@ export default function AdminUsersPage() {
     const col = COLUMNS.find(c => c.key === field);
     if (!col) return;
     cancelEdit();
-    patchMutation.mutate({ userId, data: { [field]: parseInputValue(col, editValue) } });
+    patchMutation.mutate({ userId, data: { [field]: parseInputValue(col, editValue) } as Partial<User> });
   }
 
-  function toggleBoolean(userId: string, field: keyof User, currentVal: any) {
-    patchMutation.mutate({ userId, data: { [field]: !currentVal } });
+  function toggleBoolean(userId: string, field: keyof EnrichedUser, currentVal: any) {
+    patchMutation.mutate({ userId, data: { [field]: !currentVal } as Partial<User> });
   }
 
   // ─── Create ────────────────────────────────────────────────────────────────
@@ -265,7 +299,7 @@ export default function AdminUsersPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users/enriched"] });
       toast({ title: "Dipendente creato" });
       setIsCreateOpen(false);
       setCreateData({ codiceFiscale: "", firstName: "", lastName: "", email: "" });
@@ -281,8 +315,8 @@ export default function AdminUsersPage() {
       return userId;
     },
     onSuccess: (userId: string) => {
-      queryClient.setQueryData<User[]>(["/api/users"], old => old?.filter(u => u.id !== userId) ?? []);
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.setQueryData<EnrichedUser[]>(["/api/admin/users/enriched"], old => old?.filter(u => u.id !== userId) ?? []);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users/enriched"] });
       toast({ title: "Utente eliminato" });
       setDeleteUserId(null);
     },
@@ -299,7 +333,7 @@ export default function AdminUsersPage() {
         <div className="w-full">
           {/* Main */}
           <main
-            className="w-full space-y-6 flex flex-col pt-4"
+            className="w-full space-y-6 flex flex-col"
             
           >
             <PageHeader 
@@ -557,11 +591,15 @@ export default function AdminUsersPage() {
                         {/* Actions */}
                         <td className="px-2">
                           <div className="flex items-center justify-center gap-1 h-8">
-                            <Link href={`/admin/users/${u.codiceFiscale || u.id}`}>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" title="Apri profilo">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </Button>
-                            </Link>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              title="Campi personalizzati"
+                              onClick={() => setCfUser({ id: u.id, label: u.nome_completo || u.email || u.id })}
+                            >
+                              <SlidersHorizontal className="h-3.5 w-3.5" />
+                            </Button>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -670,6 +708,15 @@ export default function AdminUsersPage() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      {cfUser && (
+        <UserCustomFieldsDialog
+          userId={cfUser.id}
+          userLabel={cfUser.label}
+          open={!!cfUser}
+          onOpenChange={(o) => !o && setCfUser(null)}
+        />
+      )}
     </>
   );
 }

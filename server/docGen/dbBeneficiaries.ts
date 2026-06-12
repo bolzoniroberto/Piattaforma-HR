@@ -6,7 +6,9 @@ import {
 import { eq } from 'drizzle-orm';
 import type { BeneficiaryRow, ObiettivRow } from './excelParser';
 
-function calcPremioMax(ral: number | null, mboPerc: number | null): number {
+function calcPremioMax(ral: number | null, mboPerc: number | null, premio?: number | null): number {
+  // Preferisci il premio salvato (campo dedicato); fallback al calcolo RAL × MBO%.
+  if (premio != null && premio > 0) return Math.round(premio);
   if (!ral || !mboPerc) return 0;
   return Math.round((ral * mboPerc) / 100);
 }
@@ -75,16 +77,16 @@ export async function getBeneficiariesFromDb(): Promise<BeneficiaryRow[]> {
 
   return Array.from(byUser.values()).map(({ user: u, obiettivi }) => ({
     nome_beneficiario: [u.firstName, u.lastName].filter(Boolean).join(' '),
-    qualifica: u.department ?? '',
-    tipologia: (u as any).beneficiaryType ?? 'standard',
-    premio_max: calcPremioMax(u.ral ?? null, u.mboPercentage ?? null),
-    area: u.department ?? '',
+    qualifica: u.qualifica ?? u.department ?? '',
+    tipologia: u.beneficiaryType ?? 'standard',
+    premio_max: calcPremioMax(u.ral ?? null, u.mboPercentage ?? null, u.premio ?? null),
+    area: u.area ?? u.department ?? '',
     codice_fiscale: u.codiceFiscale ?? '',
     indirizzo: u.indirizzo ?? '',
     cap: u.cap ?? '',
     citta_residenza: u.citta ?? '',
-    prov: '',
-    direzione: u.department ?? '',
+    prov: u.sedeProvincia ?? '',
+    direzione: u.strutturaL1 ?? u.department ?? '',
     obiettivi,
   }));
 }

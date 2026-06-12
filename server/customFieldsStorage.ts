@@ -60,7 +60,7 @@ export class CustomFieldsStorage implements ICustomFieldsStorage {
   ): Promise<CustomFieldDefinition | undefined> {
     const [updated] = await db
       .update(customFieldDefinitions)
-      .set({ ...field, updatedAt: new Date() })
+      .set({ ...field, updatedAt: Math.floor(Date.now() / 1000) })
       .where(eq(customFieldDefinitions.id, id))
       .returning();
     return updated;
@@ -120,7 +120,7 @@ export class CustomFieldsStorage implements ICustomFieldsStorage {
       // Update existing value
       const [updated] = await db
         .update(customFieldValues)
-        .set({ value: data.value, updatedAt: new Date() })
+        .set({ value: data.value, updatedAt: Math.floor(Date.now() / 1000) })
         .where(eq(customFieldValues.id, existing.id))
         .returning();
       return updated;
