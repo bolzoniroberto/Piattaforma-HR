@@ -49,6 +49,10 @@ import {
   type InsertDocGenerationJob,
   type DocSigner,
   type InsertDocSigner,
+  docLogos,
+  type DocLogo,
+  type InsertDocLogo,
+  userCredentials,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -74,6 +78,9 @@ export interface PaginatedResponse<T> {
 export interface IStorage {
   // User operations - Required for Replit Auth
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getPasswordHash(userId: string): Promise<string | null>;
+  setPassword(userId: string, passwordHash: string): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   getMboTeamMembers(managerId: string): Promise<User[]>;
@@ -177,6 +184,29 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getPasswordHash(userId: string): Promise<string | null> {
+    const [cred] = await db
+      .select()
+      .from(userCredentials)
+      .where(eq(userCredentials.userId, userId));
+    return cred?.passwordHash ?? null;
+  }
+
+  async setPassword(userId: string, passwordHash: string): Promise<void> {
+    await db
+      .insert(userCredentials)
+      .values({ userId, passwordHash })
+      .onConflictDoUpdate({
+        target: userCredentials.userId,
+        set: { passwordHash, updatedAt: nowUnix() },
+      });
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -1081,6 +1111,24 @@ export class DatabaseStorage implements IStorage {
   async setDefaultDocSigner(id: string): Promise<void> {
     await db.update(docSigners).set({ isDefault: 0 });
     await db.update(docSigners).set({ isDefault: 1 }).where(eq(docSigners.id, id));
+  }
+
+  async getDocLogos(): Promise<DocLogo[]> {
+    return db.select().from(docLogos).orderBy(desc(docLogos.uploadedAt));
+  }
+
+  async getDocLogo(id: string): Promise<DocLogo | undefined> {
+    const [row] = await db.select().from(docLogos).where(eq(docLogos.id, id));
+    return row;
+  }
+
+  async createDocLogo(data: InsertDocLogo): Promise<DocLogo> {
+    const [row] = await db.insert(docLogos).values(data).returning();
+    return row;
+  }
+
+  async deleteDocLogo(id: string): Promise<void> {
+    await db.delete(docLogos).where(eq(docLogos.id, id));
   }
 }
 

@@ -5,6 +5,7 @@ import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -280,7 +281,7 @@ export default function ManagerEmployeeEvaluationPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER */}
           {/* MAIN CONTENT */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
             <div className="w-full space-y-6">
               {/* Header */}
               <div className="flex items-center gap-4">
@@ -290,17 +291,11 @@ export default function ManagerEmployeeEvaluationPage() {
                 </Button>
               </div>
 
-              <div>
-                <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-primary/10">
-                    <FileCheck className="h-6 w-6 text-primary" />
-                  </div>
-                  Valutazione: {employee?.name}
-                </h1>
-                <p className="md3-body-large text-muted-foreground">
-                  Rivedi l'autovalutazione e il feedback 360°, quindi fornisci la tua valutazione
-                </p>
-              </div>
+              <PageHeader
+                context="VALUTAZIONE"
+                title={`Valutazione: ${employee?.name ?? ""}`}
+                description="Rivedi l'autovalutazione e il feedback 360°, quindi fornisci la tua valutazione."
+              />
 
               {isSubmitted && (
                 <Card className="border-green-200 bg-green-50">
@@ -416,7 +411,7 @@ export default function ManagerEmployeeEvaluationPage() {
                     {/* Progress */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Avanzamento</CardTitle>
+                        <CardTitle>Avanzamento</CardTitle>
                         <CardDescription>
                           {completedEvaluations} di {totalCompetencies} competenze valutate
                         </CardDescription>

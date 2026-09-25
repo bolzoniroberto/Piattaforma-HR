@@ -334,7 +334,7 @@ export default function AiEvalWizardPage() {
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-3xl space-y-6">
       <PageHeader
         title="Valuta Dipendente con AI"
         description="L'agente raccoglie il punto di vista del manager e genera una bozza di scheda di valutazione."

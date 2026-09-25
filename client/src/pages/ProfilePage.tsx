@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,8 +112,14 @@ export default function ProfilePage() {
     <>
       <div className="w-full">
         <div className="w-full">
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
             <div className="max-w-2xl">
+
+          <PageHeader
+            context="ACCOUNT"
+            title="Il tuo Profilo"
+            description="Visualizza e aggiorna i tuoi dati personali e di contatto."
+          />
 
           {/* Main Profile Card */}
           <Card className="mb-6">
@@ -148,7 +155,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="border-t pt-6">
-                    <h3 className="text-lg font-bold mb-4 text-slate-900">Informazioni di Contatto</h3>
+                    <h3 className="text-base font-semibold mb-4 text-slate-900">Informazioni di Contatto</h3>
                     <div className="space-y-6">
                       <div>
                         <p className="text-sm font-medium text-slate-500 mb-1">Numero di Telefono</p>
@@ -176,7 +183,6 @@ export default function ProfilePage() {
                       type="button"
                       onClick={(e) => { e.preventDefault(); setIsEditing(true); }}
                       className="gap-2 bg-slate-900 hover:bg-slate-800 text-white"
-                      size="lg"
                     >
                       <Edit className="h-4 w-4" />
                       Modifica Profilo
@@ -184,38 +190,38 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6 bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden">
+                <form onSubmit={handleSubmit} className="space-y-6 bg-slate-50/50 p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
                   {/* Etichetta stile nastro (Ribbon) per far capire che è in modifica */}
-                  <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider py-1 px-8 translate-x-1/4 translate-y-1/2 rotate-45 shadow-sm hidden sm:block">
+                  <div className="absolute top-0 right-0 bg-slate-900 text-white text-[10px] font-semibold uppercase tracking-wider py-1 px-8 translate-x-1/4 translate-y-1/2 rotate-45 shadow-sm hidden sm:block">
                     Modifica in corso
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
                     <div className="space-y-1.5">
-                      <Label htmlFor="firstName" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Nome</Label>
+                      <Label htmlFor="firstName" className="text-sm font-medium text-slate-700">Nome</Label>
                       <Input
                         id="firstName"
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                        className="bg-white shadow-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="lastName" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Cognome</Label>
+                      <Label htmlFor="lastName" className="text-sm font-medium text-slate-700">Cognome</Label>
                       <Input
                         id="lastName"
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                        className="bg-white shadow-sm"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
                     <div className="space-y-1.5">
-                      <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-500">Email (Sola Lettura)</Label>
+                      <Label htmlFor="email" className="text-sm font-medium text-slate-500">Email (Sola Lettura)</Label>
                       <Input
                         id="email"
                         name="email"
@@ -226,7 +232,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="department" className="text-xs font-bold uppercase tracking-wider text-slate-500">Dipartimento (Sola Lettura)</Label>
+                      <Label htmlFor="department" className="text-sm font-medium text-slate-500">Dipartimento (Sola Lettura)</Label>
                       <Input
                         id="department"
                         name="department"
@@ -237,61 +243,60 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-indigo-100 pt-6 mt-4 relative z-10">
-                    <h3 className="text-base font-bold mb-5 text-indigo-900">Informazioni di Contatto</h3>
+                  <div className="border-t pt-6 mt-4 relative z-10">
+                    <h3 className="text-base font-semibold mb-5 text-slate-900">Informazioni di Contatto</h3>
                     <div className="space-y-5">
                       <div className="space-y-1.5">
-                        <Label htmlFor="telefono" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Numero di Telefono</Label>
+                        <Label htmlFor="telefono" className="text-sm font-medium text-slate-700">Numero di Telefono</Label>
                         <Input
                           id="telefono"
                           name="telefono"
                           type="tel"
                           value={formData.telefono}
                           onChange={handleInputChange}
-                          className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                          className="bg-white shadow-sm"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="indirizzo" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Indirizzo</Label>
+                        <Label htmlFor="indirizzo" className="text-sm font-medium text-slate-700">Indirizzo</Label>
                         <Textarea
                           id="indirizzo"
                           name="indirizzo"
                           value={formData.indirizzo}
                           onChange={handleInputChange}
-                          className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm min-h-[80px]"
+                          className="bg-white shadow-sm min-h-[80px]"
                         />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
-                          <Label htmlFor="cap" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">CAP</Label>
+                          <Label htmlFor="cap" className="text-sm font-medium text-slate-700">CAP</Label>
                           <Input
                             id="cap"
                             name="cap"
                             value={formData.cap}
                             onChange={handleInputChange}
-                            className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                            className="bg-white shadow-sm"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="citta" className="text-xs font-bold uppercase tracking-wider text-indigo-900/70">Città</Label>
+                          <Label htmlFor="citta" className="text-sm font-medium text-slate-700">Città</Label>
                           <Input
                             id="citta"
                             name="citta"
                             value={formData.citta}
                             onChange={handleInputChange}
-                            className="bg-white border border-indigo-200 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 shadow-sm"
+                            className="bg-white shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-6 border-t border-indigo-200 relative z-10">
+                  <div className="flex gap-3 pt-6 border-t relative z-10">
                     <Button
                       type="submit"
                       disabled={updateProfileMutation.isPending}
-                      className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
-                      size="lg"
+                      className="gap-2 bg-slate-900 hover:bg-slate-800 text-white"
                     >
                       <Save className="h-4 w-4" />
                       {updateProfileMutation.isPending ? "Salvataggio in corso..." : "Salva Modifiche"}
@@ -301,8 +306,6 @@ export default function ProfilePage() {
                       variant="outline"
                       onClick={(e) => { e.preventDefault(); handleCancel(); }}
                       disabled={updateProfileMutation.isPending}
-                      size="lg"
-                      className="border-indigo-200 text-indigo-900 hover:bg-indigo-100"
                     >
                       Annulla
                     </Button>

@@ -148,7 +148,7 @@ export default function ProfiloPage() {
   };
 
   return (
-    <div className="w-full space-y-6 flex flex-col pt-4" >
+    <div className="w-full space-y-6 flex flex-col" >
       <div className="space-y-6">
         <PageHeader 
           context="DASHBOARD" 

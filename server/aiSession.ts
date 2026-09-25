@@ -234,6 +234,8 @@ export async function answerTurn(params: {
 async function runTurn(sessionId: string, userId: string, lastAnswer: string | null): Promise<TurnResult> {
   const [session] = await db.select().from(aiSessions).where(eq(aiSessions.id, sessionId));
   if (!session) throw new Error("Sessione non trovata");
+  // Ownership: solo il proprietario può far avanzare la sessione.
+  if (session.userId !== userId) throw new Error("forbidden_session");
 
   const history = await db
     .select()
@@ -324,9 +326,10 @@ async function runTurn(sessionId: string, userId: string, lastAnswer: string | n
   };
 }
 
-export async function getSession(sessionId: string): Promise<TurnResult | null> {
+export async function getSession(sessionId: string, userId: string): Promise<TurnResult | null> {
   const [session] = await db.select().from(aiSessions).where(eq(aiSessions.id, sessionId));
-  if (!session) return null;
+  // Ownership: tratta una sessione altrui come inesistente (nasconde la sua esistenza).
+  if (!session || session.userId !== userId) return null;
 
   const lastMsg = await db
     .select()
@@ -349,7 +352,10 @@ export async function getSession(sessionId: string): Promise<TurnResult | null> 
   };
 }
 
-export async function finalizeSession(sessionId: string): Promise<void> {
+export async function finalizeSession(sessionId: string, userId: string): Promise<void> {
+  const [session] = await db.select().from(aiSessions).where(eq(aiSessions.id, sessionId));
+  if (!session) throw new Error("Sessione non trovata");
+  if (session.userId !== userId) throw new Error("forbidden_session");
   await db
     .update(aiSessions)
     .set({ state: "finalized", updatedAt: Math.floor(Date.now() / 1000) })

@@ -4,6 +4,7 @@ import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Trash2 } from "lucide-react";
@@ -131,19 +132,13 @@ export default function AdminDocumentsPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
           <div className="w-full space-y-6">
-            <div>
-              <h1 className="md3-headline-medium mb-2 flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-primary/10">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                Gestione Documenti
-              </h1>
-              <p className="md3-body-large text-muted-foreground">
-                Visualizza e modifica i documenti aziendali
-              </p>
-            </div>
+            <PageHeader
+              context="DOCUMENTI"
+              title="Gestione Documenti"
+              description="Visualizza e modifica i documenti aziendali."
+            />
 
               <div className="grid gap-4">
                 {documents.length === 0 ? (

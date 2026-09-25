@@ -81,7 +81,7 @@ export default function AdminClearAllAssignmentsPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
           <div className="w-full space-y-6">
               <PageHeader 
                 context="GESTIONE ASSEGNAZIONI" 
@@ -90,11 +90,11 @@ export default function AdminClearAllAssignmentsPage() {
               />
               <Card className="md3-surface md3-motion-standard border-destructive/50 bg-destructive/5">
                 <CardHeader>
-                  <CardTitle className="md3-title-large text-destructive flex items-center gap-2">
+                  <CardTitle className="text-destructive flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
                     Attenzione: Operazione Importante
                   </CardTitle>
-                  <CardDescription className="md3-body-medium">
+                  <CardDescription>
                     Questa azione disassocerà tutti gli obiettivi da tutti i dipendenti. Gli obiettivi rimangono nel sistema, ma verranno rimossi dalle assegnazioni dei dipendenti.
                   </CardDescription>
                 </CardHeader>

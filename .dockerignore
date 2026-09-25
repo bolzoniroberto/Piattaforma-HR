@@ -1,0 +1,22 @@
+node_modules
+dist
+data
+uploads
+db/local.db
+*.sqlite
+*.sqlite-*
+*.db
+.env
+.env.*
+.git
+.github
+.claude
+Esempi
+client/Esempi
+attached_assets
+Masterdata
+Masterdata obiettivi e assegnazioni
+tests
+coverage
+playwright-report
+*.md

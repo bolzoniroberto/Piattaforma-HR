@@ -272,7 +272,7 @@ export default function AdminCompetenciesPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width */}
           {/* MAIN CONTENT */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
             <div className="w-full space-y-6">
               <PageHeader 
                 context="CONFIGURAZIONE" 
@@ -304,7 +304,7 @@ export default function AdminCompetenciesPage() {
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1">
-                              <CardTitle className="text-lg">{model.name}</CardTitle>
+                              <CardTitle>{model.name}</CardTitle>
                               <div className="flex gap-2">
                                 <Badge variant="secondary">
                                   {personaTypeLabels[model.personaType as keyof typeof personaTypeLabels]}

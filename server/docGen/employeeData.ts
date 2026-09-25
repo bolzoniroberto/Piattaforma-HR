@@ -104,6 +104,7 @@ export async function getEmployeesFromDb(): Promise<BeneficiaryRow[]> {
       ccnl: u.ccnl ?? '',
       ral: u.ral ?? 0,
       mbo_percentuale: u.mboPercentage ?? 0,
+      sesso: u.sesso ?? '',
       manager_nome: r.managerUser?.firstName ?? '',
       manager_cognome: r.managerUser?.lastName ?? '',
 

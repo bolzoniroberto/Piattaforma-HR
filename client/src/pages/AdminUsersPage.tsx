@@ -86,6 +86,14 @@ const COLUMNS: ColDef[] = [
   { key: "cdc",           label: "CDC",             type: "text",      width: 90,  editable: true,  defaultVisible: true },
   { key: "ral",           label: "RAL (€)",         type: "currency",  width: 110, editable: true,  defaultVisible: true },
   { key: "mboPercentage", label: "MBO %",           type: "number",    width: 75,  editable: true,  defaultVisible: true },
+  { key: "premio",        label: "Premio (€)",      type: "currency",  width: 110, editable: true,  defaultVisible: true },
+  {
+    key: "sesso", label: "Sesso", type: "select", width: 80, editable: true, defaultVisible: true,
+    options: [
+      { value: "M", label: "M" },
+      { value: "F", label: "F" },
+    ],
+  },
   { key: "telefono",      label: "Telefono",        type: "text",      width: 130, editable: true,  defaultVisible: true },
   { key: "citta",         label: "Città",           type: "text",      width: 100, editable: true,  defaultVisible: true },
   { key: "isActive",      label: "Attivo",          type: "boolean",   width: 65,  editable: true,  defaultVisible: true },
@@ -143,7 +151,7 @@ function loadVisibleCols(): Set<keyof EnrichedUser> {
 function cellDisplay(col: ColDef, value: any): string {
   if (value === null || value === undefined) return "";
   if (col.type === "select")    return col.options?.find(o => o.value === value)?.label ?? String(value);
-  if (col.type === "currency")  return Number(value).toLocaleString("it-IT", { maximumFractionDigits: 0 });
+  if (col.type === "currency") { const n = Math.floor(Number(value)); return isNaN(n) ? "" : n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
   if (col.type === "boolean")   return "";
   if (col.type === "timestamp") return value ? new Date(Number(value) * 1000).toLocaleDateString("it-IT") : "";
   return String(value);

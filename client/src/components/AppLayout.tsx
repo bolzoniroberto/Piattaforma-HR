@@ -16,7 +16,7 @@ interface AppLayoutProps {
   actions?: React.ReactNode;
 }
 
-export default function AppLayout({ children, pageTitle, actions }: AppLayoutProps) {
+export default function AppLayout({ children, actions }: AppLayoutProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const aiPanel = useAiPanel();
@@ -44,27 +44,20 @@ export default function AppLayout({ children, pageTitle, actions }: AppLayoutPro
       <EnterpriseSidebar />
 
       <div className="flex-1 flex flex-col min-h-screen w-0 overflow-hidden">
-        {/* Custom Top Header matching the screenshot */}
-        <header className="h-16 bg-white flex items-center px-8 shrink-0 sticky top-0 z-30 shadow-sm">
-          {/* LEFT: Title Area */}
-          <div className="flex-1 flex items-center min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 truncate">
-              {pageTitle || "Piattaforma Talent"}
-            </h1>
-          </div>
-
-          {/* CENTER: Navigation Links (Stable) */}
-          <nav className="flex items-center gap-1 px-4">
+        {/* Top Header — slim utility bar */}
+        <header className="h-12 bg-white/80 backdrop-blur border-b border-slate-100 flex items-center px-6 shrink-0 sticky top-0 z-30">
+          {/* LEFT: secondary nav links */}
+          <nav className="flex items-center gap-0.5">
             {headerLinks.map((link) => {
               const isActive = location === link.href;
               return (
                 <Link key={link.href} href={link.href}>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                    isActive 
-                      ? "bg-slate-100 text-slate-900" 
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[13px] font-medium transition-colors cursor-pointer ${
+                    isActive
+                      ? "bg-slate-100 text-slate-900"
                       : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                   }`}>
-                    <link.icon className="w-4 h-4" />
+                    <link.icon className="w-3.5 h-3.5" />
                     {link.label}
                   </div>
                 </Link>
@@ -73,44 +66,43 @@ export default function AppLayout({ children, pageTitle, actions }: AppLayoutPro
           </nav>
 
           {/* RIGHT: Actions & User */}
-          <div className="flex-1 flex items-center justify-end gap-6 min-w-0">
-            <div className="flex items-center gap-4">
-              {actions && <div className="flex items-center gap-3 pr-4">{actions}</div>}
-              
-              <button 
-                onClick={() => aiPanel.open()}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-full ai-gradient text-white text-xs font-bold ai-glow hover:scale-105 transition-transform shrink-0"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                AI Assistant
-              </button>
+          <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
+            {actions && <div className="flex items-center gap-2 pr-1">{actions}</div>}
 
-              <button className="text-slate-500 hover:text-slate-900 transition-colors shrink-0">
-                <Bell className="w-5 h-5" />
-              </button>
-              
-              <div 
-                className="flex items-center gap-3 pl-4 cursor-pointer group shrink-0"
-                onClick={handleLogout}
-                title="Esci"
-              >
-                <div className="flex flex-col text-right group-hover:opacity-80 transition-opacity hidden sm:flex">
-                  <span className="text-sm font-bold leading-none">{userName || "Ospite"}</span>
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-1">{userRole}</span>
-                </div>
-                <Avatar className="h-9 w-9 rounded-md border border-slate-200 group-hover:border-slate-400 transition-colors">
-                  <AvatarFallback className="bg-slate-900 text-white text-xs rounded-md">
-                    {initials.substring(0,2) || "U"}
-                  </AvatarFallback>
-                </Avatar>
+            <button
+              onClick={() => aiPanel.open()}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[13px] font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors shrink-0"
+              title="Assistente AI"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="hidden sm:inline">Assistente</span>
+            </button>
+
+            <button className="text-slate-400 hover:text-slate-700 transition-colors shrink-0" title="Notifiche">
+              <Bell className="w-4 h-4" />
+            </button>
+
+            <div
+              className="flex items-center gap-2.5 pl-2 ml-1 border-l border-slate-100 cursor-pointer group shrink-0"
+              onClick={handleLogout}
+              title="Esci"
+            >
+              <div className="flex-col text-right hidden sm:flex group-hover:opacity-80 transition-opacity">
+                <span className="text-[13px] font-semibold leading-none">{userName || "Ospite"}</span>
+                <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider mt-0.5">{userRole}</span>
               </div>
+              <Avatar className="h-7 w-7 rounded-md border border-slate-200 group-hover:border-slate-400 transition-colors">
+                <AvatarFallback className="bg-slate-900 text-white text-[10px] rounded-md">
+                  {initials.substring(0,2) || "U"}
+                </AvatarFallback>
+              </Avatar>
             </div>
           </div>
         </header>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 p-8 overflow-y-auto w-full">
-          <div className="w-full max-w-[1600px] mx-auto h-full flex flex-col">
+        <main className="flex-1 p-6 overflow-y-auto w-full">
+          <div className="w-full max-w-[1500px] mx-auto h-full flex flex-col">
             {children}
           </div>
         </main>

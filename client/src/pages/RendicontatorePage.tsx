@@ -69,10 +69,21 @@ export default function RendicontatorePage() {
     enabled: !!user,
   });
 
-  // Flatten all objectives with user info
-  const allObjectives = rows.flatMap((row) =>
-    row.objectives.map((obj) => ({ ...obj, user: row.user }))
-  );
+  // Group objectives by dictionaryId — report once, propagates to all assignments
+  const objectivesByDict = new Map<string, {
+    obj: TabelloneObjective;
+    users: TabelloneRow["user"][];
+  }>();
+  for (const row of rows) {
+    for (const obj of row.objectives) {
+      const key = obj.dictionaryId;
+      if (!objectivesByDict.has(key)) {
+        objectivesByDict.set(key, { obj, users: [] });
+      }
+      objectivesByDict.get(key)!.users.push(row.user);
+    }
+  }
+  const allObjectives = Array.from(objectivesByDict.values());
 
   const reportMutation = useMutation({
     mutationFn: async () => {
@@ -98,7 +109,7 @@ export default function RendicontatorePage() {
     },
   });
 
-  const openForm = (obj: TabelloneObjective & { user: TabelloneRow["user"] }) => {
+  const openForm = (obj: TabelloneObjective) => {
     setSelectedObj(obj);
     setActualValue(obj.actualValue != null ? String(obj.actualValue) : "");
     setQualitativeResult(obj.qualitativeResult ?? "");
@@ -155,7 +166,7 @@ export default function RendicontatorePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allObjectives.map((obj, i) => (
+                {allObjectives.map(({ obj, users }, i) => (
                   <TableRow key={i}>
                     <TableCell className="font-medium max-w-[200px]">
                       <div className="truncate">{obj.title}</div>
@@ -164,7 +175,10 @@ export default function RendicontatorePage() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-slate-500">
-                      {obj.user.firstName} {obj.user.lastName}
+                      {users.length === 1
+                        ? `${users[0].firstName} ${users[0].lastName}`
+                        : <span title={users.map(u => `${u.firstName} ${u.lastName}`).join(", ")} className="cursor-help underline decoration-dotted">{users.length} dipendenti</span>
+                      }
                     </TableCell>
                     <TableCell className="text-sm">
                       {obj.targetValue != null ? obj.targetValue : <span className="text-slate-400">—</span>}
@@ -175,7 +189,7 @@ export default function RendicontatorePage() {
                     <TableCell>{qrLabel(obj.qualitativeResult)}</TableCell>
                     <TableCell className="text-xs text-slate-400">{obj.dataSourceEmail || "—"}</TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => openForm(obj as any)}>
+                      <Button size="sm" variant="outline" onClick={() => openForm(obj)}>
                         {obj.actualValue != null || obj.qualitativeResult ? (
                           <><CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-500" />Aggiorna</>
                         ) : (

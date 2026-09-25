@@ -1,6 +1,8 @@
 // Integration: javascript_log_in_with_replit
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import fs from "fs";
 import docGenRouter from "./docGenRoutes";
 import { storage } from "./storage";
 import { competenciesStorage } from "./competenciesStorage";
@@ -22,6 +24,7 @@ import {
   ruoli,
   smartWorkingStorico,
   appSettings,
+  assessmentResults,
 } from "@shared/schema";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
@@ -138,6 +141,24 @@ function handleError(res: any, error: unknown) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Logo aziendale — lista e immagine accessibili a tutti gli utenti autenticati
+  const LOGOS_DIR = path.join(process.cwd(), 'uploads', 'logos');
+  app.get('/api/doc/logos', isAuthenticated, async (_req, res) => {
+    res.json(await storage.getDocLogos());
+  });
+  app.get('/api/doc/logos/:id/image', isAuthenticated, async (req, res) => {
+    const logo = await storage.getDocLogo(req.params.id);
+    if (!logo) return res.status(404).json({ error: 'Non trovato' });
+    const resolved = path.resolve(logo.filePath);
+    if (!resolved.startsWith(LOGOS_DIR + path.sep)) return res.status(403).json({ error: 'Accesso negato' });
+    if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'File non trovato' });
+    const ext = path.extname(resolved).toLowerCase();
+    const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    fs.createReadStream(resolved).pipe(res);
+  });
 
   // Doc generation routes (admin only)
   app.use('/api/doc', isAuthenticated, isAdmin, docGenRouter);
@@ -4482,6 +4503,99 @@ Tono diretto, costruttivo, non burocratico. Niente introduzioni o conclusioni fo
       });
 
       res.json({ summary: result.text });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ── Assess endpoints ──────────────────────────────────────────────────────
+
+  app.post('/api/assess/results', isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Not authenticated' });
+      const {
+        completedAt, formId, language, profileLabel,
+        literacyScore, fluencyScore, mindsetScore, overallScore, rawPayload,
+      } = req.body;
+      const [inserted] = await db.insert(assessmentResults).values({
+        userId,
+        completedAt: completedAt || new Date().toISOString(),
+        formId: formId ?? null,
+        language: language ?? 'it',
+        profileLabel: profileLabel ?? null,
+        literacyScore: literacyScore ?? null,
+        fluencyScore: fluencyScore ?? null,
+        mindsetScore: mindsetScore ?? null,
+        overallScore: overallScore ?? null,
+        rawPayload: rawPayload ? (typeof rawPayload === 'string' ? rawPayload : JSON.stringify(rawPayload)) : null,
+      }).returning();
+      res.json(inserted);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get('/api/assess/results', isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Not authenticated' });
+      const results = await db.select({
+        id: assessmentResults.id,
+        completedAt: assessmentResults.completedAt,
+        formId: assessmentResults.formId,
+        language: assessmentResults.language,
+        profileLabel: assessmentResults.profileLabel,
+        literacyScore: assessmentResults.literacyScore,
+        fluencyScore: assessmentResults.fluencyScore,
+        mindsetScore: assessmentResults.mindsetScore,
+        overallScore: assessmentResults.overallScore,
+        createdAt: assessmentResults.createdAt,
+      }).from(assessmentResults)
+        .where(eq(assessmentResults.userId, userId))
+        .orderBy(desc(assessmentResults.createdAt));
+      res.json(results);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get('/api/assess/results/all', isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const results = await db.select({
+        id: assessmentResults.id,
+        userId: assessmentResults.userId,
+        completedAt: assessmentResults.completedAt,
+        formId: assessmentResults.formId,
+        profileLabel: assessmentResults.profileLabel,
+        literacyScore: assessmentResults.literacyScore,
+        fluencyScore: assessmentResults.fluencyScore,
+        mindsetScore: assessmentResults.mindsetScore,
+        overallScore: assessmentResults.overallScore,
+        createdAt: assessmentResults.createdAt,
+      }).from(assessmentResults)
+        .orderBy(desc(assessmentResults.createdAt));
+      res.json(results);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get('/api/assess/results/:id', isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const id = parseInt(req.params.id);
+      if (!id) return res.status(400).json({ message: 'Invalid id' });
+      const [result] = await db.select().from(assessmentResults)
+        .where(eq(assessmentResults.id, id));
+      if (!result) return res.status(404).json({ message: 'Not found' });
+      // Non-admin can only see their own results
+      const user = req.user as any;
+      const isAdminUser = user?.role === 'admin';
+      if (!isAdminUser && result.userId !== userId) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      res.json(result);
     } catch (error) {
       handleError(res, error);
     }

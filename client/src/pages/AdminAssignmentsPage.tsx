@@ -276,7 +276,7 @@ export default function AdminAssignmentsPage() {
       <>
         <div className="w-full">
           <div className="w-full">
-            <main className="w-full space-y-6 flex flex-col pt-4" >
+            <main className="w-full space-y-6 flex flex-col" >
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Caricamento...</p>
             </div>
@@ -292,7 +292,7 @@ export default function AdminAssignmentsPage() {
       <>
         <div className="w-full">
           <div className="w-full">
-            <main className="w-full space-y-6 flex flex-col pt-4" >
+            <main className="w-full space-y-6 flex flex-col" >
             <div className="flex items-center justify-center h-full">
               <Card className="max-w-md">
                 <CardContent className="pt-6 text-center">
@@ -319,7 +319,7 @@ export default function AdminAssignmentsPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
           <div className="w-full space-y-6">
             <div className="flex items-center gap-4">
               <Link href="/admin/users">

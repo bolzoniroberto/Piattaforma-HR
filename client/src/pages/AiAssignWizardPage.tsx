@@ -296,7 +296,7 @@ export default function AiAssignWizardPage() {
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-3xl space-y-6">
       <PageHeader
         title="Assegna Obiettivi con AI"
         description="L'agente raccoglie il contesto e propone obiettivi MBO personalizzati."

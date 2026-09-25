@@ -1402,7 +1402,7 @@ export default function AdminSettingsPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
           {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
           <div className="w-full space-y-6">
             <PageHeader 
               context="IMPOSTAZIONI PIATTAFORMA" 

@@ -53,9 +53,8 @@ Prende atto e accetta le condizioni sopra indicate, dichiarando di aver ricevuto
 Con i migliori saluti.
 
 >>>{ruolo_firmatario}
->>>({firmatario})
-
 [FIRMA]
+>>>({firmatario})
 
 **PER RICEVUTA E ACCETTAZIONE**
 ________________________

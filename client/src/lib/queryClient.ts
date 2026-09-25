@@ -1,9 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    const text = await res.text();
+    // Estrae il messaggio reale dal corpo JSON del backend ({ message } | { error }),
+    // così i toast mostrano un testo leggibile invece di `400: {"message":...}`.
+    let message = res.statusText || `Errore ${res.status}`;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        message = parsed.message || parsed.error || text;
+      } catch {
+        message = text;
+      }
+    }
+    throw new ApiError(res.status, message);
   }
 }
 

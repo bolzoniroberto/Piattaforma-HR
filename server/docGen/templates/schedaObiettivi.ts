@@ -22,12 +22,12 @@ export const schedaObiettiviTemplate = {
 
   calculated_fields: {
     premio_cifre: 'premio_cifre',
-    entry_gate_fmt: 'entry_gate_fmt_calc',
+    entry_gate_fmt: 'entry_gate_fmt',
   },
 
   parameters: [
     { key: 'anno_piano', type: 'text', label: 'Anno Piano MBO', default: '2026', required: true },
-    { key: 'entry_gate', type: 'currency', label: 'Entry Gate EBITDA (€)', default: '19770000', required: true },
+    { key: 'entry_gate', type: 'currency', label: 'Entry Gate EBITDA (€)', default: '21416000', required: true },
   ],
 
   body_content: `===ALLEGATO - SCHEDA OBIETTIVI - INDICATORI PERFORMANCE {anno_piano}

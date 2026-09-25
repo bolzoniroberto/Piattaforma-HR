@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 import {
   Accordion,
   AccordionContent,
@@ -292,6 +293,7 @@ export default function RegulationFAQPage() {
 
   return (
     <div className="w-full space-y-6">
+      <PageHeader context="MBO 2026" title="Domande Frequenti" description="Risposte alle domande più comuni sul ciclo MBO." />
       {/* Legend */}
       <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
         <span className="flex items-center gap-1.5">

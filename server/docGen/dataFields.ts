@@ -17,9 +17,53 @@ export interface FieldGroup {
   fields: FieldDef[];
 }
 
+// Campi DB reali della row beneficiario MBO (vedi dbBeneficiaries.ts).
+// Solo chiavi scalari che esistono davvero nella row → i binding si risolvono in generazione.
+// Esclusi loop (obiettivi) e calcolati (titolo, premio_cifre…), gestiti dall'engine.
+function getMboDbGroups(): FieldGroup[] {
+  return [
+    {
+      id: 'anagrafica',
+      label: 'Anagrafica',
+      color: 'bg-blue-100 text-blue-800 border-blue-200',
+      fields: [
+        { key: 'nome_beneficiario', label: 'Nome completo' },
+        { key: 'sesso', label: 'Sesso (M/F)' },
+        { key: 'codice_fiscale', label: 'Codice fiscale' },
+        { key: 'indirizzo', label: 'Indirizzo' },
+        { key: 'cap', label: 'CAP' },
+        { key: 'citta_residenza', label: 'Città residenza' },
+        { key: 'prov', label: 'Provincia' },
+      ],
+    },
+    {
+      id: 'organizzazione',
+      label: 'Organizzazione',
+      color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      fields: [
+        { key: 'qualifica', label: 'Qualifica / Area' },
+        { key: 'area', label: 'Area' },
+        { key: 'direzione', label: 'Direzione' },
+        { key: 'tipologia', label: 'Tipologia scheda (AD, DIRS…)' },
+      ],
+    },
+    {
+      id: 'premio',
+      label: 'Premio MBO',
+      color: 'bg-amber-100 text-amber-800 border-amber-200',
+      fields: [
+        { key: 'premio_max', label: 'Premio max (€ grezzo)' },
+        { key: 'premio_source', label: 'Fonte premio (manual/calculated)' },
+      ],
+    },
+  ];
+}
+
 export async function getDataFieldGroups(category: string): Promise<FieldGroup[]> {
+  if (category === 'mbo') {
+    return getMboDbGroups();
+  }
   if (category !== 'hr') {
-    // For MBO, palette is hardcoded on the frontend
     return [];
   }
 
@@ -35,6 +79,7 @@ export async function getDataFieldGroups(category: string): Promise<FieldGroup[]
         { key: 'nome', label: 'Nome' },
         { key: 'cognome', label: 'Cognome' },
         { key: 'nome_completo', label: 'Nome completo' },
+        { key: 'sesso', label: 'Sesso (M/F)' },
         { key: 'codice_fiscale', label: 'Codice fiscale' },
         { key: 'matricola', label: 'Matricola' },
         { key: 'email', label: 'Email' },
@@ -74,6 +119,8 @@ export async function getDataFieldGroups(category: string): Promise<FieldGroup[]
         { key: 'ccnl', label: 'CCNL' },
         { key: 'ral', label: 'RAL' },
         { key: 'mbo_percentuale', label: 'MBO %' },
+        { key: 'premio_max', label: 'Premio max (€)' },
+        { key: 'premio_source', label: 'Fonte premio (manual/calculated)' },
       ],
     },
     {

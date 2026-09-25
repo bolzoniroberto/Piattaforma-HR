@@ -158,7 +158,7 @@ export default function ManagerInterviewsPage() {
     interviews.find(i => i.employeeUserId === memberId);
 
   return (
-    <div className="w-full space-y-6 pt-4">
+    <div className="w-full space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <PageHeader
           context="VALUTAZIONI"

@@ -64,7 +64,7 @@ export default function AdminDashboard() {
 
   // UI Sections
   return (
-    <div className="w-full space-y-8 flex flex-col pt-4 pb-12">
+    <div className="w-full space-y-8 flex flex-col pb-12">
       <PageHeader 
         context="CONTROL TOWER" 
         title="Quadro di Controllo HR" 

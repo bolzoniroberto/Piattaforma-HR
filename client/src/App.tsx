@@ -53,6 +53,7 @@ const AdminCompetenciesAnalyticsPage = lazy(() => import("@/pages/AdminCompetenc
 const AdminCalibrationPage = lazy(() => import("@/pages/AdminCalibrationPage"));
 const AdminDocGenPage = lazy(() => import("@/pages/AdminDocGenPage"));
 const AdminDocSettingsPage = lazy(() => import("@/pages/AdminDocSettingsPage"));
+const AssessPage = lazy(() => import("@/pages/AssessPage"));
 const OrgChartPage = lazy(() => import("@/pages/OrgChartPage"));
 const AiAssignWizardPage = lazy(() => import("@/pages/AiAssignWizardPage"));
 const AiEvalWizardPage = lazy(() => import("@/pages/AiEvalWizardPage"));
@@ -289,6 +290,11 @@ function Router() {
       <Route path="/admin/doc-settings" component={() => (
         <ProtectedRoute>
           <AdminDocSettingsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/assess" component={() => (
+        <ProtectedRoute>
+          <AssessPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />

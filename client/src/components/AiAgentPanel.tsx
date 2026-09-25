@@ -272,45 +272,24 @@ export default function AiAgentPanel() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  // Rail rimosso: il pannello non occupa spazio quando chiuso.
+  // Si apre dal bottone "Assistente" nella top bar.
+  if (!aiPanel.isOpen) return null;
+
   return (
     <div
       className={cn(
-        "h-screen sticky top-0 shrink-0 bg-white flex flex-col transition-[width] duration-500 ease-in-out overflow-hidden shadow-[-20px_0_40px_rgba(0,0,0,0.03)]",
-        aiPanel.isOpen ? "w-[360px]" : "w-14",
+        "h-screen sticky top-0 shrink-0 bg-white flex flex-col overflow-hidden border-l border-slate-200 w-[340px]",
       )}
     >
-      {/* Collapsed: vertical tab */}
-      {!aiPanel.isOpen && (
-        <button
-          onClick={() => aiPanel.open()}
-          className="flex-1 flex flex-col items-center justify-center gap-4 hover:bg-slate-50 transition-all group relative overflow-hidden"
-          title="Apri Assistente IA"
-        >
-          <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-10 h-10 rounded-xl ai-gradient text-white flex items-center justify-center ai-glow group-hover:scale-110 transition-transform duration-300">
-            <Bot className="w-6 h-6" />
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <span
-              className="text-[11px] font-bold uppercase tracking-[0.2em] ai-text-gradient"
-              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-            >
-              Assistant
-            </span>
-            <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" />
-          </div>
-        </button>
-      )}
-
-      {/* Expanded */}
       {aiPanel.isOpen && (
         <>
           {/* Header */}
-          <div className="h-16 ai-gradient flex items-center px-4 gap-3 shrink-0 shadow-lg">
-            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm text-white flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
+          <div className="h-12 bg-slate-900 flex items-center px-4 gap-2.5 shrink-0">
+            <div className="w-6 h-6 rounded-md bg-white/10 text-white flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
             </div>
-            <span className="font-bold text-white flex-1 text-sm tracking-tight">
+            <span className="font-semibold text-white flex-1 text-[13px] tracking-tight">
               {(isSelfAssessmentCtx || isEmployee) ? "Assistente AI" : "Agente IA Strategico"}
             </span>
             {insight && (

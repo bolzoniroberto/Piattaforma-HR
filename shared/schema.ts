@@ -47,7 +47,9 @@ export const users = sqliteTable("users", {
   indirizzo: text("indirizzo"), // Address
   cap: text("cap", { length: 10 }), // Postal code
   citta: text("citta"), // City
+  sesso: text("sesso", { length: 1 }), // M = Maschio, F = Femmina — SSoT per calcolo titolo (Dott./Dott.ssa)
   premio: real("premio"), // Premio MBO assegnato in € — campo separato da RAL
+  premioSource: text("premio_source"), // 'manual' | 'calculated' — traccia origine premio_max
   // Campi anagrafici ricchi consolidati (ex schema normalizzato organizzazione/contratti)
   area: text("area"), // Area organizzativa
   sottoArea: text("sotto_area"), // Sotto-area
@@ -99,6 +101,8 @@ const baseUpsertUserSchema = createInsertSchema(users).pick({
   cap: true,
   citta: true,
   premio: true,
+  premioSource: true,
+  sesso: true,
   area: true,
   sottoArea: true,
   unitaOrganizzativa: true,
@@ -134,6 +138,8 @@ export const upsertUserSchema = baseUpsertUserSchema.omit({
   isRendicontatore: z.boolean().optional(),
   faqReadAt: z.number().nullable().optional(),
   premio: z.coerce.number().nullable().optional(),
+  premioSource: z.enum(['manual', 'calculated']).nullable().optional(),
+  sesso: z.enum(['M', 'F']).nullable().optional(),
   area: z.string().nullable().optional(),
   sottoArea: z.string().nullable().optional(),
   unitaOrganizzativa: z.string().nullable().optional(),
@@ -615,6 +621,7 @@ export const objectivesDictionary = sqliteTable("objectives_dictionary", {
   qualitativeResult: text("qualitative_result"), // "reached", "partial", "not_reached"
   reportedAt: integer("reported_at"), // When the objective was reported
   deadline: integer("deadline"), // Unix timestamp — data di scadenza/verifica dell'obiettivo
+  notes: text("notes"), // Short synthesis note from goal setting (Excel 'Note' column)
   createdAt: integer("created_at").default(sql`(unixepoch())`),
   updatedAt: integer("updated_at").default(sql`(unixepoch())`),
 });
@@ -672,6 +679,7 @@ export const objectiveAssignments = sqliteTable("objective_assignments", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   objectiveId: text("objective_id").notNull().references(() => objectives.id, { onDelete: "cascade" }),
   weight: integer("weight"), // Weight for this assignment (defined at assignment time, multiples of 5%)
+  premioMax: real("premio_max"), // Max prize (€) for this specific objective from goal setting
   status: text("status").notNull().default("assegnato"), // assegnato, in_corso, completato, da_approvare
   progress: integer("progress").notNull().default(0), // 0-100
   assignedAt: integer("assigned_at").default(sql`(unixepoch())`),
@@ -1910,3 +1918,21 @@ export const docLogos = sqliteTable("doc_logos", {
 
 export type DocLogo = typeof docLogos.$inferSelect;
 export type InsertDocLogo = typeof docLogos.$inferInsert;
+
+export const assessmentResults = sqliteTable('assessment_results', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  completedAt: text('completed_at').notNull(),
+  formId: text('form_id'),
+  language: text('language'),
+  profileLabel: text('profile_label'),
+  literacyScore: real('literacy_score'),
+  fluencyScore: real('fluency_score'),
+  mindsetScore: real('mindset_score'),
+  overallScore: real('overall_score'),
+  rawPayload: text('raw_payload'),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+});
+
+export type AssessmentResult = typeof assessmentResults.$inferSelect;
+export type InsertAssessmentResult = typeof assessmentResults.$inferInsert;
