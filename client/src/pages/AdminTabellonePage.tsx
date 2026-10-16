@@ -552,7 +552,7 @@ export default function AdminTabellonePage() {
     <>
       <div className="w-full">
         <div className="w-full">
-          <main className="w-full space-y-6 flex flex-col pt-4">
+          <main className="w-full space-y-6 flex flex-col">
             <div className="space-y-6">
 
               {/* Header */}

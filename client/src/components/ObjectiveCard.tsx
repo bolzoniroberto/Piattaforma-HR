@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StatusBadge, { type ObjectiveStatus } from "./StatusBadge";
 import { MoreVertical, Calendar } from "lucide-react";
+import CompanyLogo from "./CompanyLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +97,10 @@ export default function ObjectiveCard({ objective, onStatusChange }: ObjectiveCa
             </div>
           </div>
         )}
+
+        <div className="flex justify-end pt-1">
+          <CompanyLogo className="h-5 w-auto opacity-50" />
+        </div>
       </CardContent>
     </Card>
   );

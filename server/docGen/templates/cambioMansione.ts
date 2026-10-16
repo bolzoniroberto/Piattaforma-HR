@@ -46,9 +46,8 @@ La presente comunicazione costituisce parte integrante del Suo contratto di lavo
 Con i migliori saluti.
 
 >>>{ruolo_firmatario}
->>>({firmatario})
-
 [FIRMA]
+>>>({firmatario})
 
 **PER RICEVUTA E ACCETTAZIONE**
 ________________________

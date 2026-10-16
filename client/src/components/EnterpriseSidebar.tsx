@@ -60,7 +60,7 @@ export default function EnterpriseSidebar() {
   return (
     <aside className="w-[240px] h-screen shrink-0 bg-slate-50 flex flex-col sticky top-0 shadow-[1px_0_0_rgba(0,0,0,0.06)]">
       {/* Brand */}
-      <div className="h-14 flex items-center px-4 gap-3">
+      <div className="h-12 flex items-center px-4 gap-3">
         <div className="w-7 h-7 rounded shrink-0 bg-slate-900 text-white flex items-center justify-center">
           <Building2 className="w-4 h-4" />
         </div>

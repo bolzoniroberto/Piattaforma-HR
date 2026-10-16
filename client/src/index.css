@@ -509,39 +509,80 @@
     inset: -1px;
   }
 
-  /* AI Assistant Specific Utilities (FLUO VERSION) */
+  /* AI Assistant Utilities — calm, restrained (indigo, no neon) */
   .ai-gradient {
-    background: linear-gradient(135deg, #00f2ff 0%, #0060ff 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   }
   .ai-gradient-subtle {
-    background: linear-gradient(135deg, rgba(0, 242, 255, 0.08) 0%, rgba(0, 96, 255, 0.08) 100%);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(79, 70, 229, 0.06) 100%);
   }
   .ai-glow {
-    box-shadow: 0 0 25px rgba(0, 242, 255, 0.5);
+    box-shadow: var(--shadow-2);
   }
   .ai-glow-sm {
-    box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
+    box-shadow: var(--shadow-1);
   }
   .ai-text-gradient {
-    background: linear-gradient(135deg, #00f2ff 0%, #0060ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #4f46e5;
   }
 }
 
 /* docx-preview styles */
 .docx-preview-wrapper {
-  /* allow landscape pages to scroll horizontally */
   overflow-x: auto;
 }
-.docx-preview-wrapper .docx-wrapper {
+/* Override library: remove gray bg and padding so our container controls styling */
+.docx-preview-wrapper .docx-preview-container-wrapper {
   background: transparent !important;
-  padding: 0 !important;
+  padding: 16px !important;
   min-width: min-content;
+  align-items: center;
 }
-.docx-preview-wrapper .docx-wrapper > section.docx {
-  background: white;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-  margin: 0 auto 24px;
+.docx-preview-wrapper section.docx-preview-container {
+  box-shadow: 0 2px 16px rgba(0,0,0,0.15) !important;
   border-radius: 2px;
+  /* Keep overflow visible so full content shows; rulers are overlaid */
+  overflow: visible !important;
+  position: relative;
+}
+
+/* Drawing inline containers: img must fill the declared box exactly.
+   Tailwind preflight sets img { max-width:100%; height:auto } which can override
+   the inline width/height set by docx-preview from wp:extent / a:ext values. */
+.docx-preview-wrapper [style*="inline-block"] > img,
+.docx-preview-wrapper [style*="inline-block"] img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  object-fit: fill;
+  display: block;
+}
+
+/* Page break ruler — absolutely positioned inside the section */
+.docx-page-ruler {
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 20;
+}
+.docx-page-ruler::before,
+.docx-page-ruler::after {
+  content: '';
+  flex: 1;
+  border-top: 2px dashed #94a3b8;
+}
+.docx-page-ruler span {
+  white-space: nowrap;
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  padding: 1px 6px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  color: #475569;
+  user-select: none;
 }

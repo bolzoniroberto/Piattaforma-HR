@@ -3,13 +3,12 @@ import { italianNumberToWords, italianCurrencyFormat } from './italianNumberToWo
 export type CalculatedFieldFn = (row: Record<string, unknown>, params: Record<string, unknown>) => string;
 
 function titolo(row: Record<string, unknown>): string {
-  const nome = String(row['nome_beneficiario'] ?? '').toLowerCase();
-  const area = String(row['qualifica'] ?? row['area'] ?? '').toLowerCase();
-  // Euristiche genere da nome/area — personalizzabili via field_mappings
-  const genere = String(row['genere'] ?? '').toLowerCase();
-  if (genere === 'f') return 'Dottoressa';
-  if (genere === 'm') return 'Dottor';
-  // Fallback: se finisce in 'a' probabile femminile
+  // SSoT: users.sesso (M/F). Fallback euristico solo se null.
+  const sesso = String(row['sesso'] ?? '').toUpperCase();
+  if (sesso === 'F') return 'Dottoressa';
+  if (sesso === 'M') return 'Dottor';
+  // Fallback euristico da primo nome (meno affidabile — impostare sesso in anagrafica)
+  const nome = String(row['nome_beneficiario'] ?? row['nome'] ?? '').toLowerCase();
   const firstName = nome.split(' ')[0] ?? '';
   if (firstName.endsWith('a')) return 'Dottoressa';
   return 'Dottor';
@@ -27,7 +26,7 @@ export const calculatedFieldRegistry: Record<string, CalculatedFieldFn> = {
     return 'Dottore';
   },
 
-  entry_gate_fmt_calc: (_row, params) => {
+  entry_gate_fmt: (_row, params) => {
     const n = Number(params['entry_gate'] ?? 0);
     return n ? italianCurrencyFormat(n) : '';  // value is already full number (e.g. 19770000)
   },

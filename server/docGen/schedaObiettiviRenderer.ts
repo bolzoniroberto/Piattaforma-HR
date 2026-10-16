@@ -3,7 +3,7 @@ import type { BeneficiaryRow } from './excelParser';
 import { italianCurrencyFormat } from './italianNumberToWords';
 import {
   MINIMAL_CONTENT_TYPES, MINIMAL_RELS, MINIMAL_DOC_RELS,
-  MINIMAL_SETTINGS, MINIMAL_STYLES,
+  MINIMAL_SETTINGS, MINIMAL_STYLES, MINIMAL_FOOTER,
 } from './ooxml';
 
 // Landscape A4: w=16838, h=11906 twips
@@ -12,12 +12,13 @@ import {
 
 const COL_W = {
   num: 380,
-  desc: 5200,
-  target: 2800,
-  tipo: 2800,
-  peso: 620,
+  desc: 4600,
+  target: 2600,
+  modalita: 2400,
+  fonte: 1800,
+  peso: 580,
   premio: 1318,
-  // total = 13118 twips — use auto width so Word fills the page
+  // total ≈ 13678 twips — auto width fills landscape page
 };
 
 const HEADER_SHADE = 'D6DCE4';  // light blue-grey
@@ -72,17 +73,30 @@ function makeCell(primaryText: string, opts: CellOpts): string {
   return `<w:tc>${tcPr}${mainPara}${subParas}</w:tc>`;
 }
 
+function formatModalita(name: string, tipologia: string): string {
+  const n = name.trim().toLowerCase();
+  if (n.includes('interpol') || n.includes('lineare')) {
+    const asterisk = tipologia.toUpperCase() === 'DIRS' ? '(**)' : '(*)';
+    return `Curva con interpolazione lineare ${asterisk}`;
+  }
+  if (n.includes('100%') || n.includes('target') || n.includes('binari')) {
+    return '100% al raggiungimento del target';
+  }
+  return name;
+}
+
 function headerRow(): string {
   const labels: [string, keyof typeof COL_W, boolean][] = [
     ['N°', 'num', true],
     ['Descrizione Obiettivo', 'desc', true],
     ['Target', 'target', true],
-    ['Tipo Indicatore', 'tipo', true],
+    ['Modalità di Calcolo', 'modalita', true],
+    ['Fonte Dati', 'fonte', true],
     ['Peso %', 'peso', true],
     ['Premio Max (€)', 'premio', true],
   ];
   const cells = labels.map(([lbl, colKey, bold]) =>
-    makeCell(lbl, { w: COL_W[colKey], bold, shade: HEADER_SHADE, center: true, size: 18 })
+    makeCell(lbl, { w: COL_W[colKey], bold, shade: HEADER_SHADE, center: true, size: 18, vAlign: 'center' })
   ).join('');
   return `<w:tr><w:trPr><w:tblHeader/></w:trPr>${cells}</w:tr>`;
 }
@@ -92,36 +106,36 @@ function parsePeso(pesoStr: string): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-function dataRow(obj: BeneficiaryRow['obiettivi'][0], premiMax: number, isOdd: boolean): string {
+function dataRow(obj: BeneficiaryRow['obiettivi'][0], premiMax: number, isOdd: boolean, tipologia: string): string {
   const shade = isOdd ? ALT_SHADE : undefined;
   const pesoNum = parsePeso(obj.peso);
   const premioTarget = pesoNum > 0 ? Math.round(pesoNum / 100 * premiMax) : 0;
   const premioFmt = premioTarget > 0 ? italianCurrencyFormat(premioTarget) : '-';
 
-  // Description: codice bold + indicatore, then descrizione if different
+  // Description: codice bold + indicatore, then descrizione if different (no rendicontatore here)
   const descLabel = obj.codice ? `${obj.codice} – ${obj.indicatore}` : obj.indicatore;
   const descSubs: string[] = [];
   if (obj.descrizione && obj.descrizione.trim() && obj.descrizione.trim() !== obj.indicatore.trim()) {
     descSubs.push(obj.descrizione.trim());
   }
-  if (obj.rendicontatore && obj.rendicontatore.trim()) {
-    descSubs.push(`[Fonte: ${obj.rendicontatore.trim()}]`);
-  }
+
+  const modalitaFmt = formatModalita(obj.modalita_calcolo ?? '', tipologia);
 
   const cells = [
-    makeCell(String(obj.idx), { w: COL_W.num, center: true, shade, size: 18 }),
-    makeCell(descLabel, { w: COL_W.desc, bold: true, shade, size: 18, lines: descSubs }),
-    makeCell(obj.target, { w: COL_W.target, shade, size: 17 }),
-    makeCell(obj.modalita_calcolo, { w: COL_W.tipo, shade, size: 17 }),
-    makeCell(obj.peso, { w: COL_W.peso, center: true, shade, size: 18 }),
-    makeCell(premioFmt, { w: COL_W.premio, center: true, shade, size: 18 }),
+    makeCell(String(obj.idx), { w: COL_W.num, center: true, shade, size: 18, vAlign: 'center' }),
+    makeCell(descLabel, { w: COL_W.desc, bold: true, shade, size: 18, lines: descSubs, vAlign: 'center' }),
+    makeCell(obj.target, { w: COL_W.target, shade, size: 17, vAlign: 'center' }),
+    makeCell(modalitaFmt, { w: COL_W.modalita, shade, size: 17, vAlign: 'center' }),
+    makeCell(obj.rendicontatore ?? '', { w: COL_W.fonte, shade, size: 17, vAlign: 'center' }),
+    makeCell(obj.peso, { w: COL_W.peso, center: true, shade, size: 18, vAlign: 'center' }),
+    makeCell(premioFmt, { w: COL_W.premio, center: true, shade, size: 18, vAlign: 'center' }),
   ].join('');
 
   return `<w:tr>${cells}</w:tr>`;
 }
 
 function para(runs: string, opts: { size?: number; bold?: boolean; center?: boolean; spacingBefore?: number; spacingAfter?: number } = {}): string {
-  const { size = 20, bold = false, center = false, spacingBefore = 0, spacingAfter = 80 } = opts;
+  const { center = false, spacingBefore = 0, spacingAfter = 80 } = opts;
   const jc = center ? 'center' : 'left';
   return `<w:p>
     <w:pPr><w:jc w:val="${jc}"/><w:spacing w:before="${spacingBefore}" w:after="${spacingAfter}" w:line="276" w:lineRule="auto"/></w:pPr>
@@ -163,12 +177,12 @@ export function buildSchedaObiettiviDocx(
   );
 
   const prereqXml = para(
-    `<w:r>${rpr(true, 18)}<w:t xml:space="preserve">PREREQUISITO</w:t></w:r><w:r>${rpr(false, 18)}<w:t xml:space="preserve"> – Condizione necessaria per la consuntivazione degli obiettivi è il raggiungimento di un EBITDA Adjusted, comprensivo di oneri e proventi straordinari, non inferiore a ${esc(entryGateStr)} Euro.</w:t></w:r>`,
+    `<w:r>${rpr(true, 18)}<w:t xml:space="preserve">PREREQUISITO</w:t></w:r><w:r>${rpr(false, 18)}<w:t xml:space="preserve"> – Condizione necessaria per la consuntivazione degli obiettivi è il raggiungimento di un EBITDA, comprensivo di oneri e proventi straordinari, non inferiore a ${esc(entryGateStr)} Euro.</w:t></w:r>`,
     { spacingAfter: 120 }
   );
 
   // ── Objectives table ─────────────────────────────────────────────────────────
-  const dataRows = beneficiary.obiettivi.map((obj, i) => dataRow(obj, premiMax, i % 2 === 1)).join('\n');
+  const dataRows = beneficiary.obiettivi.map((obj, i) => dataRow(obj, premiMax, i % 2 === 1, beneficiary.tipologia ?? '')).join('\n');
 
   const gridCols = Object.values(COL_W).map(w => `<w:gridCol w:w="${w}"/>`).join('');
 
@@ -201,6 +215,9 @@ export function buildSchedaObiettiviDocx(
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
   mc:Ignorable="w14 w15">
   <w:body>
     ${titleXml}
@@ -209,8 +226,9 @@ export function buildSchedaObiettiviDocx(
     ${tableXml}
     ${notesXml}
     <w:sectPr>
+      <w:footerReference w:type="default" r:id="rId3"/>
       <w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>
-      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="1000"/>
+      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="1000" w:footer="709"/>
     </w:sectPr>
   </w:body>
 </w:document>`;
@@ -226,6 +244,7 @@ export function buildSchedaObiettiviDocx(
   zip.file('word/_rels/document.xml.rels', MINIMAL_DOC_RELS);
   zip.file('word/settings.xml', MINIMAL_SETTINGS);
   zip.file('word/styles.xml', font && font !== 'Calibri' ? MINIMAL_STYLES.replaceAll('Calibri', font) : MINIMAL_STYLES);
+  zip.file('word/footer1.xml', font && font !== 'Calibri' ? MINIMAL_FOOTER.replaceAll('Calibri', font) : MINIMAL_FOOTER);
 
   return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }

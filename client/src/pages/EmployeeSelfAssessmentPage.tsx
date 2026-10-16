@@ -408,7 +408,7 @@ export default function EmployeeSelfAssessmentPage() {
                   {/* Progress Card */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Avanzamento</CardTitle>
+                      <CardTitle>Avanzamento</CardTitle>
                       <CardDescription>
                         {completedCompetencies} di {totalCompetencies} competenze completate
                       </CardDescription>
@@ -537,7 +537,7 @@ export default function EmployeeSelfAssessmentPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <CardTitle className="text-lg">Valutazione Generale Complessiva</CardTitle>
+                            <CardTitle>Valutazione Generale Complessiva</CardTitle>
                             {isOverallAssessmentComplete && <CheckCircle className="h-5 w-5 text-green-600" />}
                           </div>
                           <CardDescription>

@@ -56,6 +56,13 @@ export function initializeDatabase() {
       path.join(process.cwd(), 'db', 'migrations', '0004_doc_signers.sql'),
       path.join(process.cwd(), 'db', 'migrations', '0005_doc_template_font.sql'),
       path.join(process.cwd(), 'db', 'migrations', '0006_doc_template_category.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0007_doc_logos.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0008_premio_and_mbo_history.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0009_user_credentials.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0010_consolidate_anagrafica.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0011_users_sesso_premio_ssot.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0012_goalsetting_sync.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '007_add_assessment_results.sql'),
     ];
     for (const migPath of incrementalMigrations) {
       if (fs.existsSync(migPath)) {

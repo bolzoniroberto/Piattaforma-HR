@@ -153,7 +153,7 @@ export default function OrgChartPage() {
   return (
     <>
       {/* MAIN CONTENT - flex-1, never resizes, NO margin transitions */}
-      <main className="w-full space-y-6 flex flex-col pt-4" >
+      <main className="w-full space-y-6 flex flex-col" >
             <div className="w-full space-y-6">
               <PageHeader 
                 context="RISORSE UMANE" 

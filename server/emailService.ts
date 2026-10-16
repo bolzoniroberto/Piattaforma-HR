@@ -1,7 +1,9 @@
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "mbo-reporting-secret-change-in-production";
+// Nessun fallback hardcoded: usa JWT_SECRET o, in mancanza, SESSION_SECRET
+// (entrambi validati allo startup in config.ts — vedi validateEnv).
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET!;
 const TOKEN_EXPIRY = "30d";
 
 // ─── Token helpers ────────────────────────────────────────────────────────────

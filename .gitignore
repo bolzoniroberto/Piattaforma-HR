@@ -21,3 +21,7 @@ piano_generazione_lettere.md
 db.sqlite
 *.db
 *.sqlite
+
+# Pacchetto dati per il volume del backend (contiene dati HR)
+deploy-export/
+.vercel

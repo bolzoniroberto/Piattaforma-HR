@@ -25,6 +25,7 @@ export const assegnazioneMboTemplate = {
     premio_lettere: 'premio_lettere',
     qualifica_upper: 'qualifica',
     isAD: 'isAD',
+    entry_gate_fmt: 'entry_gate_fmt',
   },
 
   parameters: [
@@ -99,9 +100,11 @@ Per ricevuta di questa Scheda Obiettivi e conferma della partecipazione Piano MB
 
 {#isAD}
 >>>{firmatario_ad_label}
+[FIRMA]
 {/isAD}
 {^isAD}
 >>>L'Amministratore Delegato
+[FIRMA]
 >>>({firmatario_default})
 {/isAD}
 

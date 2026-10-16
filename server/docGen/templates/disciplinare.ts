@@ -49,7 +49,6 @@ Ai sensi dell'art. 7 dello Statuto dei Lavoratori, Lei ha il diritto di presenta
 Con i migliori saluti.
 
 >>>{ruolo_firmatario}
->>>({firmatario})
-
-[FIRMA]`,
+[FIRMA]
+>>>({firmatario})`,
 };

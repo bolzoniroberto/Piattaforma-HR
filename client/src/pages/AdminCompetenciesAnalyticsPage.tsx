@@ -144,7 +144,7 @@ export default function AdminCompetenciesAnalyticsPage() {
         <div className="w-full">
           {/* SIDEBAR CONTAINER */}
           {/* MAIN CONTENT */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
             <div className="w-full space-y-6">
               <div className="flex items-start justify-between">
                 <PageHeader 

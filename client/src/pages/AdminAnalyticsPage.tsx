@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Target, Users, Award, Activity, Euro, TrendingDown, BarChart3, ChevronRight, ClipboardCheck, Sparkles } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import AppActionsPanel from "@/components/AppActionsPanel";
 import { useRail } from "@/contexts/RailContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -76,9 +77,16 @@ export default function AdminAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="w-full">
-        <main className="w-full space-y-6 flex flex-col pt-4">
-          <div className="flex items-center justify-center h-[50vh]">
-            <p className="text-muted-foreground animate-pulse text-lg tracking-wide uppercase">Caricamento Analisi Dati...</p>
+        <main className="w-full space-y-6 flex flex-col">
+          {/* Skeleton che ricalca la griglia KPI + grafici, invece del testo "Caricamento" */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-72 w-full" />
+            <Skeleton className="h-72 w-full" />
           </div>
         </main>
       </div>
@@ -142,7 +150,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="w-full">
-      <main className="w-full space-y-8 flex flex-col pt-4 pb-12">
+      <main className="w-full space-y-8 flex flex-col pb-12">
         <PageHeader 
           context="DATA & INTELLIGENCE" 
           title="Performance Analytics" 

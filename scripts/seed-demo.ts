@@ -51,7 +51,6 @@ const CLUSTER_ESG_ID = "cluster-esg-001";
 
 const CALC_LINEAR_ID = "calc-linear-001";
 const CALC_BINARY_ID = "calc-binary-001";
-const CALC_QUALITATIVE_ID = "calc-qual-001";
 
 // ─── User IDs ────────────────────────────────────────────────────────────────
 
@@ -209,7 +208,6 @@ async function seed() {
   await db.insert(calculationTypes).values([
     { id: CALC_LINEAR_ID, name: "Interpolazione lineare", description: "Calcolo proporzionale tra soglia e target", formula: "((actual - threshold) / (target - threshold)) * 100" },
     { id: CALC_BINARY_ID, name: "100% al target", description: "0% sotto soglia, 100% al raggiungimento del target", formula: "actual >= target ? 100 : 0" },
-    { id: CALC_QUALITATIVE_ID, name: "Qualitativo", description: "Valutazione manuale: raggiunto / parziale / non raggiunto", formula: "manual_assessment" },
   ]).onConflictDoNothing();
 
   console.log("📚 Inserting objectives dictionary...");
@@ -323,7 +321,7 @@ async function seed() {
       title: "Piano D&I",
       description: "Implementazione iniziative Diversity & Inclusion previste dal piano annuale",
       indicatorClusterId: CLUSTER_ESG_ID,
-      calculationTypeId: CALC_QUALITATIVE_ID,
+      calculationTypeId: CALC_BINARY_ID,
       objectiveType: "qualitative",
     },
   ]).onConflictDoNothing();

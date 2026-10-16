@@ -219,7 +219,7 @@ export default function ManagerMboAssignPage() {
         description="Assegna o crea obiettivi MBO per i tuoi collaboratori diretti."
       />
 
-      <Card className="max-w-3xl mx-auto">
+      <Card className="max-w-3xl">
         <CardContent className="pt-6">
           <StepIndicator step={wizard.step} />
 

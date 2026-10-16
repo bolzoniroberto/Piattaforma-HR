@@ -6,7 +6,9 @@ import {
 import { eq } from 'drizzle-orm';
 import type { BeneficiaryRow, ObiettivRow } from './excelParser';
 
-function calcPremioMax(ral: number | null, mboPerc: number | null): number {
+function calcPremioMax(ral: number | null, mboPerc: number | null, premio?: number | null): number {
+  // Preferisci il premio salvato (campo dedicato); fallback al calcolo RAL × MBO%.
+  if (premio != null && premio > 0) return Math.round(premio);
   if (!ral || !mboPerc) return 0;
   return Math.round((ral * mboPerc) / 100);
 }
@@ -66,27 +68,34 @@ export async function getBeneficiariesFromDb(): Promise<BeneficiaryRow[]> {
       descrizione: r.dict.description ?? '',
       target: fmtTarget(r.dict.targetValue ?? null, r.dict.targetDescription ?? null),
       peso: fmtPeso(r.assignment.weight ?? null),
-      modalita_calcolo: r.calcType.name ?? '',
+      modalita_calcolo: r.calcType.description ?? r.calcType.name ?? '',
       tipo_obiettivo: r.dict.objectiveType ?? '',
       rendicontatore: r.dict.dataSource ?? '',
       note: '',
     });
   }
 
-  return Array.from(byUser.values()).map(({ user: u, obiettivi }) => ({
-    nome_beneficiario: [u.firstName, u.lastName].filter(Boolean).join(' '),
-    qualifica: u.department ?? '',
-    tipologia: (u as any).beneficiaryType ?? 'standard',
-    premio_max: calcPremioMax(u.ral ?? null, u.mboPercentage ?? null),
-    area: u.department ?? '',
-    codice_fiscale: u.codiceFiscale ?? '',
-    indirizzo: u.indirizzo ?? '',
-    cap: u.cap ?? '',
-    citta_residenza: u.citta ?? '',
-    prov: '',
-    direzione: u.department ?? '',
-    obiettivi,
-  }));
+  return Array.from(byUser.values()).map(({ user: u, obiettivi }) => {
+    const premioCalcolato = calcPremioMax(u.ral ?? null, u.mboPercentage ?? null, u.premio ?? null);
+    return {
+      nome_beneficiario: [u.firstName, u.lastName].filter(Boolean).join(' '),
+      qualifica: u.qualifica ?? u.department ?? '',
+      tipologia: u.beneficiaryType ?? 'standard',
+      // SSoT premio_max: users.premio se impostato manualmente, altrimenti ral × mbo%
+      premio_max: premioCalcolato,
+      premio_source: (u.premio != null && u.premio > 0) ? 'manual' : 'calculated',
+      area: u.area ?? u.department ?? '',
+      codice_fiscale: u.codiceFiscale ?? '',
+      indirizzo: u.indirizzo ?? '',
+      cap: u.cap ?? '',
+      citta_residenza: u.citta ?? '',
+      prov: u.sedeProvincia ?? '',
+      direzione: u.strutturaL1 ?? u.department ?? '',
+      // SSoT sesso: da users.sesso
+      sesso: u.sesso ?? '',
+      obiettivi,
+    };
+  });
 }
 
 export async function getDbBeneficiaryPreviews(): Promise<DbBeneficiaryPreview[]> {

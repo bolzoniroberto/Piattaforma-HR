@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Download, ArrowLeft, CheckCircle, HelpCircle, FileText, Info } from "lucide-react";
@@ -75,13 +76,14 @@ export default function RegulationPage() {
 
   return (
     <div className="w-full space-y-6">
+        <PageHeader context="MBO 2026" title="Regolamento" description="Piano di incentivazione variabile annuale — testo integrale e accettazione." />
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
           {/* Main Content Area */}
           <Card className="xl:col-span-3 border-slate-100 shadow-sm overflow-hidden rounded-2xl">
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 px-8 py-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-2xl font-extrabold text-slate-900">Testo Integrale</CardTitle>
+                  <CardTitle className="text-base font-semibold text-slate-900">Testo Integrale</CardTitle>
                   <p className="text-sm text-slate-500 mt-1 font-medium italic">
                     {companyName} — Piano di incentivazione variabile annuale
                   </p>

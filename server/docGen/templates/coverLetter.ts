@@ -46,9 +46,11 @@ Con i migliori saluti.
 
 {#isAD}
 >>>**{firmatario_ad_label}**
+[FIRMA]
 {/isAD}
 {^isAD}
 >>>L'Amministratore Delegato
+[FIRMA]
 >>>({firmatario_default})
 {/isAD}
 

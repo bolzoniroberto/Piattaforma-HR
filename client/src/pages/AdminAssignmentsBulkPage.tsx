@@ -296,7 +296,7 @@ export default function AdminAssignmentsBulkPage() {
       <div className="w-full">
         <div className="w-full">
           {/* SIDEBAR CONTAINER - Fixed 312px width, always reserved */}
-          <main className="w-full space-y-6 flex flex-col pt-4" >
+          <main className="w-full space-y-6 flex flex-col" >
           <div className="w-full space-y-6">
               <PageHeader
                 context="GESTIONE ASSEGNAZIONI"
@@ -350,11 +350,11 @@ export default function AdminAssignmentsBulkPage() {
               {step === 1 && (
                 <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle className="md3-title-large flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
                       <Target className="h-5 w-5" />
                       Seleziona Obiettivo
                     </CardTitle>
-                    <CardDescription className="md3-body-medium">
+                    <CardDescription>
                       Scegli l'obiettivo da assegnare in blocco
                     </CardDescription>
                     <div className="relative mt-4">
@@ -421,11 +421,11 @@ export default function AdminAssignmentsBulkPage() {
               {step === 2 && mode === "bulk" && (
                 <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle className="md3-title-large flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
                       <Building className="h-5 w-5" />
                       Seleziona Dipartimento e Peso
                     </CardTitle>
-                    <CardDescription className="md3-body-medium">
+                    <CardDescription>
                       L'obiettivo "{selectedObjective?.title}" sarà assegnato a tutti i dipendenti del dipartimento selezionato
                     </CardDescription>
                   </CardHeader>
@@ -508,11 +508,11 @@ export default function AdminAssignmentsBulkPage() {
               {step === 2 && mode === "single" && (
                 <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle className="md3-title-large flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
                       <UserCheck className="h-5 w-5" />
                       Seleziona Dipendente e Peso
                     </CardTitle>
-                    <CardDescription className="md3-body-medium">
+                    <CardDescription>
                       L'obiettivo "{selectedObjective?.title}" sarà assegnato al dipendente selezionato
                     </CardDescription>
                     <div className="relative mt-4">
@@ -592,11 +592,11 @@ export default function AdminAssignmentsBulkPage() {
               {step === 3 && (
                 <Card className="md3-surface md3-motion-standard">
                   <CardHeader>
-                    <CardTitle className="md3-title-large flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
                       <CheckCircle className="h-5 w-5" />
                       Conferma Assegnazione
                     </CardTitle>
-                    <CardDescription className="md3-body-medium">
+                    <CardDescription>
                       Verifica i dettagli e conferma l'assegnazione
                     </CardDescription>
                   </CardHeader>

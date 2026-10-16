@@ -1,9 +1,8 @@
 import { db } from '../db';
 import {
-  users, persona, contatti, organizzazione, contratti, compensation,
-  ruoli, sedi, ccnl, livelliContrattuali, customFieldDefinitions, customFieldValues,
+  users, customFieldDefinitions, customFieldValues,
 } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import type { BeneficiaryRow } from './excelParser';
 
@@ -30,27 +29,9 @@ export async function getEmployeesFromDb(): Promise<BeneficiaryRow[]> {
   const rows = await db
     .select({
       user: users,
-      per: persona,
-      cont: contatti,
-      org: organizzazione,
-      contr: contratti,
-      comp: compensation,
-      ruo: ruoli,
-      sede: sedi,
-      ccnlRow: ccnl,
-      livello: livelliContrattuali,
       managerUser: manager,
     })
     .from(users)
-    .leftJoin(persona, eq(persona.codiceFiscale, users.codiceFiscale))
-    .leftJoin(contatti, eq(contatti.codiceFiscale, users.codiceFiscale))
-    .leftJoin(organizzazione, eq(organizzazione.codiceFiscale, users.codiceFiscale))
-    .leftJoin(contratti, and(eq(contratti.codiceFiscale, users.codiceFiscale), eq(contratti.isActive, true)))
-    .leftJoin(compensation, and(eq(compensation.codiceFiscale, users.codiceFiscale), eq(compensation.isCurrent, true)))
-    .leftJoin(ruoli, eq(ruoli.codiceFiscale, users.codiceFiscale))
-    .leftJoin(sedi, eq(sedi.id, organizzazione.sedeId))
-    .leftJoin(ccnl, eq(ccnl.id, contratti.ccnlId))
-    .leftJoin(livelliContrattuali, eq(livelliContrattuali.id, contratti.livelloContrattualeId))
     .leftJoin(manager, eq(manager.id, users.managerId))
     .where(eq(users.isActive, true))
     .orderBy(users.lastName, users.firstName);
@@ -86,42 +67,44 @@ export async function getEmployeesFromDb(): Promise<BeneficiaryRow[]> {
       userCf.forEach((val, key) => { customFields[`cf_${key}`] = val; });
     }
 
+    const u = r.user;
     const row: BeneficiaryRow = {
       // Required BeneficiaryRow fields
       nome_beneficiario: nomeCompleto,
-      qualifica: r.contr?.qualifica ?? r.user.department ?? '',
+      qualifica: u.qualifica ?? u.department ?? '',
       tipologia: 'employee',
       premio_max: 0,
-      area: r.org?.area ?? r.user.department ?? '',
+      area: u.area ?? u.department ?? '',
       obiettivi: [],
 
-      // HR-specific fields
+      // HR-specific fields — tutti da users (fonte unica consolidata)
       nome: firstName,
       cognome: lastName,
       nome_completo: nomeCompleto,
-      codice_fiscale: r.user.codiceFiscale ?? '',
-      matricola: r.per?.matricola ?? (r.user as any).matricola ?? '',
-      email: r.user.email ?? '',
-      telefono: r.cont?.telefono ?? (r.user as any).telefono ?? '',
-      indirizzo: r.cont?.indirizzo ?? r.user.indirizzo ?? '',
-      cap: r.cont?.cap ?? r.user.cap ?? '',
-      citta: r.cont?.citta ?? r.user.citta ?? '',
-      department: r.user.department ?? '',
-      cdc: r.org?.descrizioneCdc ?? (r.user as any).cdc ?? '',
-      sotto_area: r.org?.sottoArea ?? '',
-      unita_organizzativa: r.org?.unitaOrganizzativa ?? '',
-      struttura_l1: r.org?.descrizioneStrutturaL1 ?? '',
-      struttura_l2: r.org?.descrizioneStrutturaL2 ?? '',
-      struttura_l3: r.org?.descrizioneStrutturaL3 ?? '',
-      sede: r.sede?.descrizioneSede ?? '',
-      sede_comune: r.sede?.comune ?? '',
-      sede_provincia: r.sede?.provincia ?? '',
-      data_assunzione: fmtDate(r.contr?.dataAssunzione),
-      job_title: r.contr?.jobTitle ?? '',
-      livello: r.livello?.descrizioneLivello ?? r.contr?.livello ?? '',
-      ccnl: r.ccnlRow?.descrizioneCcnl ?? '',
-      ral: r.comp?.ral ?? r.user.ral ?? 0,
-      mbo_percentuale: r.comp?.mboPercentuale ?? r.user.mboPercentage ?? 0,
+      codice_fiscale: u.codiceFiscale ?? '',
+      matricola: u.matricola ?? '',
+      email: u.email ?? '',
+      telefono: u.telefono ?? '',
+      indirizzo: u.indirizzo ?? '',
+      cap: u.cap ?? '',
+      citta: u.citta ?? '',
+      department: u.department ?? '',
+      cdc: u.cdc ?? '',
+      sotto_area: u.sottoArea ?? '',
+      unita_organizzativa: u.unitaOrganizzativa ?? '',
+      struttura_l1: u.strutturaL1 ?? '',
+      struttura_l2: u.strutturaL2 ?? '',
+      struttura_l3: u.strutturaL3 ?? '',
+      sede: u.sede ?? '',
+      sede_comune: u.sedeComune ?? '',
+      sede_provincia: u.sedeProvincia ?? '',
+      data_assunzione: fmtDate(u.dataAssunzione),
+      job_title: u.jobTitle ?? '',
+      livello: u.livello ?? '',
+      ccnl: u.ccnl ?? '',
+      ral: u.ral ?? 0,
+      mbo_percentuale: u.mboPercentage ?? 0,
+      sesso: u.sesso ?? '',
       manager_nome: r.managerUser?.firstName ?? '',
       manager_cognome: r.managerUser?.lastName ?? '',
 

@@ -324,7 +324,7 @@ export default function AdminObjectivesPage() {
 
   return (
     <div className="flex gap-6 w-full pb-8">
-      <main className="w-full space-y-6 flex flex-col pt-4" >
+      <main className="w-full space-y-6 flex flex-col" >
         <div className="w-full space-y-6 w-full relative h-full">
           <PageHeader 
             context="GESTIONE OBIETTIVI" 
@@ -581,7 +581,7 @@ export default function AdminObjectivesPage() {
                               <div className="p-2 rounded-xl bg-primary/10">
                                 <Icon className="h-5 w-5 text-primary" />
                               </div>
-                              <h3 className="md3-title-medium flex-1">{clusterName}</h3>
+                              <h3 className="text-base font-medium flex-1">{clusterName}</h3>
                               <Badge variant="secondary" className="rounded-full px-3">
                                 {objectives.length}
                               </Badge>
@@ -599,8 +599,8 @@ export default function AdminObjectivesPage() {
                               <TableBody>
                                 {objectives.map((obj) => (
                                   <TableRow key={obj.id} data-testid={`row-objective-${obj.id}`}>
-                                    <TableCell className="font-medium">{obj.title}</TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
+                                    <TableCell className="font-medium uppercase">{obj.title}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm capitalize">
                                       {obj.description || "-"}
                                     </TableCell>
                                     <TableCell>

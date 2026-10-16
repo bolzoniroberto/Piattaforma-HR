@@ -550,7 +550,7 @@ export default function EmployeeDashboard() {
                 <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mb-2">
                   {cyclePeriod ?? cycleLabel}
                 </div>
-                <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
                   {cycleLabel}
                 </h2>
               </div>

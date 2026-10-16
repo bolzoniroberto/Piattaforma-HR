@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Sparkles,
   FilePlus2,
+  BrainCircuit,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -224,9 +225,29 @@ export const navSections: NavSection[] = [
         icon: FileText,
         adminOnly: true,
       },
+      {
+        id: "doc-settings",
+        title: "Impostazioni documenti",
+        url: "/admin/doc-settings",
+        icon: Settings,
+        adminOnly: true,
+      },
     ],
   },
 
+  {
+    id: "assess",
+    title: "Assess",
+    icon: BrainCircuit,
+    children: [
+      {
+        id: "assess-start",
+        title: "Valutazione AI",
+        url: "/assess",
+        icon: BrainCircuit,
+      },
+    ],
+  },
   {
     id: "impostazioni",
     title: "Impostazioni",
