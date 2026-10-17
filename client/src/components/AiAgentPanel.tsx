@@ -1,32 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useAiPanel } from "@/contexts/AiPanelContext";
 import {
-  Bot, ChevronRight, Sparkles, RefreshCw,
-  Target, FileText, Users, BarChart3, AlertTriangle, Lightbulb,
-  TrendingUp, Loader2, CheckCircle2, SendHorizonal, MessageSquare, ArrowLeft, X,
+  Bot, ChevronRight, Sparkles,
+  Target, Loader2, SendHorizonal, ArrowLeft, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface TeamMember { id: string; firstName?: string; lastName?: string; department?: string }
-
-interface EmployeeInsight {
-  summary: string;
-  strengths: string[];
-  developmentAreas: string[];
-  mboFocus: string;
-  riskFlags: string[];
-  generatedAt: number;
-}
 
 interface ChatMessage {
   role: "user" | "ai";
@@ -34,19 +21,14 @@ interface ChatMessage {
 }
 
 type PanelCtx =
-  | { type: "employee-eval"; userId: string; cycleId: string }
-  | { type: "self-assessment" }
   | { type: "mbo-assign" }
   | { type: "ai-wizard" }
   | { type: "dashboard" }
   | { type: "generic" };
 
 function detectCtx(path: string): PanelCtx {
-  const m = path.match(/^\/manager\/team-evaluations\/([^/]+)\/([^/]+)$/);
-  if (m) return { type: "employee-eval", userId: m[1], cycleId: m[2] };
   if (path === "/manager/mbo-assign") return { type: "mbo-assign" };
   if (path.startsWith("/ai/")) return { type: "ai-wizard" };
-  if (path === "/employee/self-assessment") return { type: "self-assessment" };
   if (path === "/" || path === "") return { type: "dashboard" };
   return { type: "generic" };
 }
@@ -91,57 +73,17 @@ function ActionCard({
   );
 }
 
-function InsightSection({ icon: Icon, title, children, color = "slate" }: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  children: React.ReactNode;
-  color?: "slate" | "emerald" | "amber" | "blue" | "red";
-}) {
-  const colors = {
-    slate: "text-slate-700 bg-slate-100",
-    emerald: "text-emerald-700 bg-emerald-100",
-    amber: "text-amber-700 bg-amber-100",
-    blue: "text-blue-700 bg-blue-100",
-    red: "text-red-700 bg-red-100",
-  };
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2">
-        <div className={cn("w-5 h-5 rounded flex items-center justify-center", colors[color])}>
-          <Icon className="w-3 h-3" />
-        </div>
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 // ─── Suggested prompts per context ───────────────────────────────────────────
 
 function getDefaultPrompts(ctx: PanelCtx): string[] {
-  if (ctx.type === "employee-eval") return [
-    "Punti di forza di questo dipendente",
-    "Aree di miglioramento prioritarie",
-    "Suggerisci azioni di sviluppo",
-    "C'è rischio di disengagement?",
-  ];
   if (ctx.type === "mbo-assign") return [
     "Come bilanciare i pesi degli obiettivi?",
     "Quali cluster sono più rilevanti?",
     "Suggerisci un mix obiettivi quantitativi/qualitativi",
   ];
-  if (ctx.type === "self-assessment") return [
-    "Come scelgo il rating giusto?",
-    "Aiutami con i punti di forza",
-    "Come descrivere aree di miglioramento?",
-    "Suggeriscimi obiettivi professionali",
-  ];
   return [
     "Come funziona il ciclo MBO?",
-    "Quali best practice per la valutazione 360°?",
     "Come scrivere obiettivi SMART efficaci?",
-    "Come gestire un colloquio di feedback?",
     "Differenza tra MBO e OKR",
   ];
 }
@@ -153,7 +95,6 @@ export default function AiAgentPanel() {
   const [location, navigate] = useLocation();
   const aiPanel = useAiPanel();
 
-  const [insight, setInsight] = useState<EmployeeInsight | null>(null);
   const [chatMode, setChatMode] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -161,15 +102,12 @@ export default function AiAgentPanel() {
 
   const ctx = detectCtx(location);
   const isManagerOrAdmin = user?.role === "admin" || user?.role === "manager";
-  const isSelfAssessmentCtx = ctx.type === "self-assessment" || !!aiPanel.options.competencyContext;
-  const isEmployee = !!user && !isManagerOrAdmin;
 
-  // Panel visibile per tutti gli utenti autenticati
-  const shouldRender = !!user;
+  // Panel visibile solo a manager e admin
+  const shouldRender = isManagerOrAdmin;
 
   // Reset on location change
   useEffect(() => {
-    setInsight(null);
     setChatMode(false);
     setChatMessages([]);
     setChatInput("");
@@ -191,34 +129,10 @@ export default function AiAgentPanel() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Team members (for employee name lookup)
-  const { data: teamMembers } = useQuery<TeamMember[]>({
-    queryKey: ["/api/manager/mbo/team-members"],
-    enabled: isManagerOrAdmin && ctx.type === "employee-eval",
-  });
-
-  const currentEmployee = ctx.type === "employee-eval"
-    ? teamMembers?.find((m) => m.id === ctx.userId)
-    : null;
-
-  const expanded = aiPanel.isOpen || (isManagerOrAdmin && false); // always use context
-
   // Chat mutation — routes to right endpoint
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      // Employees always use self-assessment endpoint (no isManager required)
-      if (isEmployee || isSelfAssessmentCtx || aiPanel.options.endpoint === "/api/ai/self-assessment-chat") {
-        const res = await apiRequest("POST", "/api/ai/self-assessment-chat", {
-          message,
-          competencyContext: aiPanel.options.competencyContext,
-        });
-        return res.json() as Promise<{ reply: string }>;
-      }
-      // Manager/admin endpoint
-      const pageContext = ctx.type === "employee-eval"
-        ? { type: ctx.type, userId: ctx.userId, cycleId: ctx.cycleId }
-        : { type: ctx.type };
-      const res = await apiRequest("POST", "/api/ai/chat", { message, pageContext });
+      const res = await apiRequest("POST", "/api/ai/chat", { message, pageContext: { type: ctx.type } });
       return res.json() as Promise<{ reply: string }>;
     },
     onSuccess: (data) => {
@@ -247,28 +161,10 @@ export default function AiAgentPanel() {
     chatMutation.mutate(msg);
   }
 
-  // Insight mutation
-  const insightMutation = useMutation({
-    mutationFn: async () => {
-      if (ctx.type !== "employee-eval") throw new Error("Contesto non valido");
-      const res = await apiRequest("POST", "/api/ai/employee-insight", {
-        targetUserId: ctx.userId,
-        cycleId: ctx.cycleId,
-      });
-      return res.json() as Promise<EmployeeInsight>;
-    },
-    onSuccess: (data) => { setInsight(data); },
-  });
-
   if (!shouldRender) return null;
 
-  const employeeName = currentEmployee
-    ? `${currentEmployee.firstName || ""} ${currentEmployee.lastName || ""}`.trim()
-    : "dipendente";
-
   const suggestedPrompts = aiPanel.options.suggestedPrompts ?? getDefaultPrompts(ctx);
-  const contextLabel = aiPanel.options.contextLabel
-    ?? (ctx.type === "employee-eval" ? employeeName : null);
+  const contextLabel = aiPanel.options.contextLabel ?? null;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -311,17 +207,8 @@ export default function AiAgentPanel() {
               <Sparkles className="w-4 h-4" />
             </div>
             <span className="font-bold text-white flex-1 text-sm tracking-tight">
-              {(isSelfAssessmentCtx || isEmployee) ? "Assistente AI" : "Agente IA Strategico"}
+              Agente IA Strategico
             </span>
-            {insight && (
-              <button
-                onClick={() => setInsight(null)}
-                className="text-white/70 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-all"
-                title="Nuova analisi"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
-            )}
               <button
                 onClick={() => aiPanel.close()}
                 className="text-white/70 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-all"
@@ -335,19 +222,11 @@ export default function AiAgentPanel() {
           {contextLabel && (
             <div className="px-4 py-2 shrink-0">
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(0,242,255,0.8)]", isSelfAssessmentCtx ? "bg-cyan-500" : "bg-blue-500")} />
+                <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(0,242,255,0.8)] bg-blue-500" />
                 <span className="flex-1 truncate">
-                  {isSelfAssessmentCtx ? "" : "Contesto: "}
+                  Contesto:{" "}
                   <span className="font-medium text-slate-700">{contextLabel}</span>
                 </span>
-                {isSelfAssessmentCtx && aiPanel.options.competencyContext && (
-                  <button
-                    onClick={() => aiPanel.clearOptions()}
-                    className="text-slate-400 hover:text-slate-700"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -404,97 +283,9 @@ export default function AiAgentPanel() {
             {/* ── ACTIONS MODE ── */}
             {!chatMode && (
               <>
-                {/* Employee empty state (self-assessment or generic) */}
-                {(isSelfAssessmentCtx || isEmployee) && (
-                  <div className="flex flex-col items-center gap-3 py-8 text-center">
-                    <div className="w-10 h-10 rounded-full bg-cyan-50 flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-cyan-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Sono qui per aiutarti</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {aiPanel.options.competencyContext
-                          ? `Pronto ad aiutarti su "${aiPanel.options.competencyContext.name}"`
-                          : "Clicca un suggerimento o scrivi una domanda"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Manager/admin: loading insight */}
-                {!isSelfAssessmentCtx && !isEmployee && insightMutation.isPending && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 text-slate-600 animate-spin" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Analisi in corso…</p>
-                      <p className="text-xs text-slate-400 mt-1">L'agente sta elaborando i dati</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Insight result */}
-                {!isSelfAssessmentCtx && !isEmployee && !insightMutation.isPending && insight && (
-                  <div className="space-y-4">
-                    <InsightSection icon={Lightbulb} title="Sintesi" color="blue">
-                      <p className="text-xs text-slate-600 leading-relaxed">{insight.summary}</p>
-                    </InsightSection>
-                    <Separator />
-                    {insight.strengths.length > 0 && (
-                      <InsightSection icon={CheckCircle2} title="Punti di Forza" color="emerald">
-                        <ul className="space-y-1">
-                          {insight.strengths.map((s, i) => (
-                            <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
-                              <span className="text-emerald-500 mt-0.5">•</span>{s}
-                            </li>
-                          ))}
-                        </ul>
-                      </InsightSection>
-                    )}
-                    {insight.developmentAreas.length > 0 && (
-                      <InsightSection icon={TrendingUp} title="Aree di Sviluppo" color="amber">
-                        <ul className="space-y-1">
-                          {insight.developmentAreas.map((s, i) => (
-                            <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
-                              <span className="text-amber-500 mt-0.5">•</span>{s}
-                            </li>
-                          ))}
-                        </ul>
-                      </InsightSection>
-                    )}
-                    <InsightSection icon={Target} title="Focus MBO" color="blue">
-                      <p className="text-xs text-slate-600 leading-relaxed">{insight.mboFocus}</p>
-                    </InsightSection>
-                    {insight.riskFlags.length > 0 && (
-                      <InsightSection icon={AlertTriangle} title="Segnalazioni" color="red">
-                        <ul className="space-y-1">
-                          {insight.riskFlags.map((s, i) => (
-                            <li key={i} className="text-xs text-red-600 flex items-start gap-1.5">
-                              <span className="mt-0.5">⚠</span>{s}
-                            </li>
-                          ))}
-                        </ul>
-                      </InsightSection>
-                    )}
-                    <Separator />
-                    <p className="text-[10px] text-slate-400 text-center">
-                      Generato {new Date(insight.generatedAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                )}
-
                 {/* Manager actions */}
-                {!isSelfAssessmentCtx && !isEmployee && !insightMutation.isPending && !insight && (
+                {(
                   <div className="space-y-2">
-                    {ctx.type === "employee-eval" && (
-                      <>
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">Azioni disponibili</p>
-                        <ActionCard icon={Sparkles} title={`Analizza ${employeeName.split(" ")[0]}`} description="Sintesi AI di punti di forza, aree sviluppo e focus MBO" onClick={() => insightMutation.mutate()} loading={insightMutation.isPending} />
-                        <ActionCard icon={FileText} title="Genera scheda valutazione" description="Bozza strutturata basata su autovalutazione e feedback" onClick={() => navigate(`/ai/valuta?userId=${ctx.userId}&cycleId=${ctx.cycleId}`)} badge="wizard" />
-                        <ActionCard icon={Target} title="Assegna obiettivi" description="Proposta AI di obiettivi MBO per questo dipendente" onClick={() => navigate(`/ai/assegna?userId=${ctx.userId}`)} badge="wizard" />
-                      </>
-                    )}
                     {ctx.type === "mbo-assign" && (
                       <>
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">Azioni disponibili</p>
@@ -505,8 +296,6 @@ export default function AiAgentPanel() {
                       <>
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">Cosa posso fare</p>
                         <ActionCard icon={Target} title="Assegna Obiettivi" description="Wizard AI per assegnare obiettivi MBO a un dipendente" onClick={() => navigate("/ai/assegna")} />
-                        <ActionCard icon={FileText} title="Valuta Dipendente" description="Genera bozza di scheda di valutazione performance" onClick={() => navigate("/ai/valuta")} />
-                        <ActionCard icon={Users} title="Apri una valutazione" description="Vai alle valutazioni del team per analizzare un dipendente" onClick={() => navigate("/manager/team-evaluations")} />
                       </>
                     )}
                     {ctx.type === "ai-wizard" && (
@@ -518,11 +307,6 @@ export default function AiAgentPanel() {
                           <p className="text-sm font-medium text-slate-700">Sessione AI attiva</p>
                           <p className="text-xs text-slate-400 mt-1">Completa il wizard in corso</p>
                         </div>
-                      </div>
-                    )}
-                    {insightMutation.isError && (
-                      <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                        Errore durante l'analisi. Riprova.
                       </div>
                     )}
                   </div>

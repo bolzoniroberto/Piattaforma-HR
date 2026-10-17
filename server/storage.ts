@@ -789,8 +789,6 @@ export class DatabaseStorage implements IStorage {
       gestione_anagrafiche_user: false,
       gestione_mbo_admin: true,
       gestione_mbo_user: true,
-      performance_management_admin: true,
-      performance_management_user: true,
       gestione_organizzazione_admin: false,
       gestione_organizzazione_user: true,
     };

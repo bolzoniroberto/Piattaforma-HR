@@ -619,11 +619,6 @@ const MODULE_DEFS = [
     description: "Database obiettivi, assegnazione, disassociazione e rendicontazione MBO.",
   },
   {
-    id: "performance_management",
-    label: "Performance Management",
-    description: "Autovalutazione, feedback 360°, piani di sviluppo, valutazioni team e competenze.",
-  },
-  {
     id: "gestione_organizzazione",
     label: "Gestione Organizzazione",
     description: "Organigramma aziendale e vista team.",

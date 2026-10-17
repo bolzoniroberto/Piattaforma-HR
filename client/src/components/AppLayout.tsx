@@ -77,6 +77,7 @@ export default function AppLayout({ children, pageTitle, actions }: AppLayoutPro
             <div className="flex items-center gap-4">
               {actions && <div className="flex items-center gap-3 pr-4">{actions}</div>}
               
+              {(user?.role === "admin" || user?.role === "manager") && (
               <button 
                 onClick={() => aiPanel.open()}
                 className="flex items-center gap-2 px-4 py-1.5 rounded-full ai-gradient text-white text-xs font-bold ai-glow hover:scale-105 transition-transform shrink-0"
@@ -84,6 +85,7 @@ export default function AppLayout({ children, pageTitle, actions }: AppLayoutPro
                 <Sparkles className="w-3.5 h-3.5" />
                 AI Assistant
               </button>
+              )}
 
               <button className="text-slate-500 hover:text-slate-900 transition-colors shrink-0">
                 <Bell className="w-5 h-5" />
