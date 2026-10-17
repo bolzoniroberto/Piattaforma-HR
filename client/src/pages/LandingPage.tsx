@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
-  Target, Users, BarChart3, Award, Network, ClipboardCheck,
+  Target, Users, BarChart3, Network,
   TrendingUp, ArrowRight, ChevronLeft, ChevronRight,
-  Building2, UserCheck, ShieldCheck, Zap, Globe, Star,
+  Building2, UserCheck, ShieldCheck, Zap, Star,
 } from "lucide-react";
 
 // ─── Neon palette ──────────────────────────────────────────────────────────────
@@ -208,31 +208,6 @@ function MboMiniVisual() {
   );
 }
 
-function PerfMiniVisual() {
-  return (
-    <div className="font-mono text-xs space-y-2">
-      <div className="flex items-center gap-1 text-[10px] text-pink-400/70 border-b border-pink-500/20 pb-1 mb-2">
-        <span>▸ ciclo.valutazione</span>
-      </div>
-      {[
-        { label: "Autoval.", val: 82, color: "#ff0080" },
-        { label: "360°", val: 67, color: "#a855f7" },
-        { label: "Manager", val: 91, color: "#ff0080" },
-      ].map((item, i) => (
-        <div key={i} className="space-y-0.5">
-          <div className="flex justify-between text-[10px]">
-            <span className="text-slate-500">{item.label}</span>
-            <span className="font-bold" style={{ color: item.color }}>{item.val}%</span>
-          </div>
-          <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${item.val}%`, background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function AnalyticsMiniVisual() {
   const bars = [65, 80, 55, 90, 70, 85];
   return (
@@ -291,22 +266,11 @@ const featureCards: FeatureCard[] = [
     visual: <MboMiniVisual />,
   },
   {
-    id: "performance",
-    comingSoon: true,
-    eyebrow: "Performance 360°",
-    title: "Un ciclo completo di valutazione",
-    description: "Autovalutazione, feedback multi-livello e valutazione manager in un unico flusso strutturato.",
-    icon: ClipboardCheck,
-    color: "pink",
-    stats: [{ label: "Livelli", val: "3" }, { label: "Cicli", val: "∞" }],
-    visual: <PerfMiniVisual />,
-  },
-  {
     id: "analytics",
     comingSoon: true,
     eyebrow: "Analytics Hub",
     title: "Decisioni guidate dai dati",
-    description: "Dashboard KPI, report di completamento, distribuzione competenze e export CSV per analisi esterne.",
+    description: "Dashboard KPI, report di completamento e export CSV per analisi esterne.",
     icon: BarChart3,
     color: "violet",
     stats: [{ label: "KPI live", val: "12+" }, { label: "Export", val: "CSV" }],
@@ -322,56 +286,6 @@ const featureCards: FeatureCard[] = [
     color: "green",
     stats: [{ label: "Livelli", val: "N" }, { label: "Vista", val: "live" }],
     visual: <OrgMiniVisual />,
-  },
-  {
-    id: "competenze",
-    comingSoon: true,
-    eyebrow: "Skills Matrix",
-    title: "Modelli di competenza su misura",
-    description: "Definisci modelli per ogni ruolo, assegna cicli e traccia l'evoluzione delle competenze nel tempo.",
-    icon: Award,
-    color: "pink",
-    stats: [{ label: "Ruoli", val: "∞" }, { label: "Livelli", val: "5" }],
-    visual: (
-      <div className="font-mono text-[10px] space-y-1.5">
-        <div className="text-pink-400/70 border-b border-pink-500/20 pb-1 mb-2">▸ competenze.matrix</div>
-        {["Leadership", "Problem Solving", "Comunicazione"].map((c, i) => (
-          <div key={c} className="flex items-center gap-2">
-            <span className="text-slate-500 text-[9px] w-20 truncate">{c}</span>
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((dot) => (
-                <div key={dot} className="w-2.5 h-2.5 rounded-sm" style={{ background: dot <= i + 3 ? "#ff0080" : "#1a1f2e", boxShadow: dot <= i + 3 ? "0 0 4px #ff0080" : "none" }} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    ),
-  },
-  {
-    id: "sviluppo",
-    comingSoon: true,
-    eyebrow: "Growth Tracker",
-    title: "Crescita professionale guidata",
-    description: "Manager e dipendenti co-progettano piani di sviluppo concreti con obiettivi, azioni e scadenze.",
-    icon: TrendingUp,
-    color: "cyan",
-    stats: [{ label: "Piani", val: "attivi" }, { label: "Alert", val: "auto" }],
-    visual: (
-      <div className="font-mono text-[10px] space-y-1.5">
-        <div className="text-cyan-400/70 border-b border-cyan-500/20 pb-1 mb-2">▸ sviluppo.tracker</div>
-        {[
-          { task: "Leadership training", done: true },
-          { task: "Cert. PM avanzato", done: false },
-          { task: "Mentoring Q2", done: false },
-        ].map((t, i) => (
-          <div key={i} className="flex items-center gap-2 text-[9px]">
-            <span style={{ color: t.done ? "#00f5ff" : "#374151" }}>{t.done ? "✓" : "○"}</span>
-            <span className={t.done ? "text-slate-400 line-through" : "text-slate-400"}>{t.task}</span>
-          </div>
-        ))}
-      </div>
-    ),
   },
 ];
 
@@ -452,7 +366,6 @@ function FeatureCarousel() {
 // ─── Community stats ──────────────────────────────────────────────────────────
 const communityStats = [
   { val: "6", label: "Moduli integrati", icon: Zap, color: "#00f5ff" },
-  { val: "360°", label: "Feedback multi-livello", icon: Globe, color: "#ff0080" },
   { val: "∞", label: "Obiettivi configurabili", icon: Target, color: "#a855f7" },
   { val: "Real-time", label: "Analytics & Report", icon: BarChart3, color: "#00ff88" },
   { val: "3", label: "Ruoli utente", icon: Users, color: "#00f5ff" },
@@ -507,13 +420,13 @@ function CommunitySection() {
               icon: UserCheck,
               role: "Dipendente",
               color: "#00f5ff",
-              points: ["Visualizza i tuoi obiettivi MBO", "Completa l'autovalutazione", "Richiedi e dai feedback", "Monitora il piano di sviluppo"],
+              points: ["Visualizza i tuoi obiettivi MBO", "Consulta e accetta i documenti MBO", "Monitora l'avanzamento degli obiettivi"],
             },
             {
               icon: Users,
               role: "Manager",
               color: "#a855f7",
-              points: ["Valuta le performance del team", "Costruisci piani di sviluppo", "Monitora peso e avanzamento MBO", "Accedi ai report del team"],
+              points: ["Assegna gli obiettivi MBO al team", "Monitora peso e avanzamento MBO", "Accedi ai report del team"],
             },
             {
               icon: Building2,
@@ -798,7 +711,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-lg text-slate-400 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
-              Un'unica piattaforma per MBO, valutazioni 360°, feedback, organigrammi e analytics HR.
+              Un'unica piattaforma per MBO, organigrammi e analytics HR.
               Trasparente per i dipendenti, potente per i manager.
             </p>
 
@@ -942,9 +855,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-6 text-sm text-slate-600">
             <span>MBO</span>
-            <span>Performance</span>
             <span>Analytics</span>
-            <span>Competenze</span>
             <Link href="/login">
               <span className="text-slate-500 hover:text-cyan-400 transition-colors cursor-pointer">Accedi</span>
             </Link>

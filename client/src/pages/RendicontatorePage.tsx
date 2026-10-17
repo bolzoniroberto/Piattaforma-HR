@@ -70,9 +70,20 @@ export default function RendicontatorePage() {
   });
 
   // Flatten all objectives with user info
-  const allObjectives = rows.flatMap((row) =>
-    row.objectives.map((obj) => ({ ...obj, user: row.user }))
-  );
+  // Reporting is per dictionary entry (shared by all assignees), so group by
+  // dictionaryId: one row per objective, with the number of assigned employees.
+  const allObjectives = (() => {
+    const byDict = new Map<string, any>();
+    for (const row of rows) {
+      for (const obj of row.objectives) {
+        const key = obj.dictionaryId || `assignment-${obj.assignmentId}`;
+        const existing = byDict.get(key);
+        if (existing) existing.assigneesCount += 1;
+        else byDict.set(key, { ...obj, user: row.user, assigneesCount: 1 });
+      }
+    }
+    return Array.from(byDict.values());
+  })();
 
   const reportMutation = useMutation({
     mutationFn: async () => {
@@ -164,7 +175,9 @@ export default function RendicontatorePage() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-slate-500">
-                      {obj.user.firstName} {obj.user.lastName}
+                      {obj.assigneesCount > 1
+                        ? `${obj.assigneesCount} dipendenti`
+                        : `${obj.user.firstName} ${obj.user.lastName}`}
                     </TableCell>
                     <TableCell className="text-sm">
                       {obj.targetValue != null ? obj.targetValue : <span className="text-slate-400">—</span>}

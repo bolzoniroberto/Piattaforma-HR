@@ -88,6 +88,7 @@ export async function getEmployeesFromDb(): Promise<BeneficiaryRow[]> {
 
     const row: BeneficiaryRow = {
       // Required BeneficiaryRow fields
+      user_id: uid,
       nome_beneficiario: nomeCompleto,
       qualifica: r.contr?.qualifica ?? r.user.department ?? '',
       tipologia: 'employee',
@@ -137,7 +138,7 @@ export async function getEmployeesFromDb(): Promise<BeneficiaryRow[]> {
 export async function getEmployeePreviews(): Promise<EmployeePreview[]> {
   const all = await getEmployeesFromDb();
   return all.map(b => ({
-    userId: '',
+    userId: b.user_id ?? '',
     nome: b.nome_beneficiario,
     qualifica: String(b.qualifica ?? ''),
     tipologia: 'employee',

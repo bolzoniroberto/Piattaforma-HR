@@ -29,27 +29,13 @@ import AdminDocumentsPage from "@/pages/AdminDocumentsPage";
 import AdminSettingsPage from "@/pages/AdminSettingsPage";
 import AdminAnalyticsPage from "@/pages/AdminAnalyticsPage";
 import AdminCustomFieldsPage from "@/pages/AdminCustomFieldsPage";
-import AdminCompetenciesPage from "@/pages/AdminCompetenciesPage";
-import AdminEvaluationCyclesPage from "@/pages/AdminEvaluationCyclesPage";
-import AdminCompetenciesAnalyticsPage from "@/pages/AdminCompetenciesAnalyticsPage";
-import EmployeeSelfAssessmentPage from "@/pages/EmployeeSelfAssessmentPage";
-import EmployeePeerFeedbackPage from "@/pages/EmployeePeerFeedbackPage";
-import EmployeeDevelopmentPlanPage from "@/pages/EmployeeDevelopmentPlanPage";
-import ManagerTeamEvaluationsPage from "@/pages/ManagerTeamEvaluationsPage";
-import ManagerEmployeeEvaluationPage from "@/pages/ManagerEmployeeEvaluationPage";
-import ManagerDevelopmentPlansPage from "@/pages/ManagerDevelopmentPlansPage";
 import OrgChartPage from "@/pages/OrgChartPage";
 import RendicontatorePage from "@/pages/RendicontatorePage";
 import RendicontaPublicPage from "@/pages/RendicontaPublicPage";
 import ManagerMboAssignPage from "@/pages/ManagerMboAssignPage";
-import AdminActivitiesPage from "@/pages/AdminActivitiesPage";
-import AdminCalibrationPage from "@/pages/AdminCalibrationPage";
-import AdminProfilePerformancePage from "@/pages/AdminProfilePerformancePage";
-import EmployeeInterviewPage from "@/pages/EmployeeInterviewPage";
-import ManagerInterviewsPage from "@/pages/ManagerInterviewsPage";
 import AiAssignWizardPage from "@/pages/AiAssignWizardPage";
-import AiEvalWizardPage from "@/pages/AiEvalWizardPage";
 import AdminDocGenPage from "@/pages/AdminDocGenPage";
+import MyLettersPage from "@/pages/MyLettersPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -167,51 +153,6 @@ function Router() {
           <AdminCustomFieldsPage />
         </ProtectedRoute>
       )} />
-      <Route path="/admin/competencies" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminCompetenciesPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/admin/evaluation-cycles" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminEvaluationCyclesPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/admin/competencies-analytics" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminCompetenciesAnalyticsPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/employee/self-assessment" component={() => (
-        <ProtectedRoute>
-          <EmployeeSelfAssessmentPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/employee/peer-feedback" component={() => (
-        <ProtectedRoute>
-          <EmployeePeerFeedbackPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/employee/development-plan" component={() => (
-        <ProtectedRoute>
-          <EmployeeDevelopmentPlanPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/manager/team-evaluations" component={() => (
-        <ProtectedRoute>
-          <ManagerTeamEvaluationsPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/manager/team-evaluations/:userId/:cycleId" component={() => (
-        <ProtectedRoute>
-          <ManagerEmployeeEvaluationPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/manager/development-plans" component={() => (
-        <ProtectedRoute>
-          <ManagerDevelopmentPlansPage />
-        </ProtectedRoute>
-      )} />
       <Route path="/organigramma" component={() => (
         <ProtectedRoute>
           <OrgChartPage />
@@ -238,44 +179,19 @@ function Router() {
           <ManagerMboAssignPage />
         </ProtectedRoute>
       )} />
-      <Route path="/admin/activities" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminActivitiesPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/admin/calibration" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminCalibrationPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/admin/profile-performance/:userId" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminProfilePerformancePage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/employee/interview" component={() => (
-        <ProtectedRoute>
-          <EmployeeInterviewPage />
-        </ProtectedRoute>
-      )} />
-      <Route path="/manager/interviews" component={() => (
-        <ProtectedRoute>
-          <ManagerInterviewsPage />
-        </ProtectedRoute>
-      )} />
       <Route path="/ai/assegna" component={() => (
         <ProtectedRoute>
           <AiAssignWizardPage />
         </ProtectedRoute>
       )} />
-      <Route path="/ai/valuta" component={() => (
-        <ProtectedRoute>
-          <AiEvalWizardPage />
-        </ProtectedRoute>
-      )} />
       <Route path="/admin/doc-gen" component={() => (
         <ProtectedRoute>
           <AdminDocGenPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/lettere" component={() => (
+        <ProtectedRoute>
+          <MyLettersPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />

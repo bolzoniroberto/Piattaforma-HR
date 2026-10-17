@@ -1814,3 +1814,88 @@ export const docSigners = sqliteTable("doc_signers", {
 
 export type DocSigner = typeof docSigners.$inferSelect;
 export type InsertDocSigner = typeof docSigners.$inferInsert;
+
+// ─── Employee Letters ─────────────────────────────────────────────────────────
+// One row per generated letter per employee. Lifecycle:
+// draft (generated, visible only to admins) → published → viewed → signed.
+// After draft a letter can be revoked (hidden from the employee) or superseded
+// by a newer version (still visible, marked as replaced). Versions form a chain
+// through replaces_id; signed letters are never superseded, only linked.
+
+export const EMPLOYEE_LETTER_STATUSES = ['draft', 'published', 'viewed', 'signed', 'revoked', 'superseded'] as const;
+export type EmployeeLetterStatus = typeof EMPLOYEE_LETTER_STATUSES[number];
+
+export const employeeLetters = sqliteTable("employee_letters", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  jobId: text("job_id").references(() => docGenerationJobs.id, { onDelete: "set null" }),
+  templateId: text("template_id").references(() => docTemplates.id, { onDelete: "set null" }),
+  letterType: text("letter_type").notNull(),
+  title: text("title").notNull(),
+  filePath: text("file_path").notNull(), // relative to uploads/letters
+  fileFormat: text("file_format").notNull().default('pdf'), // pdf | docx
+  sha256: text("sha256").notNull(),
+  requiresSignature: integer("requires_signature", { mode: "boolean" }).notNull().default(false),
+  dueDate: integer("due_date"),
+  status: text("status").$type<EmployeeLetterStatus>().notNull().default('draft'),
+  replacesId: text("replaces_id"), // previous version of this letter
+  versionNote: text("version_note"), // optional reason for the new version, shown to the employee
+  publishedBy: text("published_by").references(() => users.id, { onDelete: "set null" }),
+  publishedAt: integer("published_at"),
+  viewedAt: integer("viewed_at"),
+  signedAt: integer("signed_at"),
+  revokedAt: integer("revoked_at"),
+  supersededAt: integer("superseded_at"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+}, (table) => [
+  index("idx_employee_letters_user").on(table.userId, table.status),
+  index("idx_employee_letters_job").on(table.jobId),
+]);
+
+export const insertEmployeeLetterSchema = createInsertSchema(employeeLetters, {
+  status: z.enum(EMPLOYEE_LETTER_STATUSES),
+  fileFormat: z.enum(['pdf', 'docx']),
+}).omit({ id: true, createdAt: true });
+
+export type EmployeeLetter = typeof employeeLetters.$inferSelect;
+export type InsertEmployeeLetter = z.infer<typeof insertEmployeeLetterSchema>;
+
+// ─── Letter signatures (simple electronic signature, OTP via email) ───────────
+
+/** One OTP sent to sign a letter. The code itself is never stored, only its HMAC. */
+export const signatureRequests = sqliteTable("signature_requests", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  letterId: text("letter_id").notNull().references(() => employeeLetters.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  sentTo: text("sent_to").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  consumedAt: integer("consumed_at"),
+  invalidatedAt: integer("invalidated_at"), // superseded by a newer code
+  requestIp: text("request_ip"),
+  createdAt: integer("created_at").notNull().default(sql`(unixepoch())`),
+}, (table) => [
+  index("idx_signature_requests_letter").on(table.letterId, table.createdAt),
+]);
+
+/** Evidence of a completed signature: the audit trail of the simple electronic signature. */
+export const letterSignatures = sqliteTable("letter_signatures", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  transactionId: text("transaction_id").notNull().unique(),
+  letterId: text("letter_id").notNull().unique().references(() => employeeLetters.id, { onDelete: "restrict" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  signatureRequestId: text("signature_request_id").notNull().references(() => signatureRequests.id),
+  method: text("method").notNull().default('otp_email'),
+  otpSentTo: text("otp_sent_to").notNull(),
+  declaration: text("declaration").notNull(), // the exact text the employee accepted
+  originalSha256: text("original_sha256").notNull(),
+  signedSha256: text("signed_sha256"), // sealed PDF with the attestation page
+  signedFilePath: text("signed_file_path"), // relative to uploads/letters
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  signedAt: integer("signed_at").notNull(),
+});
+
+export type SignatureRequest = typeof signatureRequests.$inferSelect;
+export type LetterSignature = typeof letterSignatures.$inferSelect;

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, Target, BarChart3, TrendingUp, AlertCircle, CheckCircle2, 
-  Clock, ArrowRight, ClipboardCheck, Euro, LayoutGrid, ListChecks,
+  Clock, ArrowRight, ClipboardCheck, Euro, LayoutGrid,
   ChevronRight, ArrowUpRight, Activity, Gauge, Plus
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -212,21 +212,6 @@ export default function AdminDashboard() {
                  <Link href="/admin/objectives">
                     <Button variant="link" className="p-0 h-auto text-[11px] font-bold text-indigo-600 mt-4 uppercase tracking-widest">Gestisci dizionario →</Button>
                  </Link>
-               </CardContent>
-             </Card>
-
-             <Card className="border-slate-200 shadow-sm hover:border-indigo-200 transition-colors group">
-               <CardContent className="p-6">
-                 <div className="flex items-start justify-between">
-                    <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 transition-colors group-hover:bg-indigo-600">
-                       <ListChecks className="w-5 h-5 text-indigo-600 group-hover:text-white transition-colors" />
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transform group-hover:translate-x-1 transition-all" />
-                 </div>
-                 <h3 className="mt-4 text-sm font-bold text-slate-900">Monitoraggio Cicli</h3>
-                 <h3 className="mt-4 text-sm font-bold text-slate-900 invisible -mt-6">Workflow</h3>
-                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Verifica in tempo reale chi ha completato le autovalutazioni e i feedback 360°.</p>
-                 <Button variant="link" className="p-0 h-auto text-[11px] font-bold text-indigo-600 mt-4 uppercase tracking-widest">Controlla workflow →</Button>
                </CardContent>
              </Card>
 

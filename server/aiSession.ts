@@ -8,7 +8,7 @@ const MAX_TURNS = 6;
 
 // ─── Tipi pubblici ────────────────────────────────────────────────────────────
 
-export type AiScope = "assign" | "eval";
+export type AiScope = "assign";
 
 export interface QuestionPayload {
   key: string;
@@ -30,19 +30,7 @@ export interface ProposalAssign {
   note: string;
 }
 
-export interface ProposalEval {
-  executiveSummary: string;
-  strengths: string[];
-  developmentAreas: string[];
-  mboHighlights: string;
-  competencyGaps: string[];
-  peerThemes: string[];
-  proposedDevelopmentActions: string[];
-  riskFlags: string[];
-  tone: string;
-}
-
-export type Proposal = ProposalAssign | ProposalEval;
+export type Proposal = ProposalAssign;
 
 export interface TurnResult {
   sessionId: string;
@@ -61,13 +49,6 @@ async function loadAssignContext(targetUserId: string, cycleId?: string) {
   const clusters = await storage.getIndicatorClusters();
   const businessFunctions = await storage.getBusinessFunctions();
   return { user, dictionary, clusters, businessFunctions };
-}
-
-async function loadEvalContext(targetUserId: string, cycleId: string) {
-  const { competenciesStorage } = await import("./competenciesStorage");
-  const { storage } = await import("./storage");
-  const user = await storage.getUser(targetUserId);
-  return { user, cycleId };
 }
 
 // ─── Prompt builders ──────────────────────────────────────────────────────────
@@ -107,21 +88,6 @@ const TURN_RESPONSE_SCHEMA = {
         note: { type: "string" },
       },
     },
-    proposalEval: {
-      type: "object",
-      nullable: true,
-      properties: {
-        executiveSummary: { type: "string" },
-        strengths: { type: "array", items: { type: "string" } },
-        developmentAreas: { type: "array", items: { type: "string" } },
-        mboHighlights: { type: "string" },
-        competencyGaps: { type: "array", items: { type: "string" } },
-        peerThemes: { type: "array", items: { type: "string" } },
-        proposedDevelopmentActions: { type: "array", items: { type: "string" } },
-        riskFlags: { type: "array", items: { type: "string" } },
-        tone: { type: "string" },
-      },
-    },
   },
   required: ["action"],
 };
@@ -149,16 +115,6 @@ Regole proposta:
 
 Conduci la conversazione con domande mirate (massimo 6 turni totali).
 Quando hai abbastanza informazioni, proponi (action=propose con proposalAssign).`;
-}
-
-function buildEvalSystemPrompt(context: Awaited<ReturnType<typeof loadEvalContext>>): string {
-  const { user } = context;
-  return `Sei un assistente HR specializzato in valutazione della performance.
-Stai aiutando il manager a scrivere la scheda di valutazione per ${user?.firstName ?? ""} ${user?.lastName ?? ""}.
-
-Il tuo compito è fare domande chiave per capire il punto di vista del manager, poi generare una bozza di scheda strutturata.
-Conduci la conversazione (massimo 6 turni). Quando hai abbastanza informazioni, proponi (action=propose con proposalEval).
-Sii empatico ma professionale. Output sempre in italiano.`;
 }
 
 function buildTurnPrompt(
@@ -245,14 +201,8 @@ async function runTurn(sessionId: string, userId: string, lastAnswer: string | n
   const scope = session.scope as AiScope;
 
   // Carica contesto
-  let systemPrompt: string;
-  if (scope === "assign") {
-    const ctx = await loadAssignContext(session.targetUserId!, session.cycleId ?? undefined);
-    systemPrompt = buildAssignSystemPrompt(ctx);
-  } else {
-    const ctx = await loadEvalContext(session.targetUserId!, session.cycleId ?? "");
-    systemPrompt = buildEvalSystemPrompt(ctx);
-  }
+  const ctx = await loadAssignContext(session.targetUserId!, session.cycleId ?? undefined);
+  const systemPrompt = buildAssignSystemPrompt(ctx);
 
   const turnPrompt = buildTurnPrompt(scope, collectedFacts, history, session.turnCount);
 
@@ -270,7 +220,7 @@ async function runTurn(sessionId: string, userId: string, lastAnswer: string | n
   const newTurnCount = session.turnCount + 1;
 
   if (parsed?.action === "propose") {
-    const proposal = scope === "assign" ? parsed.proposalAssign : parsed.proposalEval;
+    const proposal = parsed.proposalAssign;
 
     await db
       .update(aiSessions)

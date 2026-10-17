@@ -1,14 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 
-export interface AiPanelCompetencyContext {
-  name: string;
-  description: string;
-  category: string;
-  currentRating?: number;
-}
-
 export interface AiPanelOptions {
-  competencyContext?: AiPanelCompetencyContext;
   suggestedPrompts?: string[];
   contextLabel?: string;
   endpoint?: string;

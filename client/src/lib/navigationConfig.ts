@@ -8,17 +8,11 @@ import {
   Trash2,
   CheckCircle,
   Network,
-  Award,
-  Calendar,
-  BarChart3,
-  ClipboardCheck,
-  TrendingUp,
   Table2,
   ClipboardList,
-  SlidersHorizontal,
-  MessageSquare,
   Sparkles,
   FilePlus2,
+  Mail,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -52,6 +46,21 @@ export const dashboardItem: NavItem = {
 
 export const navSections: NavSection[] = [
   {
+    id: "area-personale",
+    title: "Area personale",
+    icon: Mail,
+    moduleId: "gestione_lettere",
+    children: [
+      {
+        id: "my-letters",
+        title: "Le mie lettere",
+        url: "/lettere",
+        icon: Mail,
+      },
+    ],
+  },
+
+  {
     id: "mbo",
     title: "MBO",
     icon: Target,
@@ -75,13 +84,6 @@ export const navSections: NavSection[] = [
         id: "ai-assign",
         title: "Assegna con AI",
         url: "/ai/assegna",
-        icon: Sparkles,
-        managerOnly: true,
-      },
-      {
-        id: "ai-eval",
-        title: "Valuta Dipendente",
-        url: "/ai/valuta",
         icon: Sparkles,
         managerOnly: true,
       },
@@ -118,95 +120,6 @@ export const navSections: NavSection[] = [
         title: "Tabellone MBO",
         url: "/admin/tabellone",
         icon: Table2,
-        adminOnly: true,
-      },
-    ],
-  },
-
-  {
-    id: "performance",
-    title: "Performance",
-    icon: ClipboardCheck,
-    moduleId: "performance_management",
-    children: [
-      {
-        id: "self-assessment",
-        title: "Autovalutazione",
-        url: "/employee/self-assessment",
-        icon: FileText,
-      },
-      {
-        id: "peer-feedback",
-        title: "Feedback 360°",
-        url: "/employee/peer-feedback",
-        icon: Users,
-      },
-      {
-        id: "development-plan",
-        title: "Piano di Sviluppo",
-        url: "/employee/development-plan",
-        icon: TrendingUp,
-      },
-      {
-        id: "interview",
-        title: "Colloquio di Feedback",
-        url: "/employee/interview",
-        icon: MessageSquare,
-      },
-      {
-        id: "team-evaluations",
-        title: "Valutazioni Team",
-        url: "/manager/team-evaluations",
-        icon: Users,
-        managerOnly: true,
-      },
-      {
-        id: "team-development-plans",
-        title: "Piani di Sviluppo Team",
-        url: "/manager/development-plans",
-        icon: TrendingUp,
-        managerOnly: true,
-      },
-      {
-        id: "manager-interviews",
-        title: "Colloqui di Feedback",
-        url: "/manager/interviews",
-        icon: MessageSquare,
-        managerOnly: true,
-      },
-      {
-        id: "competencies-config",
-        title: "Gestione Competenze",
-        url: "/admin/competencies",
-        icon: Award,
-        adminOnly: true,
-      },
-      {
-        id: "evaluation-cycles",
-        title: "Cicli di Valutazione",
-        url: "/admin/evaluation-cycles",
-        icon: Calendar,
-        adminOnly: true,
-      },
-      {
-        id: "activities",
-        title: "Attività Persone",
-        url: "/admin/activities",
-        icon: Table2,
-        adminOnly: true,
-      },
-      {
-        id: "calibration",
-        title: "Calibrazione",
-        url: "/admin/calibration",
-        icon: SlidersHorizontal,
-        adminOnly: true,
-      },
-      {
-        id: "competencies-analytics",
-        title: "Analytics Competenze",
-        url: "/admin/competencies-analytics",
-        icon: BarChart3,
         adminOnly: true,
       },
     ],

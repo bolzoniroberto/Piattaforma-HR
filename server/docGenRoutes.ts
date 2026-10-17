@@ -16,6 +16,10 @@ import { isLibreOfficeAvailable } from './docGen/pdfConverter';
 import { getBeneficiariesFromDb, getDbBeneficiaryPreviews } from './docGen/dbBeneficiaries';
 import { getEmployeesFromDb, getEmployeePreviews } from './docGen/employeeData';
 import { getDataFieldGroups } from './docGen/dataFields';
+import { matchRecipientsToUsers } from './docGen/recipientMatcher';
+import { saveLetterFile, sendLetterFile } from './letters/letterStore';
+import { computeVersions } from './letters/versioning';
+import { z } from 'zod';
 
 const ALL_BUILTIN_TEMPLATES = [
   coverLetterTemplate, assegnazioneMboTemplate, schedaObiettiviTemplate,
@@ -253,7 +257,13 @@ router.post('/jobs/preview-meta', async (req: Request, res: Response) => {
     const fieldMappings = JSON.parse(tmpl.fieldMappings);
     beneficiaries = parseExcel(excelPath, fieldMappings);
   }
-  res.json({ count: beneficiaries.length, names: beneficiaries.map(b => b.nome_beneficiario ?? '') });
+  const match = await matchRecipientsToUsers(beneficiaries);
+  res.json({
+    count: beneficiaries.length,
+    names: beneficiaries.map(b => b.nome_beneficiario ?? ''),
+    linked: match.methods.map(m => m !== null),
+    unmatchedNames: match.unmatchedNames,
+  });
 });
 
 router.post('/jobs/preview', async (req: Request, res: Response) => {
@@ -331,6 +341,8 @@ router.post('/jobs/generate', async (req: Request, res: Response) => {
     beneficiaries = beneficiaries.filter((_, i) => idxSet.has(i));
   }
 
+  const match = await matchRecipientsToUsers(beneficiaries);
+
   const job = await storage.createDocJob({
     templateId,
     letterheadId: letterheadId ?? null,
@@ -342,7 +354,7 @@ router.post('/jobs/generate', async (req: Request, res: Response) => {
   });
 
   try {
-    const { zipPath, count } = generateAll({
+    const { zipPath, count, personal } = generateAll({
       letterheadPath: lh?.filePath ?? null,
       bodyContent: tmpl.bodyContent,
       fieldMappings,
@@ -354,10 +366,34 @@ router.post('/jobs/generate', async (req: Request, res: Response) => {
       signatureImagePath: signer?.signatureImagePath ?? null,
       outputFormat: (outputFormat as OutputFormat) ?? 'docx',
       fontFamily: tmpl.fontFamily ?? 'Calibri',
+      collectPersonal: true,
     });
 
+    // Employee copies start as drafts: they become visible only once an admin publishes them.
+    for (const letter of personal) {
+      const saved = saveLetterFile(letter.userId, letter.buffer, letter.format);
+      await storage.createEmployeeLetter({
+        userId: letter.userId,
+        jobId: job.id,
+        templateId: tmpl.id,
+        letterType: tmpl.letterType,
+        title: tmpl.name,
+        filePath: saved.filePath,
+        fileFormat: letter.format,
+        sha256: saved.sha256,
+        status: 'draft',
+      });
+    }
+
     await storage.updateDocJob(job.id, { status: 'done', outputZipPath: zipPath, beneficiaryCount: count });
-    res.json({ jobId: job.id, count, zipUrl: `/api/doc/jobs/${job.id}/download` });
+    res.json({
+      jobId: job.id,
+      count,
+      zipUrl: `/api/doc/jobs/${job.id}/download`,
+      personalCount: personal.length,
+      personalFormat: personal.some(p => p.format === 'docx') ? 'docx' : 'pdf',
+      unmatchedNames: match.unmatchedNames,
+    });
   } catch (err: unknown) {
     await storage.updateDocJob(job.id, { status: 'error' });
     res.status(500).json({ error: String(err) });
@@ -373,6 +409,96 @@ router.get('/jobs/:id/download', async (req, res) => {
   if (!job || !job.outputZipPath) return res.status(404).json({ error: 'Non trovato' });
   if (!fs.existsSync(job.outputZipPath)) return res.status(410).json({ error: 'File non più disponibile' });
   res.download(job.outputZipPath, `lettere_mbo_${job.id}.zip`);
+});
+
+// ─── Employee letters (publication) ──────────────────────────────────────────
+
+router.get('/jobs/:id/letters', async (req, res) => {
+  const letters = await storage.getLettersByJob(req.params.id);
+  const versions = computeVersions(await storage.getNonDraftLettersForUsers(Array.from(new Set(letters.map(l => l.userId)))));
+
+  res.json(await Promise.all(letters.map(async ({ filePath, ...l }) => {
+    const v = versions.get(l.id);
+    // For drafts, show what publishing with "replace" would do.
+    const current = l.status === 'draft' && l.templateId
+      ? (await storage.getReplaceableLetters(l.userId, l.templateId, req.params.id))[0]
+      : undefined;
+    return {
+      ...l,
+      version: v?.version ?? null,
+      replaces: v?.replaces ?? null,
+      replacedBy: v?.replacedBy ?? null,
+      wouldReplace: current
+        ? { id: current.id, status: current.status, publishedAt: current.publishedAt, version: versions.get(current.id)?.version ?? 1 }
+        : null,
+    };
+  })));
+});
+
+const publishSchema = z.object({
+  letterIds: z.array(z.string()).optional(),
+  requiresSignature: z.boolean().default(false),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  replacePrevious: z.boolean().default(false),
+  versionNote: z.string().trim().max(500).optional(),
+});
+
+router.post('/jobs/:id/publish', async (req: Request, res: Response) => {
+  const parsed = publishSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Parametri non validi' });
+  const { letterIds, requiresSignature, dueDate, replacePrevious, versionNote } = parsed.data;
+
+  // Due date = end of the chosen day, local time.
+  const dueUnix = dueDate ? Math.floor(new Date(`${dueDate}T23:59:59`).getTime() / 1000) : null;
+  const published = await storage.publishJobLetters(req.params.id, {
+    letterIds,
+    publishedBy: (req as any).user?.id ?? null,
+    requiresSignature,
+    dueDate: dueUnix,
+  });
+
+  // Replacing keeps the old version visible to the employee as "superseded" and links
+  // the new one to it. Signed versions are a record of what was accepted: they are only linked.
+  let replaced = 0;
+  let signedLinked = 0;
+  if (replacePrevious) {
+    for (const letter of published) {
+      if (!letter.templateId) continue;
+      const previous = await storage.getReplaceableLetters(letter.userId, letter.templateId, req.params.id);
+      if (!previous.length) continue;
+      for (const old of previous) {
+        if (old.status === 'signed') continue;
+        await storage.supersedeEmployeeLetter(old.id);
+        replaced++;
+      }
+      if (previous[0].status === 'signed') signedLinked++;
+      await storage.updateEmployeeLetter(letter.id, {
+        replacesId: previous[0].id,
+        versionNote: versionNote || null,
+      });
+    }
+  }
+
+  res.json({ published: published.length, replaced, signedLinked });
+});
+
+router.post('/letters/:id/revoke', async (req, res) => {
+  const letter = await storage.getEmployeeLetter(req.params.id);
+  if (!letter) return res.status(404).json({ error: 'Non trovata' });
+  if (letter.status === 'signed') return res.status(409).json({ error: 'Una lettera firmata non può essere revocata' });
+  const revoked = await storage.revokeEmployeeLetter(req.params.id);
+  if (!revoked) return res.status(409).json({ error: 'Solo le lettere pubblicate possono essere revocate' });
+  const { filePath, ...rest } = revoked;
+  res.json(rest);
+});
+
+router.get('/letters/:id/file', async (req, res) => {
+  const letter = await storage.getEmployeeLetter(req.params.id);
+  if (!letter) return res.status(404).json({ error: 'Non trovata' });
+  const signed = letter.status === 'signed' && req.query.original !== '1'
+    ? (await storage.getLetterSignature(letter.id))?.signedFilePath
+    : null;
+  sendLetterFile(res, letter, false, signed);
 });
 
 // ─── Seed default template ────────────────────────────────────────────────────
