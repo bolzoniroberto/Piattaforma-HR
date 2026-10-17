@@ -623,6 +623,11 @@ const MODULE_DEFS = [
     label: "Gestione Organizzazione",
     description: "Organigramma aziendale e vista team.",
   },
+  {
+    id: "gestione_lettere",
+    label: "Le mie lettere",
+    description: "Area personale in cui ogni dipendente consulta le lettere pubblicate dall'HR.",
+  },
 ];
 
 function ModuliTab() {

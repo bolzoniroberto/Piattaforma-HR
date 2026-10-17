@@ -2,6 +2,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import docGenRouter from "./docGenRoutes";
+import letterRouter from "./letters/letterRoutes";
 import { storage } from "./storage";
 import { seed } from "./seed";
 import { db } from "./db";
@@ -100,6 +101,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Doc generation routes (admin only)
   app.use('/api/doc', isAuthenticated, isAdmin, docGenRouter);
+
+  // Employee letters (personal area)
+  app.use('/api/me/letters', isAuthenticated, letterRouter);
 
   // Health check - no auth required (used for deployment health checks)
   app.get("/api/health", async (req, res) => {
@@ -446,6 +450,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      // Signatures are legal evidence and must outlive the account.
+      if (await storage.hasLetterSignatures(req.params.id)) {
+        return res.status(409).json({
+          message: "L'utente ha firmato delle lettere: non può essere eliminato. Disattivalo invece.",
+        });
+      }
       await storage.deleteUser(req.params.id);
       res.status(204).send();
     } catch (error) {

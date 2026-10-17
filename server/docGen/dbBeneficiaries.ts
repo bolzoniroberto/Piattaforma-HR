@@ -74,6 +74,7 @@ export async function getBeneficiariesFromDb(): Promise<BeneficiaryRow[]> {
   }
 
   return Array.from(byUser.values()).map(({ user: u, obiettivi }) => ({
+    user_id: u.id,
     nome_beneficiario: [u.firstName, u.lastName].filter(Boolean).join(' '),
     qualifica: u.department ?? '',
     tipologia: (u as any).beneficiaryType ?? 'standard',
@@ -92,7 +93,7 @@ export async function getBeneficiariesFromDb(): Promise<BeneficiaryRow[]> {
 export async function getDbBeneficiaryPreviews(): Promise<DbBeneficiaryPreview[]> {
   const all = await getBeneficiariesFromDb();
   return all.map(b => ({
-    userId: '',
+    userId: b.user_id ?? '',
     nome: b.nome_beneficiario,
     qualifica: b.qualifica,
     tipologia: b.tipologia,

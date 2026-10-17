@@ -7,6 +7,8 @@ export interface BeneficiaryRow {
   premio_max: number;
   area: string;
   obiettivi: ObiettivRow[];
+  /** Platform user the letter belongs to; empty when the row could not be matched. */
+  user_id?: string;
   [key: string]: unknown;
 }
 
@@ -81,6 +83,8 @@ export function previewExcel(filePath: string): ExcelPreview {
     target: 'Target',
     rendicontatore: 'Rendicontatore (Fonte)',
     note: 'Note',
+    codice_fiscale: 'Codice Fiscale',
+    email: 'Email',
   };
 
   return { sheets: wb.SheetNames, headers, rows, suggestedMappings };
@@ -144,6 +148,8 @@ export function parseExcel(
           cap: String(getMapped(r, 'cap') ?? ''),
           citta_residenza: String(getMapped(r, 'citta_residenza') ?? ''),
           prov: String(getMapped(r, 'prov') ?? ''),
+          codice_fiscale: String(getMapped(r, 'codice_fiscale') ?? '').trim().toUpperCase(),
+          email: String(getMapped(r, 'email') ?? '').trim(),
         },
         obiettivi: [],
       });

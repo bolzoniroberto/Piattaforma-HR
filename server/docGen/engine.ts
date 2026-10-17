@@ -14,9 +14,17 @@ import {
 } from './ooxml';
 import { buildSchedaObiettiviDocx } from './schedaObiettiviRenderer';
 import { insertSignatureImage } from './signatureInserter';
-import { convertDocxToPdf } from './pdfConverter';
+import { convertDocxToPdf, isLibreOfficeAvailable } from './pdfConverter';
 
 export type OutputFormat = 'docx' | 'pdf' | 'both';
+
+/** A rendered letter for a recipient matched to a platform user (row.user_id). */
+export interface PersonalLetter {
+  userId: string;
+  name: string;
+  buffer: Buffer;
+  format: 'pdf' | 'docx';
+}
 
 export interface GenerateOptions {
   letterheadPath: string | null;
@@ -30,6 +38,8 @@ export interface GenerateOptions {
   signatureImagePath?: string | null;
   outputFormat?: OutputFormat;
   fontFamily?: string;
+  /** Also return each matched recipient's letter, as PDF when LibreOffice is available. */
+  collectPersonal?: boolean;
 }
 
 function buildDictionary(
@@ -99,38 +109,53 @@ export function generatePreview(opts: Omit<GenerateOptions, 'outputDir'>): Buffe
   return renderDocx(opts.letterheadPath, opts.bodyContent, dict, opts.letterType, opts.signatureImagePath, opts.fontFamily ?? 'Calibri');
 }
 
-export function generateAll(opts: GenerateOptions): { zipPath: string; count: number } {
+export function generateAll(opts: GenerateOptions): { zipPath: string; count: number; personal: PersonalLetter[] } {
   const jobId = Date.now().toString();
   const jobDir = path.join(opts.outputDir, jobId);
-  fs.mkdirSync(jobDir, { recursive: true });
+  const personalDir = path.join(jobDir, '.personal');
+  fs.mkdirSync(personalDir, { recursive: true });
 
   const format = opts.outputFormat ?? 'docx';
+  const canConvert = isLibreOfficeAvailable();
+  const personal: PersonalLetter[] = [];
 
-  for (const row of opts.beneficiaries) {
+  opts.beneficiaries.forEach((row, i) => {
     const dict = buildDictionary(row, opts.parameters, opts.calculatedFieldDefs);
     const buf = renderDocx(opts.letterheadPath, opts.bodyContent, dict, opts.letterType, opts.signatureImagePath, opts.fontFamily ?? 'Calibri');
     const safeName = row.nome_beneficiario.replace(/[^a-zA-Z0-9À-ÿ ]/g, '').replace(/\s+/g, '_');
     const baseName = `${safeName}_${opts.letterType}`;
+    const docxPath = path.join(jobDir, `${baseName}.docx`);
+    fs.writeFileSync(docxPath, buf);
 
-    if (format === 'docx' || format === 'both') {
-      const docxPath = path.join(jobDir, `${baseName}.docx`);
-      fs.writeFileSync(docxPath, buf);
-      if (format === 'both') {
-        try { convertDocxToPdf(docxPath); } catch {}
-      }
-    } else if (format === 'pdf') {
-      const docxPath = path.join(jobDir, `${baseName}.docx`);
-      fs.writeFileSync(docxPath, buf);
-      convertDocxToPdf(docxPath);
+    let pdfPath: string | null = null;
+    if (format === 'pdf') {
+      pdfPath = convertDocxToPdf(docxPath);
       fs.unlinkSync(docxPath);
+    } else if (format === 'both') {
+      try { pdfPath = convertDocxToPdf(docxPath); } catch {}
     }
-  }
 
+    if (opts.collectPersonal && row.user_id) {
+      // The employee copy is a PDF whenever possible, even if the admin only asked for DOCX.
+      if (!pdfPath && canConvert) {
+        try {
+          const tmpDocx = path.join(personalDir, `${i}.docx`);
+          fs.writeFileSync(tmpDocx, buf);
+          pdfPath = convertDocxToPdf(tmpDocx);
+        } catch {}
+      }
+      personal.push(pdfPath
+        ? { userId: row.user_id, name: row.nome_beneficiario, buffer: fs.readFileSync(pdfPath), format: 'pdf' }
+        : { userId: row.user_id, name: row.nome_beneficiario, buffer: buf, format: 'docx' });
+    }
+  });
+
+  fs.rmSync(personalDir, { recursive: true, force: true });
   const zipPath = path.join(opts.outputDir, `${jobId}.zip`);
   zipDirectory(jobDir, zipPath);
   fs.rmSync(jobDir, { recursive: true, force: true });
 
-  return { zipPath, count: opts.beneficiaries.length };
+  return { zipPath, count: opts.beneficiaries.length, personal };
 }
 
 function zipDirectory(sourceDir: string, outPath: string): void {

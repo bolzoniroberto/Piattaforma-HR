@@ -56,6 +56,9 @@ export function initializeDatabase() {
       path.join(process.cwd(), 'db', 'migrations', '0004_doc_signers.sql'),
       path.join(process.cwd(), 'db', 'migrations', '0005_doc_template_font.sql'),
       path.join(process.cwd(), 'db', 'migrations', '0006_doc_template_category.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0007_employee_letters.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0008_employee_letter_versions.sql'),
+      path.join(process.cwd(), 'db', 'migrations', '0009_letter_signatures.sql'),
     ];
     for (const migPath of incrementalMigrations) {
       if (fs.existsSync(migPath)) {

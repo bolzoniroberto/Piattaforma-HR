@@ -35,6 +35,7 @@ import RendicontaPublicPage from "@/pages/RendicontaPublicPage";
 import ManagerMboAssignPage from "@/pages/ManagerMboAssignPage";
 import AiAssignWizardPage from "@/pages/AiAssignWizardPage";
 import AdminDocGenPage from "@/pages/AdminDocGenPage";
+import MyLettersPage from "@/pages/MyLettersPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -186,6 +187,11 @@ function Router() {
       <Route path="/admin/doc-gen" component={() => (
         <ProtectedRoute>
           <AdminDocGenPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/lettere" component={() => (
+        <ProtectedRoute>
+          <MyLettersPage />
         </ProtectedRoute>
       )} />
       <Route component={NotFound} />

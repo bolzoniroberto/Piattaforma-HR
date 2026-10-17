@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Sparkles,
   FilePlus2,
+  Mail,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -44,6 +45,21 @@ export const dashboardItem: NavItem = {
 };
 
 export const navSections: NavSection[] = [
+  {
+    id: "area-personale",
+    title: "Area personale",
+    icon: Mail,
+    moduleId: "gestione_lettere",
+    children: [
+      {
+        id: "my-letters",
+        title: "Le mie lettere",
+        url: "/lettere",
+        icon: Mail,
+      },
+    ],
+  },
+
   {
     id: "mbo",
     title: "MBO",

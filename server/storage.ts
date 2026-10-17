@@ -49,9 +49,16 @@ import {
   type InsertDocGenerationJob,
   type DocSigner,
   type InsertDocSigner,
+  employeeLetters,
+  type EmployeeLetter,
+  type InsertEmployeeLetter,
+  signatureRequests,
+  letterSignatures,
+  type SignatureRequest,
+  type LetterSignature,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, ne, inArray, isNull, gte, lt, TransactionRollbackError } from "drizzle-orm";
 
 const nowUnix = () => Math.floor(Date.now() / 1000);
 
@@ -791,6 +798,8 @@ export class DatabaseStorage implements IStorage {
       gestione_mbo_user: true,
       gestione_organizzazione_admin: false,
       gestione_organizzazione_user: true,
+      gestione_lettere_admin: true,
+      gestione_lettere_user: true,
     };
     const [row] = await db.select().from(appSettings).where(eq(appSettings.key, "feature_flags"));
     if (!row) return defaults;
@@ -1079,6 +1088,201 @@ export class DatabaseStorage implements IStorage {
   async setDefaultDocSigner(id: string): Promise<void> {
     await db.update(docSigners).set({ isDefault: 0 });
     await db.update(docSigners).set({ isDefault: 1 }).where(eq(docSigners.id, id));
+  }
+
+  // ─── Employee Letters ──────────────────────────────────────────────────────
+
+  /** Letters visible to the employee: everything except drafts and revoked ones. */
+  async getVisibleLettersForUser(userId: string): Promise<EmployeeLetter[]> {
+    return db.select().from(employeeLetters)
+      .where(and(
+        eq(employeeLetters.userId, userId),
+        inArray(employeeLetters.status, ['published', 'viewed', 'signed', 'superseded']),
+      ))
+      .orderBy(desc(employeeLetters.publishedAt));
+  }
+
+  /** Every published-at-some-point letter of a user, including revoked: used to rebuild version chains. */
+  async getNonDraftLettersForUsers(userIds: string[]): Promise<EmployeeLetter[]> {
+    if (!userIds.length) return [];
+    return db.select().from(employeeLetters)
+      .where(and(inArray(employeeLetters.userId, userIds), ne(employeeLetters.status, 'draft')));
+  }
+
+  async getLettersByJob(jobId: string): Promise<(EmployeeLetter & { userName: string })[]> {
+    const rows = await db
+      .select({ letter: employeeLetters, firstName: users.firstName, lastName: users.lastName })
+      .from(employeeLetters)
+      .innerJoin(users, eq(users.id, employeeLetters.userId))
+      .where(eq(employeeLetters.jobId, jobId))
+      .orderBy(users.lastName, users.firstName);
+    return rows.map(r => ({ ...r.letter, userName: [r.firstName, r.lastName].filter(Boolean).join(' ') }));
+  }
+
+  /**
+   * Current letters of the same template from other jobs: the versions a new
+   * publication would replace. Signed ones are included so they can be linked
+   * (they are never superseded). Most recent first.
+   */
+  async getReplaceableLetters(userId: string, templateId: string, excludeJobId: string): Promise<EmployeeLetter[]> {
+    return db.select().from(employeeLetters)
+      .where(and(
+        eq(employeeLetters.userId, userId),
+        eq(employeeLetters.templateId, templateId),
+        ne(employeeLetters.jobId, excludeJobId),
+        inArray(employeeLetters.status, ['published', 'viewed', 'signed']),
+      ))
+      .orderBy(desc(employeeLetters.publishedAt));
+  }
+
+  async supersedeEmployeeLetter(id: string): Promise<void> {
+    await db.update(employeeLetters)
+      .set({ status: 'superseded', supersededAt: nowUnix() })
+      .where(and(eq(employeeLetters.id, id), inArray(employeeLetters.status, ['published', 'viewed'])));
+  }
+
+  async getEmployeeLetter(id: string): Promise<EmployeeLetter | undefined> {
+    const [row] = await db.select().from(employeeLetters).where(eq(employeeLetters.id, id));
+    return row;
+  }
+
+  async createEmployeeLetter(data: InsertEmployeeLetter): Promise<EmployeeLetter> {
+    const [row] = await db.insert(employeeLetters).values(data).returning();
+    return row;
+  }
+
+  async updateEmployeeLetter(id: string, data: Partial<InsertEmployeeLetter>): Promise<EmployeeLetter> {
+    const [row] = await db.update(employeeLetters).set(data).where(eq(employeeLetters.id, id)).returning();
+    return row;
+  }
+
+  /** Publishes the draft letters of a job (all of them, or only the given ids). */
+  async publishJobLetters(
+    jobId: string,
+    opts: { letterIds?: string[]; publishedBy: string | null; requiresSignature: boolean; dueDate: number | null },
+  ): Promise<EmployeeLetter[]> {
+    const conditions = [eq(employeeLetters.jobId, jobId), eq(employeeLetters.status, 'draft')];
+    if (opts.letterIds?.length) conditions.push(inArray(employeeLetters.id, opts.letterIds));
+    return db.update(employeeLetters)
+      .set({
+        status: 'published',
+        publishedAt: nowUnix(),
+        publishedBy: opts.publishedBy,
+        requiresSignature: opts.requiresSignature,
+        dueDate: opts.dueDate,
+      })
+      .where(and(...conditions))
+      .returning();
+  }
+
+  async revokeEmployeeLetter(id: string): Promise<EmployeeLetter | undefined> {
+    const [row] = await db.update(employeeLetters)
+      .set({ status: 'revoked', revokedAt: nowUnix() })
+      .where(and(eq(employeeLetters.id, id), inArray(employeeLetters.status, ['published', 'viewed'])))
+      .returning();
+    return row;
+  }
+
+  // ─── Letter signatures ─────────────────────────────────────────────────────
+
+  async hasLetterSignatures(userId: string): Promise<boolean> {
+    const [row] = await db.select({ id: letterSignatures.id }).from(letterSignatures)
+      .where(eq(letterSignatures.userId, userId)).limit(1);
+    return !!row;
+  }
+
+  async getLetterSignature(letterId: string): Promise<LetterSignature | undefined> {
+    const [row] = await db.select().from(letterSignatures).where(eq(letterSignatures.letterId, letterId));
+    return row;
+  }
+
+  async getSignatureRequest(id: string): Promise<SignatureRequest | undefined> {
+    const [row] = await db.select().from(signatureRequests).where(eq(signatureRequests.id, id));
+    return row;
+  }
+
+  async getSignatureRequestsSince(letterId: string, since: number): Promise<SignatureRequest[]> {
+    return db.select().from(signatureRequests)
+      .where(and(eq(signatureRequests.letterId, letterId), gte(signatureRequests.createdAt, since)))
+      .orderBy(desc(signatureRequests.createdAt));
+  }
+
+  /** Creates a new OTP request; any still-open request for the same letter stops being valid. */
+  async createSignatureRequest(data: {
+    id: string; letterId: string; userId: string; codeHash: string; sentTo: string; expiresAt: number; requestIp: string | null;
+  }): Promise<SignatureRequest> {
+    return db.transaction((tx) => {
+      tx.update(signatureRequests)
+        .set({ invalidatedAt: nowUnix() })
+        .where(and(
+          eq(signatureRequests.letterId, data.letterId),
+          isNull(signatureRequests.consumedAt),
+          isNull(signatureRequests.invalidatedAt),
+        ))
+        .run();
+      return tx.insert(signatureRequests).values({ ...data, createdAt: nowUnix() }).returning().get();
+    });
+  }
+
+  /**
+   * Counts one verification attempt, atomically, and only while the request is
+   * still usable. Returns the updated request, or undefined if it is not.
+   */
+  async registerOtpAttempt(id: string, maxAttempts: number): Promise<SignatureRequest | undefined> {
+    const [row] = await db.update(signatureRequests)
+      .set({ attempts: sql`${signatureRequests.attempts} + 1` })
+      .where(and(
+        eq(signatureRequests.id, id),
+        isNull(signatureRequests.consumedAt),
+        isNull(signatureRequests.invalidatedAt),
+        lt(signatureRequests.attempts, maxAttempts),
+      ))
+      .returning();
+    return row;
+  }
+
+  /**
+   * Consumes the OTP, records the signature evidence and marks the letter as signed,
+   * all or nothing. Returns undefined if the letter was no longer signable (concurrent
+   * signature, revocation or replacement in the meantime).
+   */
+  async completeSignature(sig: Omit<LetterSignature, 'id'>): Promise<LetterSignature | undefined> {
+    try {
+      return this.completeSignatureTx(sig);
+    } catch (err) {
+      if (err instanceof TransactionRollbackError) return undefined;
+      throw err;
+    }
+  }
+
+  private completeSignatureTx(sig: Omit<LetterSignature, 'id'>): LetterSignature | undefined {
+    return db.transaction((tx) => {
+      const letter = tx.update(employeeLetters)
+        .set({ status: 'signed', signedAt: sig.signedAt })
+        .where(and(
+          eq(employeeLetters.id, sig.letterId),
+          inArray(employeeLetters.status, ['published', 'viewed']),
+        ))
+        .returning().get();
+      if (!letter) return undefined;
+
+      const consumed = tx.update(signatureRequests)
+        .set({ consumedAt: sig.signedAt })
+        .where(and(eq(signatureRequests.id, sig.signatureRequestId), isNull(signatureRequests.consumedAt)))
+        .returning().get();
+      if (!consumed) {
+        tx.rollback();
+        return undefined;
+      }
+      return tx.insert(letterSignatures).values(sig).returning().get();
+    });
+  }
+
+  /** Sets viewedAt on first open; a no-op afterwards. */
+  async markEmployeeLetterViewed(id: string): Promise<void> {
+    await db.update(employeeLetters)
+      .set({ status: 'viewed', viewedAt: nowUnix() })
+      .where(and(eq(employeeLetters.id, id), eq(employeeLetters.status, 'published')));
   }
 }
 

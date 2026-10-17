@@ -8,6 +8,8 @@ export interface FeatureFlags {
   gestione_mbo_user: boolean;
   gestione_organizzazione_admin: boolean;
   gestione_organizzazione_user: boolean;
+  gestione_lettere_admin: boolean;
+  gestione_lettere_user: boolean;
 }
 
 const DEFAULTS: FeatureFlags = {
@@ -17,6 +19,8 @@ const DEFAULTS: FeatureFlags = {
   gestione_mbo_user: true,
   gestione_organizzazione_admin: false,
   gestione_organizzazione_user: true,
+  gestione_lettere_admin: true,
+  gestione_lettere_user: true,
 };
 
 const FeatureFlagsContext = createContext<FeatureFlags>(DEFAULTS);

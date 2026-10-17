@@ -23,6 +23,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { renderAsync } from "docx-preview";
+import { JobLettersDialog } from "@/components/letters/JobLettersDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,7 @@ function TemplateListView({
   const [newLetterDialog, setNewLetterDialog] = useState(false);
   const [newLetterName, setNewLetterName] = useState('');
   const [creatingLetter, setCreatingLetter] = useState(false);
+  const [lettersJobId, setLettersJobId] = useState<string | null>(null);
 
   const { data: templates = [] } = useQuery<DocTemplate[]>({ queryKey: ['/api/doc/templates'] });
   const { data: jobs = [] } = useQuery<Job[]>({ queryKey: ['/api/doc/jobs'] });
@@ -453,10 +455,17 @@ function TemplateListView({
                     <p className="text-sm font-medium">{new Date(j.createdAt * 1000).toLocaleString('it-IT')}</p>
                     <p className="text-xs text-slate-500">{j.beneficiaryCount} beneficiari · {j.status}</p>
                   </div>
-                  {j.status === 'done' && j.outputZipPath && (
-                    <a href={`/api/doc/jobs/${j.id}/download`} download>
-                      <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" /> ZIP</Button>
-                    </a>
+                  {j.status === 'done' && (
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setLettersJobId(j.id)}>
+                        <Users className="w-3 h-3 mr-1" /> Area personale
+                      </Button>
+                      {j.outputZipPath && (
+                        <a href={`/api/doc/jobs/${j.id}/download`} download>
+                          <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" /> ZIP</Button>
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -464,6 +473,12 @@ function TemplateListView({
           </CardContent>
         </Card>
       )}
+
+      <JobLettersDialog
+        jobId={lettersJobId}
+        open={lettersJobId !== null}
+        onOpenChange={o => { if (!o) setLettersJobId(null); }}
+      />
 
       {/* New Letter Dialog */}
       <Dialog open={newLetterDialog} onOpenChange={setNewLetterDialog}>
@@ -990,12 +1005,15 @@ function TemplateEditorView({
 function BeneficiaryCheckList({
   names,
   subLabels,
+  linked,
   selectedIndices,
   onToggleIndex,
   onToggleAll,
 }: {
   names: string[];
   subLabels?: string[];
+  /** Index-aligned: whether the row is matched to a platform user. */
+  linked?: boolean[];
   selectedIndices: Set<number> | null;
   onToggleIndex: (i: number) => void;
   onToggleAll: () => void;
@@ -1004,13 +1022,23 @@ function BeneficiaryCheckList({
   const total = names.length;
   const selectedCount = selectedIndices === null ? total : selectedIndices.size;
   const allSelected = selectedIndices === null;
+  const unlinkedCount = linked ? linked.filter(l => !l).length : 0;
 
   const filtered = names
-    .map((name, i) => ({ name, i, sub: subLabels?.[i] ?? '' }))
+    .map((name, i) => ({ name, i, sub: subLabels?.[i] ?? '', isLinked: linked?.[i] ?? true }))
     .filter(b => !search || b.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-1.5">
+      {unlinkedCount > 0 && (
+        <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700">
+            {unlinkedCount} {unlinkedCount === 1 ? 'riga non abbinata' : 'righe non abbinate'} a un utente della piattaforma
+            (codice fiscale, email o nome): la lettera verrà generata ma non comparirà nell'area personale.
+          </p>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <input
@@ -1035,7 +1063,7 @@ function BeneficiaryCheckList({
         <span className="text-[10px] text-slate-400 shrink-0">{selectedCount}/{total}</span>
       </div>
       <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
-        {filtered.map(({ name, i, sub }) => {
+        {filtered.map(({ name, i, sub, isLinked }) => {
           const checked = selectedIndices === null || selectedIndices.has(i);
           return (
             <label
@@ -1055,6 +1083,11 @@ function BeneficiaryCheckList({
                 <p className="text-xs font-medium truncate">{name || `#${i + 1}`}</p>
                 {sub && <p className="text-[10px] text-slate-400 truncate">{sub}</p>}
               </div>
+              {!isLinked && (
+                <span className="text-[10px] font-medium text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 shrink-0">
+                  non abbinato
+                </span>
+              )}
             </label>
           );
         })}
@@ -1091,11 +1124,16 @@ function GenerateView({ category, onBack }: { category: 'mbo' | 'hr'; onBack: ()
   const [params, setParams] = useState<Record<string, string>>({});
   const [uploadingExcel, setUploadingExcel] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<{ jobId: string; count: number; zipUrl: string } | null>(null);
+  const [result, setResult] = useState<{
+    jobId: string; count: number; zipUrl: string;
+    personalCount: number; unmatchedNames: string[];
+  } | null>(null);
+  const [lettersOpen, setLettersOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<Set<number> | null>(null);
   const [excelNames, setExcelNames] = useState<string[]>([]);
+  const [excelLinked, setExcelLinked] = useState<boolean[]>([]);
   const [fetchingNames, setFetchingNames] = useState(false);
 
   const { data: dbBeneficiaries = [] } = useQuery<{ nome: string; qualifica: string; tipologia: string; premioMax: number; nObiettivi: number }[]>({
@@ -1144,8 +1182,8 @@ function GenerateView({ category, onBack }: { category: 'mbo' | 'hr'; onBack: ()
       body: JSON.stringify({ templateId: selectedTemplateId, excelPath: excelPreview.tempPath }),
     })
       .then(r => r.json())
-      .then(d => setExcelNames(d.names ?? []))
-      .catch(() => setExcelNames([]))
+      .then(d => { setExcelNames(d.names ?? []); setExcelLinked(d.linked ?? []); })
+      .catch(() => { setExcelNames([]); setExcelLinked([]); })
       .finally(() => setFetchingNames(false));
   }, [dataSource, selectedTemplateId, excelPreview?.tempPath]);
 
@@ -1276,12 +1314,29 @@ function GenerateView({ category, onBack }: { category: 'mbo' | 'hr'; onBack: ()
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <CheckCircle2 className="w-14 h-14 text-emerald-500" />
             <p className="text-xl font-semibold">{result.count} lettere generate</p>
-            <a href={result.zipUrl} download>
-              <Button size="lg" className="gap-2"><Download className="w-4 h-4" /> Scarica ZIP</Button>
-            </a>
-            <Button variant="outline" onClick={() => { setResult(null); }}>Genera ancora</Button>
+            <p className="text-sm text-slate-500 text-center">
+              {result.personalCount} salvate in bozza per l'area personale dei dipendenti
+              {result.unmatchedNames.length > 0 && (
+                <span className="block text-amber-700">
+                  {result.unmatchedNames.length} non abbinate a un utente: {result.unmatchedNames.slice(0, 5).join(', ')}
+                  {result.unmatchedNames.length > 5 && '…'}
+                </span>
+              )}
+            </p>
+            <div className="flex gap-3">
+              <a href={result.zipUrl} download>
+                <Button size="lg" variant="outline" className="gap-2"><Download className="w-4 h-4" /> Scarica ZIP</Button>
+              </a>
+              {result.personalCount > 0 && (
+                <Button size="lg" className="gap-2" onClick={() => setLettersOpen(true)}>
+                  <Users className="w-4 h-4" /> Pubblica nell'area personale
+                </Button>
+              )}
+            </div>
+            <Button variant="ghost" onClick={() => { setResult(null); }}>Genera ancora</Button>
           </CardContent>
         </Card>
+        <JobLettersDialog jobId={result.jobId} open={lettersOpen} onOpenChange={setLettersOpen} />
       </div>
     );
   }
@@ -1417,6 +1472,7 @@ function GenerateView({ category, onBack }: { category: 'mbo' | 'hr'; onBack: ()
                     ) : excelNames.length > 0 ? (
                       <BeneficiaryCheckList
                         names={excelNames}
+                        linked={excelLinked}
                         selectedIndices={selectedIndices}
                         onToggleIndex={toggleIndex}
                         onToggleAll={toggleAll}
